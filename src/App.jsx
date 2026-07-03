@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLanguage } from './i18n';
 import Stage from './components/Stage';
 import Header from './components/Header';
 import StartScreen from './screens/StartScreen';
@@ -28,6 +29,8 @@ const KITCHEN_MODE = new URLSearchParams(window.location.search).get('ansicht') 
 
 export default function App() {
   const [screen, setScreen] = useState(KITCHEN_MODE ? 'kitchen' : 'start');
+  // Sprachwechsel rendert die ganze App neu (alle t()-Texte aktualisieren sich)
+  useLanguage();
   const Screen = SCREENS[screen];
   const navigate = KITCHEN_MODE ? undefined : setScreen;
 

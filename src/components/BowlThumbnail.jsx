@@ -53,7 +53,9 @@ export default function BowlThumbnail({ config, className = '' }) {
   return (
     <div
       aria-hidden="true"
-      className={`relative overflow-hidden ${className}`}
+      // isolate: eigener Stacking-Kontext, damit die Ebenen-z-Indizes (RO)
+      // nur innerhalb des Thumbnails gelten und nichts außerhalb überdecken
+      className={`relative isolate overflow-hidden ${className}`}
       style={{ aspectRatio: `${VIEW_W} / ${VIEW_H}` }}
     >
       <LayerImage

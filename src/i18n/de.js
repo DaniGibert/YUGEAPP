@@ -10,6 +10,8 @@ const de = {
     language: 'Sprache',
     status: 'Bestellstatus',
     cart: 'Warenkorb',
+    cartEmpty: 'Noch nichts in dieser Runde',
+    cartGoTo: 'Zum Warenkorb',
   },
   start: {
     hint: 'Tippe auf die Schale, um zu starten',
