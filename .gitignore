@@ -1,0 +1,9 @@
+node_modules
+dist
+
+# ENV-Variablen (Supabase-Keys) niemals committen, siehe CLAUDE.md §6
+.env
+.env.*
+*.local
+
+.DS_Store

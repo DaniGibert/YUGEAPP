@@ -1,0 +1,37 @@
+import BowlGraphic from '../components/BowlGraphic';
+import { t } from '../i18n';
+
+// Start: leere Schüssel in Draufsicht, dampfend, klickbar (CLAUDE.md §8).
+// Die Schüssel skaliert über flex-1 mit der verfügbaren Fensterhöhe.
+export default function StartScreen({ onNavigate }) {
+  return (
+    <section className="flex h-full flex-col items-center justify-center gap-4 py-4">
+      <h1 className="font-display text-display text-ink-900">Yuge</h1>
+
+      <button
+        type="button"
+        onClick={() => onNavigate?.('builder')}
+        aria-label={t('start.hint')}
+        className="relative min-h-0 flex-1 cursor-pointer transition-transform active:scale-95"
+      >
+        {/* Dampf */}
+        <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-6 flex justify-center gap-5">
+          {[0, 0.9, 1.8].map((delay) => (
+            <span
+              key={delay}
+              className="animate-steam h-14 w-3 rounded-full bg-line opacity-0 blur-sm"
+              style={{ animationDelay: `${delay}s` }}
+            />
+          ))}
+        </span>
+
+        {/* Schüssel (Draufsicht) */}
+        <span className="animate-float block h-full">
+          <BowlGraphic className="h-full w-auto max-w-full drop-shadow-xl" />
+        </span>
+      </button>
+
+      <p className="text-body-lg text-ink-400">{t('start.hint')}</p>
+    </section>
+  );
+}
