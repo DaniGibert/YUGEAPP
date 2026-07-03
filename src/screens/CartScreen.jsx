@@ -71,6 +71,7 @@ function AddItemCard({ menuItem, type }) {
 export default function CartScreen({ onNavigate }) {
   const cart = useOrderStore((s) => s.cart);
   const removeCartItem = useOrderStore((s) => s.removeCartItem);
+  const changeCartQty = useOrderStore((s) => s.changeCartQty);
   const orderPlaced = useOrderStore((s) => s.orderPlaced);
   const [tab, setTab] = useState('drinks');
   const [submitting, setSubmitting] = useState(false);
@@ -111,11 +112,8 @@ export default function CartScreen({ onNavigate }) {
                 className="flex items-center gap-3 rounded-lg border border-line bg-surface p-3"
               >
                 {item.type === 'bowl' && <BowlThumbnail config={item.config} className="w-20 shrink-0" />}
-                <div className="min-w-0 flex-1">
-                  <p className="break-words text-body font-semibold text-ink-900">
-                    {item.qty > 1 ? `${item.qty}× ` : ''}
-                    {item.name}
-                  </p>
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <p className="break-words text-body font-semibold text-ink-900">{item.name}</p>
                   {item.type === 'bowl' && (
                     <p className="text-caption text-ink-400">
                       {bowlIngredients(item.config)
@@ -124,6 +122,14 @@ export default function CartScreen({ onNavigate }) {
                     </p>
                   )}
                   <p className="text-small text-ink-600">{item.price * item.qty} €</p>
+                  {/* Getränke/Beilagen: Menge direkt hier ändern, statt nur alles löschen */}
+                  {item.type !== 'bowl' && (
+                    <QuantityStepper
+                      value={item.qty}
+                      onChange={(next) => changeCartQty(item.key, next)}
+                      accent="gold"
+                    />
+                  )}
                 </div>
                 <button
                   type="button"

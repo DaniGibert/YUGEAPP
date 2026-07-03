@@ -140,6 +140,13 @@ export const useOrderStore = create((set) => ({
       return { cart: [...s.cart, line] };
     }),
 
+  // Menge einer bestehenden Warenkorb-Zeile ändern (0 = Zeile entfernen).
+  changeCartQty: (key, qty) =>
+    set((s) => {
+      if (qty <= 0) return { cart: s.cart.filter((i) => i.key !== key) };
+      return { cart: s.cart.map((i) => (i.key === key ? { ...i, qty } : i)) };
+    }),
+
   removeCartItem: (key) => set((s) => ({ cart: s.cart.filter((i) => i.key !== key) })),
 
   // Nach erfolgreichem Bestellen (dataService): Runde in die Rechnung, Warenkorb leeren.
