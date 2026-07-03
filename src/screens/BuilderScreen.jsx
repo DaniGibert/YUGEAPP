@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { STEPS } from '../config/steps';
 import { useOrderStore, bowlPrice, bowlSceneIngredients, toppingCount } from '../state/orderStore';
 import BowlGraphic from '../components/BowlGraphic';
+import BowlThumbnail from '../components/BowlThumbnail';
 import Breadcrumb from '../components/Breadcrumb';
 import Button from '../components/Button';
 import OptionCard from '../components/OptionCard';
@@ -69,6 +70,7 @@ function StepContent({ step }) {
                 key={option.id}
                 name={option.name}
                 desc={option.desc}
+                image={`/assets/${step.id}/${option.id}.png`}
                 selected={qty > 0}
                 accent={step.accent}
                 badge={pairsWithBroth(option, bowl.broth) ? t('builder.recommended') : null}
@@ -97,6 +99,14 @@ function StepContent({ step }) {
             key={option.id}
             name={option.name}
             desc={option.desc}
+            // Brühe wirkt allein wie eine flache Scheibe, deshalb komponiert
+            // in der Schüssel zeigen (BowlThumbnail); Rest als einzelnes PNG.
+            visual={
+              step.id === 'broth' ? (
+                <BowlThumbnail config={{ broth: option.id, toppings: {} }} className="h-full" />
+              ) : null
+            }
+            image={`/assets/${step.id}/${option.id}.png`}
             priceText={option.price > 0 ? `+${option.price} €` : null}
             selected={bowl[step.id] === option.id}
             accent={step.accent}

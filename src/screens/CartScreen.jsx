@@ -35,6 +35,7 @@ function AddItemCard({ menuItem, type }) {
     <OptionCard
       name={menuItem.name}
       desc={menuItem.desc}
+      image={`/assets/${type}/${menuItem.id}.png`}
       priceText={menuItem.price > 0 ? `${menuItem.price} €` : t('cart.free')}
       selected={totalQty > 0}
       accent="gold"

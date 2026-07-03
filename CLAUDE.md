@@ -121,6 +121,12 @@ public/
   (`broth`/`noodle`/`protein`/`topping`/`finish`) z. B. im Breadcrumb und in aktiven Zuständen,
   damit der Gast farblich sieht, wo er ist.
 - Nur eine laute Aktionsfarbe pro Screen (`primary`). Alles andere bleibt neutral/ruhig.
+- **Bilder auf Auswahl-Karten:** `OptionCard` zeigt automatisch das Bild
+  `/assets/<kategorie>/<id>.png` (gilt auch für `drink`/`side` im Warenkorb).
+  Fehlt die Datei, blendet sich der Bildbereich still aus (kein kaputtes Icon).
+  **Ausnahme Brühen:** die flache Brühen-Scheibe sieht allein komisch aus, deshalb
+  zeigen Brühen-Karten die Brühe komponiert **in der Schüssel** (`BowlThumbnail`
+  über die `visual`-Prop der `OptionCard`).
 
 ---
 
