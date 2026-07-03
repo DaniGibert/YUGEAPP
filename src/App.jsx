@@ -28,17 +28,21 @@ const SCREENS = {
 const KITCHEN_MODE = new URLSearchParams(window.location.search).get('ansicht') === 'kueche';
 
 export default function App() {
-  const [screen, setScreen] = useState(KITCHEN_MODE ? 'kitchen' : 'start');
+  // `from` = vorheriger Screen, damit "Zurück" im Builder dorthin führt,
+  // wo der Gast wirklich herkam (Start, Status, Warenkorb oder Übersicht).
+  const [nav, setNav] = useState({ screen: KITCHEN_MODE ? 'kitchen' : 'start', from: null });
   // Sprachwechsel rendert die ganze App neu (alle t()-Texte aktualisieren sich)
   useLanguage();
-  const Screen = SCREENS[screen];
-  const navigate = KITCHEN_MODE ? undefined : setScreen;
+  const Screen = SCREENS[nav.screen];
+  const navigate = KITCHEN_MODE
+    ? undefined
+    : (next) => setNav((prev) => (next === prev.screen ? prev : { screen: next, from: prev.screen }));
 
   return (
     <Stage>
       <Header onNavigate={navigate} minimal={KITCHEN_MODE} />
       <main className="min-h-0 flex-1">
-        <Screen onNavigate={navigate} />
+        <Screen onNavigate={navigate} cameFrom={nav.from} />
       </main>
     </Stage>
   );

@@ -132,11 +132,20 @@ function StepContent({ step }) {
   );
 }
 
-export default function BuilderScreen({ onNavigate }) {
+export default function BuilderScreen({ onNavigate, cameFrom }) {
   const bowl = useOrderStore((s) => s.bowl);
   const stepIndex = useOrderStore((s) => s.stepIndex);
   const maxStepIndex = useOrderStore((s) => s.maxStepIndex);
   const goToStep = useOrderStore((s) => s.goToStep);
+  const resetBowl = useOrderStore((s) => s.resetBowl);
+
+  // Zurück auf Schritt 1 = Builder verlassen: Entwurf verwerfen, damit keine
+  // halbfertige Bowl liegen bleibt. Ausnahme Übersicht ("Ändern"): dort ist die
+  // Bowl fertig und muss erhalten bleiben.
+  function leaveBuilder() {
+    if (cameFrom !== 'overview') resetBowl();
+    onNavigate?.(cameFrom ?? 'start');
+  }
 
   const step = STEPS[stepIndex];
   const isLastStep = stepIndex === STEPS.length - 1;
@@ -174,7 +183,10 @@ export default function BuilderScreen({ onNavigate }) {
         </div>
 
         <footer className="flex items-center justify-between border-t border-line pt-4">
-          <Button variant="ghost" disabled={stepIndex === 0} onClick={() => goToStep(stepIndex - 1)}>
+          <Button
+            variant="ghost"
+            onClick={() => (stepIndex === 0 ? leaveBuilder() : goToStep(stepIndex - 1))}
+          >
             {t('builder.back')}
           </Button>
           <Button

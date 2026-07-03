@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { DRINKS, SIDES } from '../config/menu';
 import { useOrderStore, cartTotal, bowlIngredients } from '../state/orderStore';
 import { submitOrder } from '../services/dataService';
@@ -18,6 +18,21 @@ const TABS = {
   drinks: { type: 'drink', items: DRINKS },
   sides: { type: 'side', items: SIDES },
 };
+
+// Add-Item-Karte am Ende der Rundenliste: führt in den Bowl-Builder.
+// Gestrichelt = "hier kannst du hinzufügen", konkurriert nicht mit "Bestellen".
+function AddBowlCard({ onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-line bg-surface p-4 text-body font-semibold text-ink-600 transition-colors hover:border-ink-400 hover:text-ink-900"
+    >
+      <Plus size={18} aria-hidden="true" />
+      {t('cart.anotherBowl')}
+    </button>
+  );
+}
 
 // Eine Getränke-/Beilagen-Karte: Variante wählbar, Menge pro Variante.
 function AddItemCard({ menuItem, type }) {
@@ -86,6 +101,7 @@ export default function CartScreen({ onNavigate }) {
           <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
             <p className="text-body font-semibold text-ink-900">{t('cart.emptyTitle')}</p>
             <p className="text-small text-ink-400">{t('cart.emptyHint')}</p>
+            <AddBowlCard onClick={() => onNavigate?.('builder')} />
           </div>
         ) : (
           <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
@@ -119,6 +135,9 @@ export default function CartScreen({ onNavigate }) {
                 </button>
               </li>
             ))}
+            <li>
+              <AddBowlCard onClick={() => onNavigate?.('builder')} />
+            </li>
           </ul>
         )}
 
@@ -127,18 +146,13 @@ export default function CartScreen({ onNavigate }) {
           <span className="font-display text-h2 text-ink-900">{cartTotal(cart)} €</span>
         </div>
         {error && <p className="text-small text-error">{t('cart.error')}</p>}
-        <div className="flex flex-col gap-2">
-          <Button
-            size="lg"
-            disabled={cart.length === 0 || submitting}
-            onClick={handleOrder}
-          >
-            {t('cart.order')}
-          </Button>
-          <Button variant="ghost" onClick={() => onNavigate?.('builder')}>
-            {t('cart.anotherBowl')}
-          </Button>
-        </div>
+        <Button
+          size="lg"
+          disabled={cart.length === 0 || submitting}
+          onClick={handleOrder}
+        >
+          {t('cart.order')}
+        </Button>
       </aside>
 
       {/* Getränke | Beilagen dazulegen */}

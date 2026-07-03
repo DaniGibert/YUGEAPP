@@ -15,6 +15,7 @@ const de = {
   },
   start: {
     hint: 'Tippe auf die Schale, um zu starten',
+    drinksOnly: 'Nur Getränke & Beilagen',
   },
   steps: {
     broth: 'Brühe',
@@ -67,7 +68,9 @@ const de = {
     },
     readyHint: 'Guten Appetit! Deine Runde ist fertig.',
     round: 'Runde {n}',
-    reorder: 'Nachbestellen',
+    reorderTitle: 'Noch Hunger oder Durst?',
+    reorderBowl: 'Noch eine Bowl',
+    reorderDrinks: 'Getränke & Beilagen',
     pay: 'Bezahlen',
     tab: 'Bisher bestellt',
     tabTotal: 'Gesamt',

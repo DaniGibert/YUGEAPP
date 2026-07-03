@@ -15,6 +15,7 @@ const en = {
   },
   start: {
     hint: 'Tap the bowl to start',
+    drinksOnly: 'Just drinks & sides',
   },
   steps: {
     broth: 'Broth',
@@ -67,7 +68,9 @@ const en = {
     },
     readyHint: 'Enjoy! Your round is ready.',
     round: 'Round {n}',
-    reorder: 'Order more',
+    reorderTitle: 'Still hungry or thirsty?',
+    reorderBowl: 'Another bowl',
+    reorderDrinks: 'Drinks & sides',
     pay: 'Pay',
     tab: 'Ordered so far',
     tabTotal: 'Total',

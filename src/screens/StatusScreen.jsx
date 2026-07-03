@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ClipboardList, ChefHat, BellRing } from 'lucide-react';
+import { ClipboardList, ChefHat, BellRing, Soup, CupSoda } from 'lucide-react';
 import { fetchSessionOrders, subscribeToOrders } from '../services/dataService';
 import Button from '../components/Button';
 import BowlThumbnail from '../components/BowlThumbnail';
@@ -31,6 +31,20 @@ function groupItems(items) {
     }
   }
   return rows;
+}
+
+// Eine Nachbestell-Karte der Weiche: ruhige Surface-Karte, großes Touch-Ziel.
+function ReorderCard({ icon: Icon, label, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex flex-1 cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-line bg-surface p-5 text-body font-semibold text-ink-900 transition-colors hover:border-ink-400"
+    >
+      <Icon size={28} className="text-ink-600" aria-hidden="true" />
+      {label}
+    </button>
+  );
 }
 
 function StatusTracker({ status }) {
@@ -126,12 +140,27 @@ export default function StatusScreen({ onNavigate }) {
         {latest?.status === 'fertig' && (
           <p className="text-body-lg text-ink-600">{t('status.readyHint')}</p>
         )}
-        <div className="flex gap-3">
-          <Button onClick={() => onNavigate?.('builder')}>{t('status.reorder')}</Button>
-          <Button variant="ghost" onClick={() => onNavigate?.('pay')}>
-            {t('status.pay')}
-          </Button>
+        {/* Nachbestell-Weiche: zwei gleichwertige, große Touch-Ziele.
+            Getränke/Beilagen ist der häufigste Fall, darf also nicht hinter
+            dem Bowl-Builder versteckt sein. */}
+        <div className="flex w-full max-w-lg flex-col gap-3">
+          <p className="text-center text-small text-ink-400">{t('status.reorderTitle')}</p>
+          <div className="flex gap-4">
+            <ReorderCard
+              icon={Soup}
+              label={t('status.reorderBowl')}
+              onClick={() => onNavigate?.('builder')}
+            />
+            <ReorderCard
+              icon={CupSoda}
+              label={t('status.reorderDrinks')}
+              onClick={() => onNavigate?.('cart')}
+            />
+          </div>
         </div>
+        <Button variant="ghost" onClick={() => onNavigate?.('pay')}>
+          {t('status.pay')}
+        </Button>
       </section>
 
       {/* Rechnung / Tab: alle Runden dieser Session */}

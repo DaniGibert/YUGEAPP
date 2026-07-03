@@ -1,4 +1,5 @@
 import BowlGraphic from '../components/BowlGraphic';
+import Button from '../components/Button';
 import { t } from '../i18n';
 
 // Start: leere Schüssel in Draufsicht, dampfend, klickbar (CLAUDE.md §8).
@@ -32,6 +33,11 @@ export default function StartScreen({ onNavigate }) {
       </button>
 
       <p className="text-body-lg text-ink-400">{t('start.hint')}</p>
+
+      {/* Sekundärpfad für Gäste ohne Bowl-Wunsch: leise, aber auffindbar */}
+      <Button size="sm" variant="ghost" onClick={() => onNavigate?.('cart')}>
+        {t('start.drinksOnly')}
+      </Button>
     </section>
   );
 }
