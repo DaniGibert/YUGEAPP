@@ -144,7 +144,7 @@ Nur das **Dynamische** kommt in die Datenbank. **Menü & Preise bleiben in `conf
 **Live-Status:** Das Kunden-Tablet abonniert seine `order` per Supabase-**Realtime**.
 Die `KitchenScreen`-Ansicht ändert den `status`; das Tablet aktualisiert sich automatisch.
 
-**Sicherheit:** ENV-Variablen (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) in `.env`,
+**Sicherheit:** ENV-Variablen (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`) in `.env`,
 **niemals** committen. Row-Level-Security-Policies bewusst setzen (öffentliches Tablet!) —
 kurz mit dem Menschen abstimmen, bevor Policies scharf gestellt werden.
 
