@@ -7,8 +7,6 @@ import { t } from '../i18n';
 export default function StartScreen({ onNavigate }) {
   return (
     <section className="flex h-full flex-col items-center justify-center gap-4 py-4">
-      <h1 className="font-display text-display text-ink-900">Yuge</h1>
-
       <button
         type="button"
         onClick={() => onNavigate?.('builder')}
