@@ -93,12 +93,29 @@ export default function OptionCard({
       {children}
 
       {showInfo && (
-        <p
-          className="absolute inset-0 z-10 overflow-y-auto rounded-lg bg-surface/95 p-4 text-small text-ink-600"
-          onClick={(e) => e.stopPropagation()}
+        // Tipp irgendwo auf die Beschreibung schließt sie wieder (schließt NICHT
+        // die Auswahl aus, daher stopPropagation). Das X liegt im Overlay selbst,
+        // damit es klickbar bleibt und nicht vom Overlay verdeckt wird.
+        <div
+          className="absolute inset-0 z-10 flex flex-col rounded-lg bg-surface/97 p-4"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowInfo(false);
+          }}
         >
-          {desc}
-        </p>
+          <button
+            type="button"
+            aria-label={t('builder.infoHide')}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowInfo(false);
+            }}
+            className="mb-2 self-end text-ink-400 transition-colors hover:text-ink-900"
+          >
+            <X size={18} />
+          </button>
+          <p className="min-h-0 overflow-y-auto break-words text-small text-ink-600">{desc}</p>
+        </div>
       )}
     </div>
   );
