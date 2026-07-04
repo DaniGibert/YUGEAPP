@@ -105,3 +105,16 @@
     color: var(--color-ink-900);
   }
 }
+
+/* ---- Fluid-Skalierung auf kleinen Geraeten ----
+   Die ganze App ist in rem gebaut (Tokens, Abstaende, Groessen). Senkt man hier
+   die Grund-Schriftgroesse, schrumpft alles proportional mit: mehr passt auf den
+   Schirm, alles bleibt anklickbar. iPad-Querformat (>= 520px hoch) und Desktop
+   bleiben bei 16px unberuehrt. Zielgeraet Handy quer ist kurz (Hoehe zaehlt),
+   Handy hoch ist schmal (Breite zaehlt), daher zwei Media-Queries. */
+@media (max-height: 519px) {
+  :root { font-size: 11.5px; }
+}
+@media (max-width: 430px) {
+  :root { font-size: 13px; }
+}
