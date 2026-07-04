@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { useLanguage } from './i18n';
 import Stage from './components/Stage';
 import Header from './components/Header';
@@ -44,6 +45,9 @@ export default function App() {
       <main className="min-h-0 flex-1">
         <Screen onNavigate={navigate} cameFrom={nav.from} />
       </main>
+      {/* Vercel Web Analytics: zaehlt Besucher/Seitenaufrufe, nur auf der
+          Live-Version aktiv, datenschutzfreundlich (keine Cookies). */}
+      <Analytics />
     </Stage>
   );
 }
