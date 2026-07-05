@@ -14,7 +14,7 @@ Danach: Übersicht → Warenkorb (Getränke/Beilagen/weitere Bowl) → Bestellen
 
 - **Zielgerät:** iPad Pro 11" **Querformat** als Hauptziel; das Layout ist **fluide** und
   füllt jedes Browserfenster komplett aus (PC, Tablet, Handy quer). Schwache Hardware → Performance zählt.
-- **Sprache:** Deutsch. UI-Texte über eine i18n-Struktur vorbereiten (Sprach-Umschalter ist im Header vorgesehen).
+- **Sprache:** Deutsch, mit Englisch als zweiter Sprache. UI-Texte laufen über die i18n-Struktur (`src/i18n/`); ein Sprach-Umschalter (Deutsch/Englisch) ist im Header eingebaut.
 - **Bewertungsfokus:** UX/UI & Nutzerführung. Konsistenz, klare Führung und der „Wow"-Moment der Bowl-Szene haben Priorität.
 
 ---
@@ -26,6 +26,8 @@ Danach: Übersicht → Warenkorb (Getränke/Beilagen/weitere Bowl) → Bestellen
 - **Bowl-Szene:** `three` + `@react-three/fiber` v9 + `@react-three/drei` + `@react-spring/three`
 - **Backend:** **Supabase** (Datenbank + Realtime für den Live-Status)
 - **State:** ein leichter globaler Store (z. B. `zustand`) für Bau-Zustand + Warenkorb
+- **Analytics:** `@vercel/analytics` (Web Analytics, zählt nur auf der Live-Version)
+- **Hosting:** Vercel, automatisches Deployment bei jedem Push auf `main`; die ENV-Variablen liegen in den Vercel-Projekteinstellungen.
 
 Nichts anderes ohne Rückfrage hinzufügen.
 
@@ -58,8 +60,10 @@ Nichts anderes ohne Rückfrage hinzufügen.
    Browserfenster komplett ausfüllt (`100dvh`, **kein** Letterboxing, keine feste Bühne).
    Layouts werden mit Flex/Grid fluid gebaut und sind fürs **Querformat** optimiert;
    Größen relativ zum Container/Viewport denken, keine festen Pixel-Positionen.
-   Ein eigenes Hochkant-Layout ist bewusst **nicht** Teil von v1 — die App bleibt auf
-   Handys im Querformat nutzbar.
+   Ein eigenes Hochkant-Layout ist bewusst **nicht** Teil von v1, die App bleibt auf
+   Handys im Querformat nutzbar. Auf kleinen Geräten skaliert die ganze App über
+   rem-basierte Media-Queries in `theme.css` proportional herunter (Handy quer/hoch),
+   damit alles sichtbar und bedienbar bleibt; iPad und Desktop bleiben unverändert.
 
 7. **„Kellner rufen" ist global** und auf **jedem** Screen im Header sichtbar. Ein Klick
    zeigt eine kurze Bestätigung („Ein:e Kellner:in kommt gleich").
