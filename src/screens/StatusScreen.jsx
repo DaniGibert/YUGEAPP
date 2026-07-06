@@ -5,8 +5,9 @@ import Button from '../components/Button';
 import BowlThumbnail from '../components/BowlThumbnail';
 import { t } from '../i18n';
 
-// Live-Status: zeigt den Fortschritt der letzten Runde (Supabase-Realtime,
-// CLAUDE.md §6) und darunter die ganze Rechnung. Nachbestellen jederzeit möglich.
+// Live-Status: links der Fortschritt der letzten Runde (Supabase-Realtime,
+// CLAUDE.md §6) mit Nachbestell-Weiche und Bezahlen, rechts die ganze Rechnung.
+// Nachbestellen jederzeit möglich.
 
 const STATUS_FLOW = ['aufgenommen', 'in_zubereitung', 'fertig'];
 const STATUS_ICONS = { aufgenommen: ClipboardList, in_zubereitung: ChefHat, fertig: BellRing };
@@ -39,7 +40,7 @@ function ReorderCard({ icon: Icon, label, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-1 cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-line bg-surface p-5 text-body font-semibold text-ink-900 transition-colors hover:border-ink-400"
+      className="flex flex-1 cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-line bg-surface p-4 text-body font-semibold text-ink-900 transition-colors hover:border-ink-400"
     >
       <Icon size={28} className="text-ink-600" aria-hidden="true" />
       {label}
@@ -50,27 +51,27 @@ function ReorderCard({ icon: Icon, label, onClick }) {
 function StatusTracker({ status }) {
   const currentIndex = STATUS_FLOW.indexOf(status);
   return (
-    <ol className="flex items-center">
+    <ol className="flex w-full max-w-xl items-center">
       {STATUS_FLOW.map((step, index) => {
         const Icon = STATUS_ICONS[step];
         const reached = index <= currentIndex;
         const isCurrent = index === currentIndex;
         return (
-          <li key={step} className="flex items-center">
+          <li key={step} className={`flex items-center${index > 0 ? ' flex-1' : ''}`}>
             {index > 0 && (
               <span
                 aria-hidden="true"
-                className="mx-2 h-0.5 w-10 rounded-full"
+                className="mx-3 h-1 min-w-6 flex-1 rounded-full"
                 style={{
                   backgroundColor: reached ? `var(--color-${STATUS_COLORS[step]})` : 'var(--color-line)',
                 }}
               />
             )}
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center gap-3">
               <span
-                className={`flex h-14 w-14 items-center justify-center rounded-full border-2 transition-colors ${
+                className={`flex h-20 w-20 items-center justify-center rounded-full border-2 transition-colors ${
                   reached ? 'text-surface' : 'border-line bg-surface text-ink-400'
-                } ${isCurrent ? 'animate-float' : ''}`}
+                } ${isCurrent ? 'animate-pulse-soft' : ''}`}
                 style={
                   reached
                     ? {
@@ -80,10 +81,10 @@ function StatusTracker({ status }) {
                     : undefined
                 }
               >
-                <Icon size={24} aria-hidden="true" />
+                <Icon size={32} aria-hidden="true" />
               </span>
               <span
-                className={`text-small font-semibold ${reached ? 'text-ink-900' : 'text-ink-400'}`}
+                className={`text-body font-semibold ${reached ? 'text-ink-900' : 'text-ink-400'}`}
                 aria-current={isCurrent ? 'step' : undefined}
               >
                 {t(`status.states.${step}`)}
@@ -131,19 +132,32 @@ export default function StatusScreen({ onNavigate }) {
     );
   }
 
+  const grandTotal = (orders ?? []).reduce((sum, o) => sum + o.total, 0);
+
   return (
     <div className="flex h-full min-h-0">
-      {/* Aktuelle Runde: Fortschritt */}
-      <section className="flex min-w-0 flex-1 flex-col items-center justify-center gap-8 p-6">
-        <h2 className="text-h1">{t('status.title')}</h2>
-        {latest && <StatusTracker status={latest.status} />}
-        {latest?.status === 'fertig' && (
-          <p className="text-body-lg text-ink-600">{t('status.readyHint')}</p>
+      {/* Aktuelle Runde: Status-Hero, Nachbestell-Weiche und Bezahlen in drei Zonen. */}
+      <section className="flex min-w-0 flex-1 flex-col items-center justify-center gap-4 p-6">
+        {/* Zone 1: Status-Hero, guarded weil latest beim Laden undefined ist */}
+        {latest && (
+          <div className="flex flex-col items-center gap-3 text-center">
+            <p className="text-body font-semibold text-ink-400">
+              {t('status.round', { n: orders.length })}
+            </p>
+            <h2
+              className="font-display text-display"
+              style={{ color: `var(--color-${STATUS_COLORS[latest.status]})` }}
+            >
+              {t(`status.headlines.${latest.status}`)}
+            </h2>
+            <StatusTracker status={latest.status} />
+          </div>
         )}
-        {/* Nachbestell-Weiche: zwei gleichwertige, große Touch-Ziele.
+
+        {/* Zone 2: Nachbestell-Weiche, zwei gleichwertige große Touch-Ziele.
             Getränke/Beilagen ist der häufigste Fall, darf also nicht hinter
             dem Bowl-Builder versteckt sein. */}
-        <div className="flex w-full max-w-lg flex-col gap-3">
+        <div className="flex w-full max-w-lg flex-col gap-2">
           <p className="text-center text-small text-ink-400">{t('status.reorderTitle')}</p>
           <div className="flex gap-4">
             <ReorderCard
@@ -158,9 +172,15 @@ export default function StatusScreen({ onNavigate }) {
             />
           </div>
         </div>
-        <Button variant="ghost" onClick={() => onNavigate?.('pay')}>
-          {t('status.pay')}
-        </Button>
+
+        {/* Zone 3: Bezahlen als eigene Zone hinter Trennlinie, die eine rote Aktion.
+            Die Gesamtsumme im Button zeigt ohne Erklärtext, dass am Ende alles auf
+            einmal bezahlt wird. */}
+        <div className="flex w-full max-w-lg flex-col items-center border-t border-line pt-3">
+          <Button size="lg" onClick={() => onNavigate?.('pay')}>
+            {t('status.pay')} · {grandTotal} €
+          </Button>
+        </div>
       </section>
 
       {/* Rechnung / Tab: alle Runden dieser Session */}
@@ -168,7 +188,12 @@ export default function StatusScreen({ onNavigate }) {
         <h3 className="text-h2">{t('status.tab')}</h3>
         <ul className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
           {(orders ?? []).map((order, index) => (
-            <li key={order.id} className="rounded-lg border border-line bg-surface p-4">
+            <li
+              key={order.id}
+              className={`rounded-lg border bg-surface p-4 ${
+                index === (orders?.length ?? 0) - 1 ? 'border-ink-400' : 'border-line'
+              }`}
+            >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-small font-semibold text-ink-900">
                   {t('status.round', { n: index + 1 })}
@@ -206,9 +231,7 @@ export default function StatusScreen({ onNavigate }) {
         </ul>
         <div className="flex items-baseline justify-between border-t border-line pt-3">
           <span className="text-small text-ink-400">{t('status.tabTotal')}</span>
-          <span className="font-display text-h2 text-ink-900">
-            {(orders ?? []).reduce((sum, o) => sum + o.total, 0)} €
-          </span>
+          <span className="font-display text-h2 text-ink-900">{grandTotal} €</span>
         </div>
       </aside>
     </div>
