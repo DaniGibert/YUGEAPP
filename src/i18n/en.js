@@ -32,6 +32,7 @@ const en = {
     toppingHint: 'Pick up to {max} toppings, duplicates are fine.',
     recommended: 'Pairs with broth',
     price: 'Current price',
+    optionIndex: 'Overview of options',
     infoShow: 'Show info',
     infoHide: 'Close info',
     less: 'Less',

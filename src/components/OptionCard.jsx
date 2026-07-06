@@ -21,6 +21,7 @@ export default function OptionCard({
   badge,
   onSelect,
   children,
+  className = '',
 }) {
   const [showInfo, setShowInfo] = useState(false);
   const [imageMissing, setImageMissing] = useState(false);
@@ -39,7 +40,7 @@ export default function OptionCard({
       }}
       className={`relative flex min-w-0 cursor-pointer flex-col justify-between gap-3 rounded-lg border-2 bg-surface p-4 text-left transition-colors ${
         selected ? '' : 'border-line hover:border-ink-400'
-      }`}
+      } ${className}`}
       style={selected ? { borderColor: `var(--color-${accent})` } : undefined}
     >
       {visual ? (

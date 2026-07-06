@@ -32,6 +32,7 @@ const de = {
     toppingHint: 'Wähle bis zu {max} Toppings, auch mehrere vom gleichen.',
     recommended: 'Passt zur Brühe',
     price: 'Aktueller Preis',
+    optionIndex: 'Übersicht der Optionen',
     infoShow: 'Info anzeigen',
     infoHide: 'Info schließen',
     less: 'Weniger',
