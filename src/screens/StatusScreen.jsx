@@ -102,18 +102,17 @@ export default function StatusScreen({ onNavigate }) {
 
   useEffect(() => {
     let active = true;
-    fetchSessionOrders()
-      .then((data) => active && setOrders(data))
-      .catch((err) => {
-        console.error('Bestellungen laden fehlgeschlagen:', err);
-        if (active) setOrders([]);
-      });
-    // Realtime liefert nur die orders-Zeile, Positionen behalten wir lokal.
-    const unsubscribe = subscribeToOrders((changed) =>
-      setOrders((prev) =>
-        (prev ?? []).map((o) => (o.id === changed.id ? { ...o, ...changed, items: o.items } : o)),
-      ),
-    );
+    // Jedes Realtime-Event lädt die Runden samt Positionen neu, das deckt
+    // auch neue Bestellungen ab (INSERT hat lokal keine items).
+    const load = () =>
+      fetchSessionOrders()
+        .then((data) => active && setOrders(data))
+        .catch((err) => {
+          console.error('Bestellungen laden fehlgeschlagen:', err);
+          if (active) setOrders((prev) => prev ?? []);
+        });
+    load();
+    const unsubscribe = subscribeToOrders(load);
     return () => {
       active = false;
       unsubscribe();

@@ -145,14 +145,15 @@ export function subscribeToAllOrders(onChange) {
   if (isDemoMode()) return () => {};
 
   const channel = supabase
-    .channel('kitchen-orders')
+    .channel(`kitchen-orders-${crypto.randomUUID()}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, onChange)
     .subscribe();
   return () => supabase.removeChannel(channel);
 }
 
-// Live-Status (CLAUDE.md §6): Status-Änderungen an Bestellungen dieser
-// Session abonnieren. Rückgabe: Abmelde-Funktion.
+// Live-Status (CLAUDE.md §6): Änderungen und neue Bestellungen dieser
+// Session abonnieren. Rückgabe: Abmelde-Funktion. Der einmalige Kanalname
+// verhindert Topic-Races bei Ab- und Neuanmeldung (Screen-Wechsel, StrictMode).
 // Demo-Modus: der Status wandert automatisch weiter, damit der Screen erlebbar ist.
 export function subscribeToOrders(onChange) {
   if (isDemoMode()) {
@@ -167,11 +168,11 @@ export function subscribeToOrders(onChange) {
   }
 
   const channel = supabase
-    .channel(`orders-${getSessionId()}`)
+    .channel(`orders-${getSessionId()}-${crypto.randomUUID()}`)
     .on(
       'postgres_changes',
       {
-        event: 'UPDATE',
+        event: '*',
         schema: 'public',
         table: 'orders',
         filter: `session_id=eq.${getSessionId()}`,
