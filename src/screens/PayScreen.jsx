@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { PartyPopper, Plus, Check, X } from 'lucide-react';
+import { PartyPopper, Plus, Check, X, Banknote, CreditCard } from 'lucide-react';
 import { fetchSessionOrders, markSessionPaid, resetSession } from '../services/dataService';
 import Button from '../components/Button';
 import BowlThumbnail from '../components/BowlThumbnail';
@@ -102,6 +102,9 @@ export default function PayScreen({ onNavigate }) {
   ]);
   const personSeq = useRef(3); // nächste Personen-Id (Ids nie wiederverwenden)
   const [selectedKey, setSelectedKey] = useState(null);
+  const [activePerson, setActivePerson] = useState(null); // Id der aktiven Person (Person-zuerst-Modus)
+  const [methodTarget, setMethodTarget] = useState(null); // null | 'all' | Personen-Id: zeigt den Bezahlart-Schritt
+  const [payMethods, setPayMethods] = useState({}); // personId -> 'cash' | 'card' (nur UI, nicht in DB)
   const [finished, setFinished] = useState(false);
   const [error, setError] = useState(false);
 
@@ -160,6 +163,7 @@ export default function PayScreen({ onNavigate }) {
   // Person entfernen: ihre Positionen wandern zurück in die offene Rechnung.
   function removePerson(person) {
     if (person.paid) return;
+    if (activePerson === person.id) setActivePerson(null); // Aktiv-Zustand aufheben
     setPersons((prev) => prev.filter((p) => p.id !== person.id));
     setAssignment((prev) => {
       const next = { ...prev };
@@ -170,9 +174,29 @@ export default function PayScreen({ onNavigate }) {
     });
   }
 
-  async function togglePaid(person) {
-    if (!person.paid && itemsFor(person.id).length === 0) return;
-    const next = persons.map((p) => (p.id === person.id ? { ...p, paid: !p.paid } : p));
+  // Tipp auf eine Personen-Karte: schaltet den Person-zuerst-Modus für sie um.
+  function toggleActive(person) {
+    if (person.paid) return; // bezahlte Person kann nicht aktiv werden
+    setSelectedKey(null); // aktiver Modus und Positions-Auswahl schließen sich aus
+    setActivePerson((cur) => (cur === person.id ? null : person.id));
+  }
+
+  // Tipp auf eine Position bei aktiver Person: direkt zuweisen oder zurück in den Pool.
+  function tapItem(item) {
+    if (activePerson) {
+      const target = (assignment[item.key] ?? 'pool') === activePerson ? 'pool' : activePerson;
+      assign(item.key, target);
+      return;
+    }
+    // Ohne aktive Person: bisheriges Auswahl-Verhalten (Position vormerken).
+    setSelectedKey(selectedKey === item.key ? null : item.key);
+  }
+
+  // Person als bezahlt markieren (nach Wahl der Bezahlart).
+  async function markPersonPaid(person, method) {
+    if (activePerson === person.id) setActivePerson(null); // Aktiv-Zustand aufheben
+    if (method) setPayMethods((prev) => ({ ...prev, [person.id]: method }));
+    const next = persons.map((p) => (p.id === person.id ? { ...p, paid: true } : p));
     setPersons(next);
 
     // Fertig, wenn nichts mehr offen ist und jede belegte Person bezahlt hat
@@ -181,6 +205,18 @@ export default function PayScreen({ onNavigate }) {
       poolItems.length === 0 &&
       next.every((p) => p.paid || itemsFor(p.id).length === 0);
     if (done) await finishPayment();
+  }
+
+  // Bezahlart gewählt: bei 'all' die ganze Rechnung, sonst die einzelne Person begleichen.
+  async function chooseMethod(method) {
+    const target = methodTarget;
+    setMethodTarget(null);
+    if (target === 'all') {
+      await finishPayment();
+      return;
+    }
+    const person = persons.find((p) => p.id === target);
+    if (person) await markPersonPaid(person, method);
   }
 
   function finishSession() {
@@ -213,6 +249,52 @@ export default function PayScreen({ onNavigate }) {
 
   if (items === null) return null; // lädt noch
 
+  // ---- Bezahlart-Schritt (Bar | Karte): eigener Screen, kein Overlay ----
+  if (methodTarget) {
+    const person = methodTarget === 'all' ? null : persons.find((p) => p.id === methodTarget);
+    const amount =
+      methodTarget === 'all'
+        ? sumOf(items)
+        : sumOf(itemsFor(methodTarget));
+    const personIndex = person ? persons.findIndex((p) => p.id === person.id) + 1 : 0;
+    return (
+      <section className="mx-auto flex h-full w-full max-w-xl flex-col justify-center gap-6 p-6">
+        <div className="flex flex-col gap-1 text-center">
+          <h2 className="text-h1">{t('pay.methodTitle')}</h2>
+          {person && (
+            <span className="text-body text-ink-400">{t('pay.person', { n: personIndex })}</span>
+          )}
+          <span className="font-display text-h2 text-ink-900">{amount} €</span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <button
+            type="button"
+            onClick={() => chooseMethod('cash')}
+            className="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-line bg-surface p-5 text-body font-semibold text-ink-900 transition-colors hover:border-ink-400"
+          >
+            <Banknote size={40} aria-hidden="true" className="text-ink-600" />
+            {t('pay.cash')}
+          </button>
+          <button
+            type="button"
+            onClick={() => chooseMethod('card')}
+            className="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-line bg-surface p-5 text-body font-semibold text-ink-900 transition-colors hover:border-ink-400"
+          >
+            <CreditCard size={40} aria-hidden="true" className="text-ink-600" />
+            {t('pay.card')}
+          </button>
+        </div>
+
+        {error && <p className="text-small text-error">{t('pay.error')}</p>}
+
+        <Button variant="ghost" onClick={() => setMethodTarget(null)}>
+          {t('pay.back')}
+        </Button>
+      </section>
+    );
+  }
+
   // ---- Schritt 1: Wahl „Zusammen | Getrennt" (mit Rechnungsübersicht) ----
   if (mode !== 'split') {
     return (
@@ -242,7 +324,7 @@ export default function PayScreen({ onNavigate }) {
         {error && <p className="text-small text-error">{t('pay.error')}</p>}
 
         <div className="flex gap-3">
-          <Button size="lg" className="flex-1" onClick={finishPayment}>
+          <Button size="lg" className="flex-1" onClick={() => setMethodTarget('all')}>
             {t('pay.together')}
           </Button>
           <Button size="lg" variant="ghost" className="flex-1" onClick={() => setMode('split')}>
@@ -275,7 +357,7 @@ export default function PayScreen({ onNavigate }) {
               <BillChip
                 item={item}
                 selected={selectedKey === item.key}
-                onSelect={() => setSelectedKey(selectedKey === item.key ? null : item.key)}
+                onSelect={() => tapItem(item)}
                 onDrop={(zone) => assign(item.key, zone)}
               />
             </li>
@@ -294,13 +376,25 @@ export default function PayScreen({ onNavigate }) {
           <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
             {persons.map((person, index) => {
               const list = itemsFor(person.id);
+              const isActive = activePerson === person.id;
               return (
                 <section
                   key={person.id}
                   data-dropzone={person.id}
-                  onClick={() => selectedKey && assign(selectedKey, person.id)}
+                  onClick={() =>
+                    activePerson || selectedKey === null
+                      ? toggleActive(person) // Karte antippen: Person-zuerst-Modus
+                      : assign(selectedKey, person.id) // vorgemerkte Position zuweisen
+                  }
+                  style={isActive ? { borderColor: 'var(--color-gold)' } : undefined}
                   className={`flex min-h-44 flex-col gap-2 rounded-lg border-2 bg-surface p-4 transition-colors ${
-                    person.paid ? 'border-success' : selectedKey ? 'border-gold' : 'border-line'
+                    person.paid
+                      ? 'border-success'
+                      : isActive
+                        ? '' // Rahmenfarbe kommt aus dem style-Attribut (gold)
+                        : selectedKey
+                          ? 'border-gold'
+                          : 'border-line'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -310,6 +404,7 @@ export default function PayScreen({ onNavigate }) {
                     {person.paid ? (
                       <span className="flex items-center gap-1 rounded-sm bg-success px-2 py-0.5 text-caption font-semibold text-surface">
                         <Check size={12} aria-hidden="true" /> {t('pay.paid')}
+                        {payMethods[person.id] && ` · ${t(`pay.${payMethods[person.id]}`)}`}
                       </span>
                     ) : (
                       <div className="flex items-center gap-1">
@@ -319,7 +414,7 @@ export default function PayScreen({ onNavigate }) {
                           disabled={list.length === 0}
                           onClick={(e) => {
                             e.stopPropagation();
-                            togglePaid(person);
+                            setMethodTarget(person.id);
                           }}
                         >
                           {t('pay.markPaid')}
@@ -340,9 +435,21 @@ export default function PayScreen({ onNavigate }) {
                       </div>
                     )}
                   </div>
-                  <ul className="flex min-h-16 flex-1 flex-col gap-2">
+                  {isActive && (
+                    <p className="text-caption font-semibold text-gold">{t('pay.activeHint')}</p>
+                  )}
+                  <ul
+                    className="flex min-h-16 flex-1 flex-col gap-2"
+                    onClick={(e) => e.stopPropagation()} // Klick auf eine Position toggelt nicht die Karte
+                  >
                     {list.length === 0 && (
-                      <li className="flex flex-1 items-center justify-center rounded-md border border-dashed border-line p-2 text-caption text-ink-400">
+                      <li
+                        // Zwei-Schritt-Weg: vorgemerkte Position auch per Tipp auf die freie Fläche zuweisen
+                        onClick={() => {
+                          if (selectedKey && !activePerson) assign(selectedKey, person.id);
+                        }}
+                        className="flex flex-1 items-center justify-center rounded-md border border-dashed border-line p-2 text-caption text-ink-400"
+                      >
                         {t('pay.dropHere')}
                       </li>
                     )}
@@ -352,7 +459,7 @@ export default function PayScreen({ onNavigate }) {
                           item={item}
                           locked={person.paid}
                           selected={selectedKey === item.key}
-                          onSelect={() => setSelectedKey(selectedKey === item.key ? null : item.key)}
+                          onSelect={() => tapItem(item)}
                           onDrop={(zone) => assign(item.key, zone)}
                         />
                       </li>

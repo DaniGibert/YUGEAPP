@@ -191,8 +191,12 @@ Ablauf: Bowl bauen → in den Warenkorb → („noch eine Bowl" / „Getränke &
 Warenkorb** für die nächste Runde. Danach zeigt der Status, dass zubereitet wird.
 
 **Bezahlt wird erst ganz am Ende** (nach dem Essen). Bis dahin kann jederzeit **nachbestellt**
-werden (zurück zum Bauen). Beim Bezahlen wird die gesammelte Rechnung per Drag-to-split auf
-mehrere Personen verteilt.
+werden (zurück zum Bauen). Beim Bezahlen: erst die Wahl **Zusammen | Getrennt**. Getrennt
+funktioniert **Person-zuerst** (Hauptweg): Person antippen macht sie aktiv (goldener Rahmen),
+dann weist jeder Tipp auf eine Rechnungs-Position sie dieser Person zu; nochmal tippen legt
+sie zurück. Zusätzlich bleiben der alte Weg (Position vormerken, dann Person antippen) und
+das Ziehen erhalten. Vor jedem Zahlvorgang kommt ein eigener **Bezahlart-Schritt (Bar | Karte)**,
+beim Getrennt-Zahlen pro Person; die Bezahlart ist nur UI-Zustand, nicht in der Datenbank.
 
 Getränke &amp; Beilagen teilen sich einen Screen, aber über einen **Umschalter (Getränke | Beilagen)**
 — **keine** lange gemeinsame Scroll-Liste.
@@ -205,3 +209,22 @@ Getränke &amp; Beilagen teilen sich einen Screen, aber über einen **Umschalter
 - Vor neuem Code prüfen: Gibt es die Komponente/den Token schon? Wiederverwenden statt duplizieren.
 - Keine festen Werte einschmuggeln. Keine zweite Datenquelle neben `dataService`.
 - Bei Unklarheit im Menü/Flow: nachfragen, nicht raten.
+
+---
+
+## 11. Modell-Routing (gilt für jede Session)
+
+Wenn **Fable** das Hauptmodell ist, arbeitet es als **Orchestrator**, nicht als Coder:
+
+- **Fable = Orchestrator.** Besitzt: Aufgaben-Zerlegung, Orchestrierung, Design-Geschmack
+  und die **finale QA jedes delegierten Stücks** (später, noch nicht: Architektur-Entscheidungen).
+  Fable schreibt **nie** selbst Feature-Code. Fable läuft auf hohem Denkaufwand,
+  eskaliert aber nicht auf xhigh/max.
+- **Opus-Subagenten = Implementierung.** Jede Umsetzung geht als eigener Subagent-Auftrag
+  raus, mit einem **präzisen, in sich geschlossenen Brief** (Ziel, betroffene Dateien,
+  geltende Regeln aus dieser Datei, erwartetes Ergebnis). Pro Aufgabe ein Subagent:
+  **parallel**, wenn Aufgaben unabhängig sind, **sequenziell**, wenn sie aufeinander aufbauen.
+- **Günstigere Modelle = Fleißarbeit.** Token-hungrige Routinejobs (Computer-Nutzung,
+  großflächige Codebase-Analysen) dürfen an günstigere Modelle gehen und berichten zurück.
+- Kein delegiertes Ergebnis gilt als fertig, bevor Fable es geprüft hat (Regeln aus
+  dieser Datei eingehalten, Build läuft, Verhalten im Preview verifiziert).
