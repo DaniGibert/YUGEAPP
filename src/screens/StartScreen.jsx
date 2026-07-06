@@ -11,26 +11,29 @@ export default function StartScreen({ onNavigate }) {
         type="button"
         onClick={() => onNavigate?.('builder')}
         aria-label={t('start.hint')}
-        className="relative min-h-0 flex-1 cursor-pointer transition-transform active:scale-95"
+        className="flex min-h-0 w-full flex-1 cursor-pointer flex-col items-center justify-center gap-4"
       >
-        {/* Dampf */}
-        <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-6 flex justify-center gap-5">
-          {[0, 0.9, 1.8].map((delay) => (
-            <span
-              key={delay}
-              className="animate-steam h-14 w-3 rounded-full bg-line opacity-0 blur-sm"
-              style={{ animationDelay: `${delay}s` }}
-            />
-          ))}
+        {/* Schüssel-Wrapper: nur die Schüssel reagiert beim Tippen, nicht der ganze Screen */}
+        <span className="relative min-h-0 flex-1 transition-transform active:scale-95">
+          {/* Dampf: mittig ueber der Schuessel */}
+          <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-6 flex justify-center gap-5">
+            {[0, 0.9, 1.8].map((delay) => (
+              <span
+                key={delay}
+                className="animate-steam h-14 w-3 rounded-full bg-line opacity-0 blur-sm"
+                style={{ animationDelay: `${delay}s` }}
+              />
+            ))}
+          </span>
+
+          {/* Schüssel (Draufsicht) */}
+          <span className="animate-float block h-full">
+            <BowlGraphic className="h-full w-auto max-w-full drop-shadow-xl" />
+          </span>
         </span>
 
-        {/* Schüssel (Draufsicht) */}
-        <span className="animate-float block h-full">
-          <BowlGraphic className="h-full w-auto max-w-full drop-shadow-xl" />
-        </span>
+        <p className="text-body-lg text-ink-400">{t('start.hint')}</p>
       </button>
-
-      <p className="text-body-lg text-ink-400">{t('start.hint')}</p>
 
       {/* Sekundärpfad für Gäste ohne Bowl-Wunsch: leise, aber auffindbar */}
       <Button size="sm" variant="ghost" onClick={() => onNavigate?.('cart')}>

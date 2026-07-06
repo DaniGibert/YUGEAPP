@@ -59,9 +59,6 @@ function StepContent({ step }) {
     const used = toppingCount(bowl.toppings);
     return (
       <div className="flex flex-col gap-4">
-        <p className="text-small text-ink-400">
-          {t('builder.toppingCounter', { used, max: step.max })}
-        </p>
         <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
           {step.options.map((option) => {
             const qty = bowl.toppings[option.id] ?? 0;
@@ -93,6 +90,15 @@ function StepContent({ step }) {
   // type 'single' (Brühe, Nudeln, Protein)
   return (
     <div className="flex flex-col gap-6">
+      {step.modifiers?.hardness && (
+        <ModifierGroup
+          label={step.modifiers.hardness.label}
+          options={step.modifiers.hardness.options}
+          value={bowl.hardness}
+          onChange={setHardness}
+          accent={step.accent}
+        />
+      )}
       <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
         {step.options.map((option) => (
           <OptionCard
@@ -119,15 +125,6 @@ function StepContent({ step }) {
           />
         ))}
       </div>
-      {step.modifiers?.hardness && (
-        <ModifierGroup
-          label={step.modifiers.hardness.label}
-          options={step.modifiers.hardness.options}
-          value={bowl.hardness}
-          onChange={setHardness}
-          accent={step.accent}
-        />
-      )}
     </div>
   );
 }
@@ -169,14 +166,44 @@ export default function BuilderScreen({ onNavigate, cameFrom }) {
       {/* Aktueller Schritt */}
       <div className="flex min-w-0 flex-1 flex-col gap-4 p-6">
         <Breadcrumb currentIndex={stepIndex} maxVisitedIndex={maxStepIndex} onSelect={goToStep} />
-        <h2 className="flex items-center gap-3 text-h1">
-          <span
-            aria-hidden="true"
-            className="inline-block h-3 w-3 rounded-full"
-            style={{ backgroundColor: `var(--color-${step.accent})` }}
-          />
-          {t(`steps.${step.id}`)}
-        </h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="flex items-center gap-3 text-h1">
+            <span
+              aria-hidden="true"
+              className="inline-block h-3 w-3 rounded-full"
+              style={{ backgroundColor: `var(--color-${step.accent})` }}
+            />
+            {t(`steps.${step.id}`)}
+          </h2>
+          {step.type === 'quantity' && (
+            <div
+              className="flex items-center gap-3 rounded-full border-2 px-4 py-2"
+              style={{ borderColor: `var(--color-${step.accent})` }}
+            >
+              <span aria-hidden="true" className="flex items-center gap-1.5">
+                {Array.from({ length: step.max }).map((_, i) => (
+                  <span
+                    key={i}
+                    className="inline-block h-3 w-3 rounded-full bg-line"
+                    style={
+                      i < toppingCount(bowl.toppings)
+                        ? { backgroundColor: `var(--color-${step.accent})` }
+                        : undefined
+                    }
+                  />
+                ))}
+              </span>
+              <span className="text-body font-medium text-ink-900">
+                {t('builder.toppingCounter', { used: toppingCount(bowl.toppings), max: step.max })}
+              </span>
+            </div>
+          )}
+        </div>
+        {step.type === 'quantity' && (
+          <p className="text-small text-ink-600">
+            {t('builder.toppingHint', { max: step.max })}
+          </p>
+        )}
 
         <div className="@container min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
           <StepContent step={step} />

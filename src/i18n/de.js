@@ -29,6 +29,7 @@ const de = {
     next: 'Weiter',
     toOverview: 'Zur Übersicht',
     toppingCounter: '{used} von {max} gewählt',
+    toppingHint: 'Wähle bis zu {max} Toppings, auch mehrere vom gleichen.',
     recommended: 'Passt zur Brühe',
     price: 'Aktueller Preis',
     infoShow: 'Info anzeigen',

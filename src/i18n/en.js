@@ -29,6 +29,7 @@ const en = {
     next: 'Next',
     toOverview: 'To overview',
     toppingCounter: '{used} of {max} selected',
+    toppingHint: 'Pick up to {max} toppings, duplicates are fine.',
     recommended: 'Pairs with broth',
     price: 'Current price',
     infoShow: 'Show info',
