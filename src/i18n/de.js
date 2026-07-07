@@ -91,6 +91,7 @@ const de = {
     total: 'Gesamt',
     back: 'Zurück',
     removePerson: 'Person entfernen',
+    removeItem: 'Position zurück in die Rechnung',
     hint: 'Tippe eine Person an und dann die Positionen, die sie zahlt. Du kannst Positionen auch ziehen.',
     activeHint: 'Tippe Positionen in der Rechnung an',
     methodTitle: 'Wie möchtest du zahlen?',

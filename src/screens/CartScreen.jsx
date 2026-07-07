@@ -5,6 +5,7 @@ import { useOrderStore, cartTotal, bowlIngredients } from '../state/orderStore';
 import { submitOrder } from '../services/dataService';
 import Button from '../components/Button';
 import BowlThumbnail from '../components/BowlThumbnail';
+import ItemThumbnail, { menuImagePaths } from '../components/ItemThumbnail';
 import ModifierGroup from '../components/ModifierGroup';
 import OptionCard from '../components/OptionCard';
 import QuantityStepper from '../components/QuantityStepper';
@@ -46,11 +47,16 @@ function AddItemCard({ menuItem, type }) {
     .filter((i) => i.type === type && i.refId === menuItem.id)
     .reduce((sum, i) => sum + i.qty, 0);
 
+  // Produktbild; bei Varianten zeigt die Karte das Bild der aktiven Variante
+  // und fällt aufs Produktbild zurück, wenn es fehlt.
+  const { image, fallback } = menuImagePaths({ type, id: menuItem.id, variant });
+
   return (
     <OptionCard
       name={menuItem.name}
       desc={menuItem.desc}
-      image={`/assets/${type}/${menuItem.id}.png`}
+      image={image}
+      fallbackImage={fallback}
       priceText={menuItem.price > 0 ? `${menuItem.price} €` : t('cart.free')}
       selected={totalQty > 0}
       accent="gold"
@@ -111,7 +117,11 @@ export default function CartScreen({ onNavigate }) {
                 key={item.key}
                 className="flex items-center gap-3 rounded-lg border border-line bg-surface p-3"
               >
-                {item.type === 'bowl' && <BowlThumbnail config={item.config} className="w-20 shrink-0" />}
+                {item.type === 'bowl' ? (
+                  <BowlThumbnail config={item.config} className="w-20 shrink-0" />
+                ) : (
+                  <ItemThumbnail item={item} className="h-16 w-16 shrink-0" />
+                )}
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <p className="break-words text-body font-semibold text-ink-900">{item.name}</p>
                   {item.type === 'bowl' && (

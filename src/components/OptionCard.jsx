@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Info, X } from 'lucide-react';
 import { t } from '../i18n';
 
@@ -8,12 +8,15 @@ import { t } from '../i18n';
 // (children, z. B. QuantityStepper). accent = Kategorie-Farb-Token des Schritts.
 // image = Pfad zur PNG (Konvention: /assets/<kategorie>/<id>.png). Fehlt die
 // Datei, wird der Bildbereich still ausgeblendet, nichts crasht.
+// fallbackImage = Ausweich-PNG, falls `image` fehlt (z. B. Produktbild, wenn
+// das Varianten-Bild noch nicht existiert). Fehlt auch das, wird ausgeblendet.
 // visual = alternativ ein fertiger React-Knoten für den Bildbereich
 // (z. B. BowlThumbnail bei Brühen: Brühe IN der Schüssel statt flacher Scheibe).
 export default function OptionCard({
   name,
   desc,
   image = null,
+  fallbackImage = null,
   visual = null,
   priceText = null,
   selected = false,
@@ -24,7 +27,22 @@ export default function OptionCard({
   className = '',
 }) {
   const [showInfo, setShowInfo] = useState(false);
-  const [imageMissing, setImageMissing] = useState(false);
+  const [src, setSrc] = useState(image);
+  const [imageHidden, setImageHidden] = useState(false);
+
+  // Bild-/Variantenwechsel: Quelle zurücksetzen und wieder versuchen.
+  useEffect(() => {
+    setSrc(image);
+    setImageHidden(false);
+  }, [image]);
+
+  function handleImageError() {
+    if (fallbackImage && src !== fallbackImage) {
+      setSrc(fallbackImage); // Varianten-Bild fehlt: aufs Produktbild zurückfallen
+    } else {
+      setImageHidden(true); // auch das fehlt: Bildbereich still ausblenden
+    }
+  }
 
   return (
     <div
@@ -47,14 +65,15 @@ export default function OptionCard({
         <div className="flex h-24 items-center justify-center">{visual}</div>
       ) : (
         image &&
-        !imageMissing && (
+        src &&
+        !imageHidden && (
           <div className="flex h-24 items-center justify-center">
             <img
-              src={image}
+              src={src}
               alt=""
               loading="lazy"
               className="h-full w-auto max-w-full object-contain"
-              onError={() => setImageMissing(true)}
+              onError={handleImageError}
             />
           </div>
         )

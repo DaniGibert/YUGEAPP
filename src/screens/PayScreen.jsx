@@ -3,6 +3,7 @@ import { PartyPopper, Plus, Check, X, Banknote, CreditCard } from 'lucide-react'
 import { fetchSessionOrders, markSessionPaid, resetSession } from '../services/dataService';
 import Button from '../components/Button';
 import BowlThumbnail from '../components/BowlThumbnail';
+import ItemThumbnail from '../components/ItemThumbnail';
 import { t } from '../i18n';
 
 // Bezahlen (CLAUDE.md §9): zuerst die Wahl „Zusammen | Getrennt".
@@ -105,7 +106,11 @@ function BillChip({ item, locked, selected, onSelect, onDrop }) {
         } ${ghost ? 'opacity-40' : ''}`}
       >
         <span className="flex min-w-0 items-center gap-2">
-          {item.config && <BowlThumbnail config={item.config} className="w-12 shrink-0" />}
+          {item.config ? (
+            <BowlThumbnail config={item.config} className="w-12 shrink-0" />
+          ) : (
+            <ItemThumbnail item={item} className="h-10 w-10 shrink-0" />
+          )}
           <span className="min-w-0 break-words font-semibold">{item.name}</span>
         </span>
         <span className="shrink-0">{item.price} €</span>
@@ -538,14 +543,30 @@ export default function PayScreen({ onNavigate }) {
                       </li>
                     )}
                     {list.map((item) => (
-                      <li key={item.key}>
-                        <BillChip
-                          item={item}
-                          locked={person.paid}
-                          selected={selectedKey === item.key}
-                          onSelect={() => tapItem(item)}
-                          onDrop={(zone) => assign(item.key, zone)}
-                        />
+                      <li key={item.key} className="flex items-center gap-2">
+                        <div className="min-w-0 flex-1">
+                          <BillChip
+                            item={item}
+                            locked={person.paid}
+                            selected={selectedKey === item.key}
+                            onSelect={() => tapItem(item)}
+                            onDrop={(zone) => assign(item.key, zone)}
+                          />
+                        </div>
+                        {!person.paid && (
+                          <button
+                            type="button"
+                            aria-label={t('pay.removeItem')}
+                            // Position zurück in die offene Rechnung (Pool) legen
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              assign(item.key, 'pool');
+                            }}
+                            className="shrink-0 cursor-pointer p-1 text-ink-400 transition-colors hover:text-error"
+                          >
+                            <X size={16} aria-hidden="true" />
+                          </button>
+                        )}
                       </li>
                     ))}
                   </ul>

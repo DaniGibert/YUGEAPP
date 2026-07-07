@@ -3,6 +3,7 @@ import { ClipboardList, ChefHat, BellRing, Soup, CupSoda } from 'lucide-react';
 import { fetchSessionOrders, subscribeToOrders } from '../services/dataService';
 import Button from '../components/Button';
 import BowlThumbnail from '../components/BowlThumbnail';
+import ItemThumbnail from '../components/ItemThumbnail';
 import { t } from '../i18n';
 
 // Live-Status: links der Fortschritt der letzten Runde (Supabase-Realtime,
@@ -211,7 +212,11 @@ export default function StatusScreen({ onNavigate }) {
                     className="flex items-center justify-between gap-2 text-small text-ink-600"
                   >
                     <span className="flex min-w-0 items-center gap-2">
-                      {item.config && <BowlThumbnail config={item.config} className="w-12 shrink-0" />}
+                      {item.config ? (
+                        <BowlThumbnail config={item.config} className="w-12 shrink-0" />
+                      ) : (
+                        <ItemThumbnail item={item} className="h-10 w-10 shrink-0" />
+                      )}
                       <span className="min-w-0 break-words">
                         {item.count > 1 ? `${item.count}× ` : ''}
                         {item.name}

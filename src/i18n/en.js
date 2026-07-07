@@ -91,6 +91,7 @@ const en = {
     total: 'Total',
     back: 'Back',
     removePerson: 'Remove person',
+    removeItem: 'Move item back to the bill',
     hint: 'Tap a person, then tap the items they pay for. You can also drag items.',
     activeHint: 'Tap items on the bill',
     methodTitle: 'How would you like to pay?',
