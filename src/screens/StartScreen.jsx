@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import BowlGraphic from '../components/BowlGraphic';
 import Button from '../components/Button';
 import { t } from '../i18n';
@@ -5,6 +6,10 @@ import { t } from '../i18n';
 // Start: leere Schüssel in Draufsicht, dampfend, klickbar (CLAUDE.md §8).
 // Die Schüssel skaliert über flex-1 mit der verfügbaren Fensterhöhe.
 export default function StartScreen({ onNavigate }) {
+  // Echtes Schüssel-Foto (Draufsicht, freigestellt); fehlt es, greift der
+  // prozedurale Platzhalter BowlGraphic (CLAUDE.md §7).
+  const [bowlMissing, setBowlMissing] = useState(false);
+
   return (
     <section className="flex h-full flex-col items-center justify-center gap-4 py-4">
       <button
@@ -28,7 +33,16 @@ export default function StartScreen({ onNavigate }) {
 
           {/* Schüssel (Draufsicht) */}
           <span className="animate-float block h-full">
-            <BowlGraphic className="h-full w-auto max-w-full drop-shadow-xl" />
+            {bowlMissing ? (
+              <BowlGraphic className="h-full w-auto max-w-full drop-shadow-xl" />
+            ) : (
+              <img
+                src="/assets/bowl/bowl_top.png"
+                alt=""
+                onError={() => setBowlMissing(true)}
+                className="h-full w-auto max-w-full object-contain"
+              />
+            )}
           </span>
         </span>
 
