@@ -11,6 +11,37 @@ import { t } from '../i18n';
 //   antippen) auf Personen verteilen; Personen sind hinzufüg- UND entfernbar.
 // Am Ende markiert dataService die Session als bezahlt.
 
+// Schwebender Chip: Drag-Geist und Drag-Hinweis teilen dieselbe Optik.
+function GhostChip({ item, className = '', style, ...props }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`pointer-events-none fixed left-0 top-0 z-50 flex items-center gap-2 rounded-md border border-gold bg-surface px-3 py-2 text-small font-semibold text-ink-900 shadow-lg ${className}`}
+      style={style}
+      {...props}
+    >
+      {item.name} · {item.price} €
+    </span>
+  );
+}
+
+// Demo-Chip: gleitet vom Pool zur ersten offenen Person und zeigt so die Drag-Geste.
+function DragHintGhost({ item, from, to, onDone }) {
+  return (
+    <GhostChip
+      item={item}
+      className="animate-drag-hint"
+      style={{
+        '--drag-hint-from-x': `${from.x}px`,
+        '--drag-hint-from-y': `${from.y}px`,
+        '--drag-hint-to-x': `${to.x}px`,
+        '--drag-hint-to-y': `${to.y}px`,
+      }}
+      onAnimationEnd={onDone}
+    />
+  );
+}
+
 // Eine Rechnungs-Position: draggbar (Pointer) + antippbar (Auswahl).
 function BillChip({ item, locked, selected, onSelect, onDrop }) {
   const stateRef = useRef(null);
@@ -80,13 +111,7 @@ function BillChip({ item, locked, selected, onSelect, onDrop }) {
         <span className="shrink-0">{item.price} €</span>
       </button>
       {ghost && (
-        <span
-          aria-hidden="true"
-          className="pointer-events-none fixed left-0 top-0 z-50 flex items-center gap-2 rounded-md border border-gold bg-surface px-3 py-2 text-small font-semibold text-ink-900 shadow-lg"
-          style={{ transform: `translate(${ghost.x + 12}px, ${ghost.y + 12}px)` }}
-        >
-          {item.name} · {item.price} €
-        </span>
+        <GhostChip item={item} style={{ transform: `translate(${ghost.x + 12}px, ${ghost.y + 12}px)` }} />
       )}
     </>
   );
@@ -107,6 +132,11 @@ export default function PayScreen({ onNavigate }) {
   const [payMethods, setPayMethods] = useState({}); // personId -> 'cash' | 'card' (nur UI, nicht in DB)
   const [finished, setFinished] = useState(false);
   const [error, setError] = useState(false);
+  const [hint, setHint] = useState(null); // aktueller Drag-Hinweis (Demo-Chip) oder null
+  const hintStoppedRef = useRef(false); // ab erster Zuweisung dauerhaft aus
+  const pointerDownRef = useRef(false); // Hinweis pausiert, solange der Gast tippt
+  const firstPoolChipRef = useRef(null); // Startpunkt: erster Pool-Chip
+  const firstUnpaidCardRef = useRef(null); // Zielpunkt: erste offene Person
 
   useEffect(() => {
     let active = true;
@@ -137,6 +167,55 @@ export default function PayScreen({ onNavigate }) {
   const itemsFor = (zone) => (items ?? []).filter((i) => (assignment[i.key] ?? 'pool') === zone);
   const sumOf = (list) => list.reduce((sum, i) => sum + i.price, 0);
   const poolItems = itemsFor('pool');
+  const hasAssigned = Object.keys(assignment).length > 0;
+
+  // Drag-Hinweis: solange nichts zugewiesen ist, zeigt ein Demo-Chip die Geste
+  // (Pool -> erste offene Person). Stoppt dauerhaft ab der ersten Zuweisung,
+  // pausiert beim Tippen und respektiert prefers-reduced-motion.
+  useEffect(() => {
+    if (mode !== 'split') return undefined;
+    if (hasAssigned) {
+      hintStoppedRef.current = true;
+      setHint(null);
+      return undefined;
+    }
+    if (hintStoppedRef.current) return undefined;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
+
+    const play = () => {
+      if (pointerDownRef.current) return;
+      const fromEl = firstPoolChipRef.current;
+      const toEl = firstUnpaidCardRef.current;
+      if (!fromEl || !toEl) return;
+      const a = fromEl.getBoundingClientRect();
+      const b = toEl.getBoundingClientRect();
+      setHint({
+        item: poolItems[0],
+        from: { x: a.left, y: a.top },
+        to: { x: b.left + b.width * 0.25, y: b.top + b.height * 0.45 },
+      });
+    };
+
+    const onPointerDown = () => {
+      pointerDownRef.current = true;
+      setHint(null);
+    };
+    const onPointerUp = () => {
+      pointerDownRef.current = false;
+    };
+    window.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointerup', onPointerUp);
+    const initial = setTimeout(play, 800);
+    const repeat = setInterval(play, 12000);
+    return () => {
+      clearTimeout(initial);
+      clearInterval(repeat);
+      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointerup', onPointerUp);
+      setHint(null);
+    };
+    // poolItems ist stabil, solange nichts zugewiesen ist (dann greift hasAssigned).
+  }, [mode, hasAssigned]);
 
   async function finishPayment() {
     setError(false);
@@ -327,7 +406,7 @@ export default function PayScreen({ onNavigate }) {
           <Button size="lg" className="flex-1" onClick={() => setMethodTarget('all')}>
             {t('pay.together')}
           </Button>
-          <Button size="lg" variant="ghost" className="flex-1" onClick={() => setMode('split')}>
+          <Button size="lg" className="flex-1" onClick={() => setMode('split')}>
             {t('pay.split')}
           </Button>
         </div>
@@ -338,6 +417,7 @@ export default function PayScreen({ onNavigate }) {
   // ---- Schritt 2: Getrennt zahlen (Drag-to-split) ----
   return (
     <div className="flex h-full min-h-0">
+      {hint && <DragHintGhost {...hint} onDone={() => setHint(null)} />}
       {/* Offene Rechnung (Pool) */}
       <aside
         data-dropzone="pool"
@@ -352,8 +432,8 @@ export default function PayScreen({ onNavigate }) {
         <h2 className="text-h1">{t('pay.title')}</h2>
         <p className="text-small text-ink-400">{t('pay.hint')}</p>
         <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
-          {poolItems.map((item) => (
-            <li key={item.key}>
+          {poolItems.map((item, i) => (
+            <li key={item.key} ref={i === 0 ? firstPoolChipRef : undefined}>
               <BillChip
                 item={item}
                 selected={selectedKey === item.key}
@@ -374,12 +454,15 @@ export default function PayScreen({ onNavigate }) {
       <div className="flex min-w-0 flex-1 flex-col gap-4 p-6">
         <div className="@container min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
           <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
-            {persons.map((person, index) => {
+            {(() => {
+              const firstUnpaidId = persons.find((p) => !p.paid)?.id;
+              return persons.map((person, index) => {
               const list = itemsFor(person.id);
               const isActive = activePerson === person.id;
               return (
                 <section
                   key={person.id}
+                  ref={person.id === firstUnpaidId ? firstUnpaidCardRef : undefined}
                   data-dropzone={person.id}
                   onClick={() =>
                     activePerson || selectedKey === null
@@ -410,7 +493,6 @@ export default function PayScreen({ onNavigate }) {
                       <div className="flex items-center gap-1">
                         <Button
                           size="sm"
-                          variant="ghost"
                           disabled={list.length === 0}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -444,10 +526,12 @@ export default function PayScreen({ onNavigate }) {
                   >
                     {list.length === 0 && (
                       <li
-                        // Zwei-Schritt-Weg: vorgemerkte Position auch per Tipp auf die freie Fläche zuweisen
-                        onClick={() => {
-                          if (selectedKey && !activePerson) assign(selectedKey, person.id);
-                        }}
+                        // Freie Fläche verhält sich wie die Karte: Person aktivieren oder Vorgemerktes zuweisen
+                        onClick={() =>
+                          activePerson || selectedKey === null
+                            ? toggleActive(person)
+                            : assign(selectedKey, person.id)
+                        }
                         className="flex flex-1 items-center justify-center rounded-md border border-dashed border-line p-2 text-caption text-ink-400"
                       >
                         {t('pay.dropHere')}
@@ -471,7 +555,8 @@ export default function PayScreen({ onNavigate }) {
                   </div>
                 </section>
               );
-            })}
+              });
+            })()}
           </div>
         </div>
         <Button variant="ghost" disabled={persons.length >= 8} onClick={addPerson}>
