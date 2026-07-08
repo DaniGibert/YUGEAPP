@@ -23,7 +23,7 @@ Danach: Übersicht → Warenkorb (Getränke/Beilagen/weitere Bowl) → Bestellen
 
 - **Vite + React 19**
 - **Tailwind CSS v4** über `@tailwindcss/vite`, Tokens in `src/styles/theme.css` (`@theme`)
-- **Bowl-Szene:** `three` + `@react-three/fiber` v9 + `@react-three/drei` + `@react-spring/three`
+- **Bowl-Szene:** `three` + `@react-three/fiber` v9 + `@react-spring/three` (eigene Szenen-Komponenten, kein `drei`)
 - **Backend:** **Supabase** (Datenbank + Realtime für den Live-Status)
 - **State:** ein leichter globaler Store (z. B. `zustand`) für Bau-Zustand + Warenkorb
 - **Analytics:** `@vercel/analytics` (Web Analytics, zählt nur auf der Live-Version)
@@ -78,9 +78,12 @@ Nichts anderes ohne Rückfrage hinzufügen.
 ```
 src/
   main.jsx
-  App.jsx                  # Router / aktueller Screen
+  App.jsx                  # Router / aktueller Screen; hängt die Kiosk-Hooks ein
   styles/
-    theme.css              # Design-Tokens (Single Source of Truth)
+    theme.css              # Design-Tokens + Animationen (Single Source of Truth)
+  i18n/
+    de.js / en.js          # UI-Texte (Menü-Namen/-Beschreibungen bleiben in menu.js)
+    index.js               # t(), Sprachwechsel
   config/
     menu.js                # alle Zutaten, Getränke, Beilagen + Preise (Daten)
     steps.js               # die 5 Bau-Schritte als Daten
@@ -90,27 +93,33 @@ src/
     dataService.js         # EINZIGE Stelle für Lesen/Schreiben (Bestellungen, Status)
   state/
     orderStore.js          # Bau-Zustand (broth, noodle, protein, toppings, finish) + Warenkorb
+  hooks/
+    useFullscreen.js       # Vollbild an/aus (Fullscreen-API), für den Header-Button
+    useDisablePullToRefresh.js  # unterbindet die native Refresh-Geste (Kiosk)
   scene/
     BowlScene.jsx          # R3F-Canvas, nur Props
   components/
     Stage.jsx              # App-Rahmen: füllt das Fenster (fluid, Querformat-optimiert)
-    Header.jsx             # Logo (→ Start), Kellner rufen, Sprache, Bestellstatus, Warenkorb
+    Header.jsx             # Logo (→ Start), Vollbild, Kellner rufen, Sprache, Bestellstatus, Warenkorb
     Breadcrumb.jsx         # Brühe > Nudeln > ...
     Button.jsx             # Größen: sm | md | lg, Varianten: primary | ghost
-    OptionCard.jsx         # eine Auswahl-Karte (mit "i"-Info)
-    ModifierGroup.jsx      # segmentierte Auswahl (Härte, Schärfe, ...)
+    OptionCard.jsx         # eine Auswahl-Karte (Bild, "i"-Info als verankertes Popover)
+    ModifierGroup.jsx      # segmentierte Auswahl mit gleitender Pill (Härte, Schärfe, ...)
     QuantityStepper.jsx    # − 0 + für Toppings
+    BowlThumbnail.jsx      # Mini-Bowl (Brühen-Karten, Warenkorb/Status/Bezahlen)
+    ItemThumbnail.jsx      # Produktbild für Getränke/Beilagen (Warenkorb/Status/Bezahlen)
     ...
   screens/
     StartScreen.jsx
-    BuilderScreen.jsx      # rendert je Schritt datengesteuert
+    BuilderScreen.jsx      # rendert je Schritt datengesteuert (Filmstreifen-Übergang)
     OverviewScreen.jsx
     CartScreen.jsx
     StatusScreen.jsx
     PayScreen.jsx
     KitchenScreen.jsx      # Küchen-Ansicht: Status ändern (löst Live-Update aus)
 public/
-  assets/<kategorie>/<id>.png   # Dateiname == Options-id
+  manifest.json / icon.svg      # PWA (display fullscreen, orientation landscape) + App-Icon
+  assets/<kategorie>/<id>.png   # Dateiname == Options-id; Varianten: <id>-<variante>.png
 ```
 
 ---
@@ -128,9 +137,22 @@ public/
 - **Bilder auf Auswahl-Karten:** `OptionCard` zeigt automatisch das Bild
   `/assets/<kategorie>/<id>.png` (gilt auch für `drink`/`side` im Warenkorb).
   Fehlt die Datei, blendet sich der Bildbereich still aus (kein kaputtes Icon).
+  Getränke/Beilagen mit Varianten zeigen das Bild der aktiven Variante
+  (`<id>-<variante>.png`) und fallen aufs Produktbild zurück, wenn es fehlt.
   **Ausnahme Brühen:** die flache Brühen-Scheibe sieht allein komisch aus, deshalb
   zeigen Brühen-Karten die Brühe komponiert **in der Schüssel** (`BowlThumbnail`
   über die `visual`-Prop der `OptionCard`).
+- **Produktbilder in der Rechnung:** In Warenkorb/Status/Bezahlen rendern Getränke
+  und Beilagen ihr Produktbild über `ItemThumbnail` (Gegenstück zu `BowlThumbnail`
+  bei Bowls); leitet Bild + Variante aus der Warenkorb-Zeile bzw. dem Positions-Namen ab.
+- **OptionCard „i"-Info:** öffnet ein am Button verankertes Popover (per Portal an
+  `document.body`, feste lesbare Breite) mit Item-Name als Überschrift plus Beschreibung,
+  nicht mehr an die Kartenbreite gebunden.
+- **Animationen** leben als Tokens/Keyframes in `theme.css` (`animate-*`): u. a.
+  `steam`/`float` (Start), `pulse-soft` (aktiver Status-Schritt), `popover-in` („i"-Info),
+  `drag-hint` (Getrennt-Zahlen). Schritt-/Tab-Wechsel in Builder und Warenkorb laufen als
+  „Filmstreifen" (alle Panels nebeneinander, Track per `translateX`), die aktive Auswahl in
+  `ModifierGroup` gleitet als Pill. Bewegung immer über `theme.css`, `motion-reduce` respektieren.
 
 ---
 
@@ -228,3 +250,22 @@ Wenn **Fable** das Hauptmodell ist, arbeitet es als **Orchestrator**, nicht als 
   großflächige Codebase-Analysen) dürfen an günstigere Modelle gehen und berichten zurück.
 - Kein delegiertes Ergebnis gilt als fertig, bevor Fable es geprüft hat (Regeln aus
   dieser Datei eingehalten, Build läuft, Verhalten im Preview verifiziert).
+
+---
+
+## 12. PWA / Kiosk (Tablet-Betrieb)
+
+Für den Betrieb als Bestell-Kiosk auf einem Chrome-Tablet:
+
+- **Vollbild:** Hook `hooks/useFullscreen.js` (Fullscreen-API mit webkit-Fallback),
+  umgeschaltet über den Vollbild-Button im Header. Echtes Vollbild im Browser-Tab gibt
+  es nur über diesen Button; `display: fullscreen` aus dem Manifest greift erst bei
+  installierter PWA (auf iPhone-Safari fehlt die Fullscreen-API ganz).
+- **Manifest:** `public/manifest.json` (`display: fullscreen`, `orientation: landscape`
+  — bewusst Querformat, passend zu Regel §3.6), App-Icon `public/icon.svg`. In `index.html`
+  verlinkt inkl. Kiosk-Viewport (`user-scalable=no`) und `theme-color`.
+- **Kein Pull-to-Refresh / kein Überziehen:** `overscroll-behavior: none` plus volle
+  Höhe/Breite im `theme.css`-Base-Layer, zusätzlich Hook `useDisablePullToRefresh` (blockt
+  die Refresh-Geste, ohne das Scrollen in Listen zu stören).
+- **Kein Service-Worker:** die installierte App lädt bei jedem Start frisch vom Server,
+  Updates erscheinen also automatisch beim nächsten Öffnen nach einem Push (kein Offline-Cache).
