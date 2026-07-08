@@ -12,16 +12,24 @@ import { getLanguage, setLanguage, t } from '../i18n';
 // Der Warenkorb-Button klappt eine kleine Übersicht der aktuellen Runde aus
 // (CLAUDE.md §9); bestellt wird weiterhin nur im CartScreen.
 
-function HeaderIconButton({ label, onClick, sublabel, children }) {
+// `text` = sichtbares Label neben dem Icon (Pill statt Quadrat), z. B. bei
+// Kellner rufen / Warenkorb / Bestellstatus. Ohne `text` bleibt der Button
+// ein reines Icon-Quadrat (Vollbild, Sprache).
+function HeaderIconButton({ label, onClick, sublabel, text, children }) {
   return (
     <button
       type="button"
       title={label}
       aria-label={label}
       onClick={onClick}
-      className="relative flex h-11 w-11 cursor-pointer flex-col items-center justify-center rounded-md border border-line bg-surface text-ink-600 transition-colors hover:border-ink-400 hover:text-ink-900"
+      className={`relative flex h-11 cursor-pointer items-center justify-center rounded-md border border-line bg-surface text-ink-600 transition-colors hover:border-ink-400 hover:text-ink-900 ${
+        text ? 'gap-2 px-4' : 'w-11 flex-col'
+      }`}
     >
       {children}
+      {text && (
+        <span className="whitespace-nowrap text-small font-semibold leading-none">{text}</span>
+      )}
       {sublabel && <span className="text-caption font-semibold leading-none">{sublabel}</span>}
     </button>
   );
@@ -70,13 +78,10 @@ export default function Header({ onNavigate, minimal = false }) {
   const { isFullscreen, toggle: toggleFullscreen } = useFullscreen();
   const [waiterCalled, setWaiterCalled] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
-  const hideTimer = useRef(null);
   const cartAreaRef = useRef(null);
 
   function callWaiter() {
     setWaiterCalled(true);
-    clearTimeout(hideTimer.current);
-    hideTimer.current = setTimeout(() => setWaiterCalled(false), 3000);
   }
 
   function toggleLanguage() {
@@ -87,8 +92,6 @@ export default function Header({ onNavigate, minimal = false }) {
     setCartOpen(false);
     onNavigate?.('cart');
   }
-
-  useEffect(() => () => clearTimeout(hideTimer.current), []);
 
   // Dropdown bei Klick außerhalb schließen
   useEffect(() => {
@@ -118,8 +121,12 @@ export default function Header({ onNavigate, minimal = false }) {
           >
             {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
           </HeaderIconButton>
-          <HeaderIconButton label={t('header.callWaiter')} onClick={callWaiter}>
-            <ConciergeBell />
+          <HeaderIconButton
+            label={t('header.callWaiter')}
+            text={t('header.callWaiter')}
+            onClick={callWaiter}
+          >
+            <ConciergeBell size={18} />
           </HeaderIconButton>
           <HeaderIconButton
             label={t('header.language')}
@@ -128,14 +135,19 @@ export default function Header({ onNavigate, minimal = false }) {
           >
             <Globe size={18} />
           </HeaderIconButton>
-          <HeaderIconButton label={t('header.status')} onClick={() => onNavigate?.('status')}>
-            <ReceiptText />
+          <HeaderIconButton
+            label={t('header.status')}
+            text={t('header.status')}
+            onClick={() => onNavigate?.('status')}
+          >
+            <ReceiptText size={18} />
           </HeaderIconButton>
           <HeaderIconButton
             label={t('header.cart')}
+            text={t('header.cart')}
             onClick={() => setCartOpen((open) => !open)}
           >
-            <ShoppingBag />
+            <ShoppingBag size={18} />
             {cart.length > 0 && (
               <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-caption font-semibold text-surface">
                 {cart.length}
@@ -148,8 +160,24 @@ export default function Header({ onNavigate, minimal = false }) {
       )}
 
       {waiterCalled && (
-        <div className="absolute right-8 top-full z-10 mt-2 rounded-md bg-ink-900 px-4 py-2 text-small text-surface shadow-lg">
-          {t('header.waiterComing')}
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setWaiterCalled(false)}
+          className="animate-popover-in fixed inset-0 z-50 flex items-center justify-center bg-ink-900/50 p-8"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="flex w-full max-w-md flex-col items-center gap-6 rounded-lg border border-line bg-surface p-8 text-center shadow-lg"
+          >
+            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-surface">
+              <ConciergeBell size={32} />
+            </span>
+            <p className="text-h2 font-semibold text-ink-900">{t('header.waiterComing')}</p>
+            <Button size="lg" onClick={() => setWaiterCalled(false)}>
+              {t('header.waiterDismiss')}
+            </Button>
+          </div>
         </div>
       )}
     </header>

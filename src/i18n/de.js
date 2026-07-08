@@ -7,6 +7,7 @@ const de = {
   header: {
     callWaiter: 'Kellner rufen',
     waiterComing: 'Ein:e Kellner:in kommt gleich',
+    waiterDismiss: 'Alles klar',
     fullscreen: 'Vollbild',
     fullscreenExit: 'Vollbild verlassen',
     language: 'Sprache',
