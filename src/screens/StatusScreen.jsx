@@ -173,13 +173,30 @@ export default function StatusScreen({ onNavigate }) {
           </div>
         </div>
 
-        {/* Zone 3: Bezahlen als eigene Zone hinter Trennlinie, die eine rote Aktion.
-            Die Gesamtsumme im Button zeigt ohne Erklärtext, dass am Ende alles auf
-            einmal bezahlt wird. */}
-        <div className="flex w-full max-w-lg flex-col items-center border-t border-line pt-3">
-          <Button size="lg" onClick={() => onNavigate?.('pay')}>
-            {t('status.pay')} · {grandTotal} €
-          </Button>
+        {/* Zone 3: Bezahlen hinter Trennlinie. Die Wahl Zusammen | Getrennt steht
+            direkt hier (kein Zwischenscreen mehr) und führt in den jeweiligen
+            Bezahl-Weg. Zusammen ist der häufige Fall -> die eine laute Aktion. */}
+        <div className="flex w-full max-w-lg flex-col gap-3 border-t border-line pt-3">
+          <div className="flex items-baseline justify-between">
+            <span className="text-small text-ink-400">{t('status.pay')}</span>
+            <span className="font-display text-h2 text-ink-900">{grandTotal} €</span>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              size="lg"
+              className="flex-1"
+              onClick={() => onNavigate?.('pay', { payMode: 'together' })}
+            >
+              {t('pay.together')}
+            </Button>
+            <Button
+              size="lg"
+              className="flex-1"
+              onClick={() => onNavigate?.('pay', { payMode: 'split' })}
+            >
+              {t('pay.split')}
+            </Button>
+          </div>
         </div>
       </section>
 

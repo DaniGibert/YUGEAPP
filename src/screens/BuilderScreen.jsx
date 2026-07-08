@@ -134,7 +134,7 @@ function StepContent({ step }) {
   );
 }
 
-export default function BuilderScreen({ onNavigate, cameFrom }) {
+export default function BuilderScreen({ onNavigate, cameFrom, onSceneReady }) {
   const bowl = useOrderStore((s) => s.bowl);
   const stepIndex = useOrderStore((s) => s.stepIndex);
   const maxStepIndex = useOrderStore((s) => s.maxStepIndex);
@@ -237,9 +237,18 @@ export default function BuilderScreen({ onNavigate, cameFrom }) {
     <div className="flex h-full min-h-0">
       {/* Bowl-Szene + Preis */}
       <aside className="flex w-2/5 min-w-0 flex-col gap-4 border-r border-line p-6">
-        <div className="min-h-0 flex-1">
+        {/* data-scene-slot: Mess-Anker fuer den Bowl-Flug (App.jsx). Der Slot hat
+            ab dem ersten Layout seine endgueltige Groesse, unabhaengig davon, ob
+            die Szene (Suspense) schon steht -> im Gegensatz zum Canvas selbst,
+            das mit der Browser-Default-Groesse 300x150 startet. */}
+        <div className="min-h-0 flex-1" data-scene-slot>
           <Suspense fallback={<SceneFallback />}>
-            <BowlScene broth={bowl.broth} ingredients={bowlSceneIngredients(bowl)} modifiers={bowl.finish} />
+            <BowlScene
+              broth={bowl.broth}
+              ingredients={bowlSceneIngredients(bowl)}
+              modifiers={bowl.finish}
+              onReady={onSceneReady}
+            />
           </Suspense>
         </div>
         <div className="flex items-baseline justify-between border-t border-line pt-3">

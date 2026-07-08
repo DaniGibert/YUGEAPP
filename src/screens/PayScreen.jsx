@@ -122,9 +122,12 @@ function BillChip({ item, locked, selected, onSelect, onDrop }) {
   );
 }
 
-export default function PayScreen({ onNavigate }) {
+export default function PayScreen({ onNavigate, payMode }) {
   const [items, setItems] = useState(null); // null = lädt
-  const [mode, setMode] = useState(null); // null = Wahl, 'split' = getrennt
+  // Der Weg wird schon auf dem Status-Screen gewählt (payMode) -> kein
+  // Zwischenscreen. 'split' = getrennt (Drag-to-split); alles andere = zusammen,
+  // dann direkt in den Bezahlart-Schritt für die ganze Rechnung ('all').
+  const mode = payMode === 'split' ? 'split' : null;
   const [assignment, setAssignment] = useState({}); // itemKey -> personId
   const [persons, setPersons] = useState([
     { id: 'p1', paid: false },
@@ -133,7 +136,9 @@ export default function PayScreen({ onNavigate }) {
   const personSeq = useRef(3); // nächste Personen-Id (Ids nie wiederverwenden)
   const [selectedKey, setSelectedKey] = useState(null);
   const [activePerson, setActivePerson] = useState(null); // Id der aktiven Person (Person-zuerst-Modus)
-  const [methodTarget, setMethodTarget] = useState(null); // null | 'all' | Personen-Id: zeigt den Bezahlart-Schritt
+  // null | 'all' | Personen-Id: zeigt den Bezahlart-Schritt. Bei "Zusammen" direkt
+  // 'all' (die ganze Rechnung), bei "Getrennt" erst null (zuerst aufteilen).
+  const [methodTarget, setMethodTarget] = useState(payMode === 'split' ? null : 'all');
   const [payMethods, setPayMethods] = useState({}); // personId -> 'cash' | 'card' (nur UI, nicht in DB)
   const [finished, setFinished] = useState(false);
   const [error, setError] = useState(false);
@@ -189,13 +194,16 @@ export default function PayScreen({ onNavigate }) {
 
     const play = () => {
       if (pointerDownRef.current) return;
+      const item = poolItems[0];
       const fromEl = firstPoolChipRef.current;
       const toEl = firstUnpaidCardRef.current;
-      if (!fromEl || !toEl) return;
+      // Nur zeigen, wenn wirklich eine Pool-Position da ist: der Getrennt-Screen
+      // wird jetzt direkt betreten (payMode), die Rechnung lädt evtl. noch.
+      if (!item || !fromEl || !toEl) return;
       const a = fromEl.getBoundingClientRect();
       const b = toEl.getBoundingClientRect();
       setHint({
-        item: poolItems[0],
+        item,
         from: { x: a.left, y: a.top },
         to: { x: b.left + b.width * 0.25, y: b.top + b.height * 0.45 },
       });
@@ -219,8 +227,10 @@ export default function PayScreen({ onNavigate }) {
       window.removeEventListener('pointerup', onPointerUp);
       setHint(null);
     };
-    // poolItems ist stabil, solange nichts zugewiesen ist (dann greift hasAssigned).
-  }, [mode, hasAssigned]);
+    // items in den Deps: der Effekt läuft nach dem Laden der Rechnung erneut, damit
+    // play() eine gefüllte poolItems-Closure hat (poolItems selbst ist stabil,
+    // solange nichts zugewiesen ist -> dann greift hasAssigned).
+  }, [mode, hasAssigned, items]);
 
   async function finishPayment() {
     setError(false);
@@ -372,54 +382,19 @@ export default function PayScreen({ onNavigate }) {
 
         {error && <p className="text-small text-error">{t('pay.error')}</p>}
 
-        <Button variant="ghost" onClick={() => setMethodTarget(null)}>
+        {/* Zurück: bei "Zusammen" (ganze Rechnung) zum Status, bei einer einzelnen
+            Person zurück in die Aufteilung. */}
+        <Button
+          variant="ghost"
+          onClick={() => (methodTarget === 'all' ? onNavigate?.('status') : setMethodTarget(null))}
+        >
           {t('pay.back')}
         </Button>
       </section>
     );
   }
 
-  // ---- Schritt 1: Wahl „Zusammen | Getrennt" (mit Rechnungsübersicht) ----
-  if (mode !== 'split') {
-    return (
-      <section className="mx-auto flex h-full w-full max-w-xl flex-col justify-center gap-4 p-6">
-        <h2 className="text-h1">{t('pay.title')}</h2>
-        <p className="text-body text-ink-400">{t('pay.chooseHint')}</p>
-
-        <ul className="flex min-h-0 flex-col gap-2 overflow-y-auto pr-1">
-          {items.map((item) => (
-            <li
-              key={item.key}
-              className="flex items-center justify-between gap-2 rounded-md border border-line bg-surface px-3 py-2 text-small text-ink-600"
-            >
-              <span className="flex min-w-0 items-center gap-2">
-                {item.config && <BowlThumbnail config={item.config} className="w-12 shrink-0" />}
-                <span className="min-w-0 break-words font-semibold">{item.name}</span>
-              </span>
-              <span className="shrink-0">{item.price} €</span>
-            </li>
-          ))}
-        </ul>
-
-        <div className="flex items-baseline justify-between border-t border-line pt-3">
-          <span className="text-small text-ink-400">{t('pay.total')}</span>
-          <span className="font-display text-h2 text-ink-900">{sumOf(items)} €</span>
-        </div>
-        {error && <p className="text-small text-error">{t('pay.error')}</p>}
-
-        <div className="flex gap-3">
-          <Button size="lg" className="flex-1" onClick={() => setMethodTarget('all')}>
-            {t('pay.together')}
-          </Button>
-          <Button size="lg" className="flex-1" onClick={() => setMode('split')}>
-            {t('pay.split')}
-          </Button>
-        </div>
-      </section>
-    );
-  }
-
-  // ---- Schritt 2: Getrennt zahlen (Drag-to-split) ----
+  // ---- Getrennt zahlen (Drag-to-split); die Wahl kam vom Status-Screen ----
   return (
     <div className="flex h-full min-h-0">
       {hint && <DragHintGhost {...hint} onDone={() => setHint(null)} />}
@@ -430,7 +405,7 @@ export default function PayScreen({ onNavigate }) {
         className="flex w-2/5 min-w-0 flex-col gap-3 border-r border-line p-6"
       >
         <div>
-          <Button size="sm" variant="ghost" onClick={() => setMode(null)}>
+          <Button size="sm" variant="ghost" onClick={() => onNavigate?.('status')}>
             {t('pay.back')}
           </Button>
         </div>

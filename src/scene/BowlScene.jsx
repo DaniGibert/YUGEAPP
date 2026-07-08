@@ -11,7 +11,7 @@
  * Container ein. Stapelung rein über renderOrder (depthTest aus).
  * ===========================================================================*/
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { BROTHS } from '../config/menu';
 import { BOWL_CY, BOWL_W, CANVAS_H, CANVAS_W, RO, WATERLINE_Y } from '../config/sceneConfig';
 import { useBowlTexture } from './sceneTextures';
@@ -67,7 +67,29 @@ function Bowl() {
   );
 }
 
-export default function BowlScene({ broth = null, ingredients = [] }) {
+/* Meldet EINMAL, wenn der erste Frame mit sichtbarer Schuessel gezeichnet ist.
+   useFrame laeuft VOR dem Zeichnen des jeweiligen Frames: sobald die bowl_back-
+   Textur da ist (echt oder Platzhalter, also truthy), lassen wir noch EINEN
+   Frame verstreichen, damit die Schuessel sicher gemalt wurde, und feuern erst
+   dann onReady. Danach ist der Ref gesetzt und die Frame-Schleife tut nichts mehr. */
+function SceneReadySignal({ onReady }) {
+  // Gleiche Textur wie <Bowl/>; der Loader cached das Promise, kein zweiter Ladevorgang.
+  const back = useBowlTexture('/assets/bowl/bowl_back.png', 'back');
+  const firedRef = useRef(false);
+  const drawnRef = useRef(false);
+  useFrame(() => {
+    if (firedRef.current || !back) return;
+    if (!drawnRef.current) {
+      drawnRef.current = true; // dieser Frame malt die Schuessel erstmals
+      return;
+    }
+    firedRef.current = true;
+    onReady?.();
+  });
+  return null;
+}
+
+export default function BowlScene({ broth = null, ingredients = [], onReady }) {
   const brothRef = useRef();
   const handleImpact = useCallback((x, y) => {
     brothRef.current?.ripple(x, y);
@@ -93,6 +115,7 @@ export default function BowlScene({ broth = null, ingredients = [] }) {
         gl={{ alpha: true, antialias: true }}
       >
         <FitCamera />
+        {onReady && <SceneReadySignal onReady={onReady} />}
         <Bowl />
         <Broth ref={brothRef} broth={brothData} visible={!!brothData} />
         {items.map((item) => (
@@ -104,7 +127,8 @@ export default function BowlScene({ broth = null, ingredients = [] }) {
             brothColor={brothData?.color}
           />
         ))}
-        <Steam />
+        {/* Dampf nur, wenn eine Bruehe drin ist: die leere Schuessel dampft nicht. */}
+        {brothData && <Steam />}
       </Canvas>
     </div>
   );
