@@ -20,6 +20,9 @@ const TABS = {
   sides: { type: 'side', items: SIDES },
 };
 
+// Reihenfolge der Tabs im Filmstrip; der Index bestimmt, wie weit der Track faehrt.
+const TAB_ORDER = Object.keys(TABS);
+
 // Add-Item-Karte am Ende der Rundenliste: führt in den Bowl-Builder.
 // Gestrichelt = "hier kannst du hinzufügen", konkurriert nicht mit "Bestellen".
 function AddBowlCard({ onClick }) {
@@ -80,6 +83,7 @@ export default function CartScreen({ onNavigate }) {
   const changeCartQty = useOrderStore((s) => s.changeCartQty);
   const orderPlaced = useOrderStore((s) => s.orderPlaced);
   const [tab, setTab] = useState('drinks');
+  const tabIndex = TAB_ORDER.indexOf(tab);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(false);
 
@@ -182,11 +186,28 @@ export default function CartScreen({ onNavigate }) {
           onChange={setTab}
           accent="ink-900"
         />
-        <div className="@container min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
-          <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
-            {TABS[tab].items.map((menuItem) => (
-              <AddItemCard key={menuItem.id} menuItem={menuItem} type={TABS[tab].type} />
-            ))}
+        {/* Filmstrip wie im Builder: beide Tabs liegen nebeneinander, der Track faehrt
+            per translateX zum aktiven Tab. Inaktiver Tab ist inert. Scroll-Position und
+            gewaehlte Varianten bleiben pro Tab erhalten, weil nichts unmountet. */}
+        <div className="relative min-h-0 flex-1 overflow-clip">
+          <div
+            className="flex h-full transition-transform duration-300 ease-out motion-reduce:transition-none"
+            style={{ transform: `translateX(-${tabIndex * 100}%)` }}
+          >
+            {TAB_ORDER.map((tabKey) => {
+              const isActive = tabKey === tab;
+              return (
+                <div key={tabKey} inert={!isActive} className="h-full w-full min-w-0 shrink-0">
+                  <div className="@container h-full overflow-y-auto overflow-x-hidden pr-1">
+                    <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
+                      {TABS[tabKey].items.map((menuItem) => (
+                        <AddItemCard key={menuItem.id} menuItem={menuItem} type={TABS[tabKey].type} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
