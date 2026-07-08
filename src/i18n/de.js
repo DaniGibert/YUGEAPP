@@ -7,6 +7,8 @@ const de = {
   header: {
     callWaiter: 'Kellner rufen',
     waiterComing: 'Ein:e Kellner:in kommt gleich',
+    fullscreen: 'Vollbild',
+    fullscreenExit: 'Vollbild verlassen',
     language: 'Sprache',
     status: 'Bestellstatus',
     cart: 'Warenkorb',

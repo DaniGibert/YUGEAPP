@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { ConciergeBell, Globe, ReceiptText, ShoppingBag } from 'lucide-react';
+import { ConciergeBell, Globe, Maximize, Minimize, ReceiptText, ShoppingBag } from 'lucide-react';
 import { useOrderStore, cartTotal } from '../state/orderStore';
+import { useFullscreen } from '../hooks/useFullscreen';
 import BowlThumbnail from './BowlThumbnail';
 import Button from './Button';
 import { getLanguage, setLanguage, t } from '../i18n';
@@ -66,6 +67,7 @@ function CartDropdown({ cart, onGoToCart }) {
 
 export default function Header({ onNavigate, minimal = false }) {
   const cart = useOrderStore((s) => s.cart);
+  const { isFullscreen, toggle: toggleFullscreen } = useFullscreen();
   const [waiterCalled, setWaiterCalled] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const hideTimer = useRef(null);
@@ -110,6 +112,12 @@ export default function Header({ onNavigate, minimal = false }) {
 
       {!minimal && (
         <div className="flex items-center gap-3" ref={cartAreaRef}>
+          <HeaderIconButton
+            label={isFullscreen ? t('header.fullscreenExit') : t('header.fullscreen')}
+            onClick={toggleFullscreen}
+          >
+            {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+          </HeaderIconButton>
           <HeaderIconButton label={t('header.callWaiter')} onClick={callWaiter}>
             <ConciergeBell />
           </HeaderIconButton>

@@ -7,6 +7,8 @@ const en = {
   header: {
     callWaiter: 'Call waiter',
     waiterComing: 'A waiter is on the way',
+    fullscreen: 'Fullscreen',
+    fullscreenExit: 'Exit fullscreen',
     language: 'Language',
     status: 'Order status',
     cart: 'Cart',

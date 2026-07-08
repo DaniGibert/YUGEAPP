@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { useLanguage } from './i18n';
+import { useDisablePullToRefresh } from './hooks/useDisablePullToRefresh';
 import Stage from './components/Stage';
 import Header from './components/Header';
 import StartScreen from './screens/StartScreen';
@@ -34,6 +35,8 @@ export default function App() {
   const [nav, setNav] = useState({ screen: KITCHEN_MODE ? 'kitchen' : 'start', from: null });
   // Sprachwechsel rendert die ganze App neu (alle t()-Texte aktualisieren sich)
   useLanguage();
+  // Kiosk: native Pull-to-Refresh-Geste unterbinden (ergänzt overscroll-behavior)
+  useDisablePullToRefresh();
   const Screen = SCREENS[nav.screen];
   const navigate = KITCHEN_MODE
     ? undefined

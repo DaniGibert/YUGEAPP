@@ -1,0 +1,13 @@
+{
+  "name": "Yuge",
+  "short_name": "Yuge",
+  "description": "Baue deine eigene Ramen-Bowl.",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#FBF7F1",
+  "theme_color": "#E4483D",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

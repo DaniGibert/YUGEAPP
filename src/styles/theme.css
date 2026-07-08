@@ -109,6 +109,15 @@
 
 /* ---- Basis-Defaults (setzen Hintergrund, Textfarbe & Standard-Schrift) ---- */
 @layer base {
+  /* Kiosk/Vollbild: App füllt das Fenster komplett, kein Pull-to-Refresh,
+     kein Überziehen. margin/padding = 0 kommt aus dem Tailwind-Preflight. */
+  html, body, #root {
+    height: 100%;
+    width: 100%;
+  }
+  html, body {
+    overscroll-behavior: none;
+  }
   body {
     background-color: var(--color-bg);
     color: var(--color-ink-600);
