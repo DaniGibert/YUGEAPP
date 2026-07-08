@@ -33,10 +33,37 @@ export default function OptionCard({
   const [src, setSrc] = useState(image);
   const [imageHidden, setImageHidden] = useState(false);
 
-  // Bild-/Variantenwechsel: Quelle zurücksetzen und wieder versuchen.
+  // Bild-/Variantenwechsel: Quelle zurücksetzen und wieder versuchen. Ist der
+  // Bildbereich gerade ausgeblendet (kein Bild vorhanden), wird das neue Bild
+  // erst unsichtbar vorgeladen und nur bei Erfolg wieder eingeblendet, sonst
+  // springt die Karte beim Variantenwechsel kurz auf und wieder zu.
   useEffect(() => {
-    setSrc(image);
-    setImageHidden(false);
+    if (!imageHidden) {
+      setSrc(image);
+      return undefined;
+    }
+    if (!image) return undefined;
+    let active = true;
+    const show = (goodSrc) => {
+      if (!active) return;
+      setSrc(goodSrc);
+      setImageHidden(false);
+    };
+    const probe = new Image();
+    probe.onload = () => show(image);
+    probe.onerror = () => {
+      if (!fallbackImage) return;
+      const probeFallback = new Image();
+      probeFallback.onload = () => show(fallbackImage);
+      probeFallback.src = fallbackImage;
+    };
+    probe.src = image;
+    return () => {
+      active = false;
+    };
+    // imageHidden bewusst nicht in den Deps: entscheidend ist der Zustand zum
+    // Zeitpunkt des Bildwechsels, nicht jede spätere Ein-/Ausblendung.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [image]);
 
   function handleImageError() {
