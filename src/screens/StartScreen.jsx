@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { ArrowRight, Plus } from 'lucide-react';
 import BowlGraphic from '../components/BowlGraphic';
 import BowlThumbnail from '../components/BowlThumbnail';
 import Button from '../components/Button';
@@ -97,12 +97,31 @@ export default function StartScreen({ onNavigate }) {
       className="relative flex h-full w-full items-center py-8"
     >
       {/* Links: Aktions-Spalte, vertikal zentriert */}
-      <div className="flex w-2/5 flex-col items-start justify-center gap-8 p-8">
-        {/* CTA + Sekundärpfad: lauteste bzw. leiseste Aktion */}
-        <div className="flex flex-col items-start gap-3">
-          <Button size="lg" onClick={startFromElement}>
-            {t('start.buildCta')}
-          </Button>
+      <div className="flex w-2/5 flex-col items-start justify-center gap-14 p-8">
+        {/* CTA + Sekundärpfad: lauteste bzw. leiseste Aktion.
+            Haupt-CTA ist reiner Text (kein Hintergrund, kein Rand): jedes Wort
+            in einer eigenen Zeile, groß und im Tare-Rot. */}
+        <div className="flex flex-col items-start gap-10">
+          <button
+            type="button"
+            onClick={startFromElement}
+            aria-label={t('start.buildCta')}
+            className="group flex cursor-pointer items-end gap-4 text-left font-display text-display font-bold leading-none text-primary transition-transform active:scale-95"
+          >
+            <span className="flex flex-col">
+              {t('start.buildCta')
+                .split(' ')
+                .map((word, index) => (
+                  <span key={index} className="block">
+                    {word}
+                  </span>
+                ))}
+            </span>
+            <ArrowRight
+              aria-hidden="true"
+              className="mb-1 h-[0.7em] w-[0.7em] shrink-0 animate-nudge-x transition-transform group-active:translate-x-1"
+            />
+          </button>
           <Button
             size="sm"
             variant="ghost"
