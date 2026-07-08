@@ -16,7 +16,8 @@ const en = {
     cartGoTo: 'Go to cart',
   },
   start: {
-    hint: 'Tap the bowl to start',
+    buildCta: 'Build your bowl',
+    recommendedTitle: 'House favorites',
     drinksOnly: 'Just drinks & sides',
   },
   steps: {

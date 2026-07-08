@@ -16,7 +16,8 @@ const de = {
     cartGoTo: 'Zum Warenkorb',
   },
   start: {
-    hint: 'Tippe auf die Schale, um zu starten',
+    buildCta: 'Bowl zusammenstellen',
+    recommendedTitle: 'Beliebt bei uns',
     drinksOnly: 'Nur Getränke & Beilagen',
   },
   steps: {

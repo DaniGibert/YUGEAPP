@@ -78,14 +78,14 @@ Nichts anderes ohne Rückfrage hinzufügen.
 ```
 src/
   main.jsx
-  App.jsx                  # Router / aktueller Screen; hängt die Kiosk-Hooks ein
+  App.jsx                  # Router / aktueller Screen; Kiosk-Hooks; Bowl-Flug Start->Builder (Handoff-Overlay)
   styles/
     theme.css              # Design-Tokens + Animationen (Single Source of Truth)
   i18n/
     de.js / en.js          # UI-Texte (Menü-Namen/-Beschreibungen bleiben in menu.js)
     index.js               # t(), Sprachwechsel
   config/
-    menu.js                # alle Zutaten, Getränke, Beilagen + Preise (Daten)
+    menu.js                # alle Zutaten, Getränke, Beilagen + Preise + RECOMMENDED_BOWLS (Daten)
     steps.js               # die 5 Bau-Schritte als Daten
     sceneConfig.js         # Positions-/Look-Werte der Bowl-Szene
   services/
@@ -110,8 +110,8 @@ src/
     ItemThumbnail.jsx      # Produktbild für Getränke/Beilagen (Warenkorb/Status/Bezahlen)
     ...
   screens/
-    StartScreen.jsx
-    BuilderScreen.jsx      # rendert je Schritt datengesteuert (Filmstreifen-Übergang)
+    StartScreen.jsx        # zwei Spalten: links CTA/Getränke/Empfehlungen, rechts die Schüssel (Flug-Start)
+    BuilderScreen.jsx      # rendert je Schritt datengesteuert (Filmstreifen-Übergang); data-scene-slot = Flug-Ziel
     OverviewScreen.jsx
     CartScreen.jsx
     StatusScreen.jsx
@@ -153,6 +153,15 @@ public/
   `drag-hint` (Getrennt-Zahlen). Schritt-/Tab-Wechsel in Builder und Warenkorb laufen als
   „Filmstreifen" (alle Panels nebeneinander, Track per `translateX`), die aktive Auswahl in
   `ModifierGroup` gleitet als Pill. Bewegung immer über `theme.css`, `motion-reduce` respektieren.
+- **Start → Builder ist ein Shared-Element-Flug (nicht kaputt machen).** Beim Tippen misst
+  `StartScreen` das Ist-Rect der Schüssel und übergibt es (`onNavigate('builder', { bowlRect })`).
+  `App.jsx` fährt den Übergang: die Schüssel (`bowl_back`) fliegt als Overlay (Klassen
+  `.start-handoff*` in `theme.css`) auf die Position/Größe der 3D-Schüssel im Builder. Das Ziel
+  wird **live aus dem Builder-Canvas gemessen** (Anker `data-scene-slot` + `sceneConfig`, nicht
+  aus einer nachgebauten Formel), darum landet es auf jeder Fenstergröße deckungsgleich. Der
+  Builder ist während des Flugs unsichtbar und blendet erst **nach der Landung** ein (Crossfade),
+  sobald die Szene ihren ersten Frame gemalt hat (`onReady` aus `BowlScene`). `motion-reduce`
+  überspringt den Flug. Am Flug-/Handoff-Code (`App.jsx`, `.start-handoff*`) nur mit Bedacht ändern.
 
 ---
 
@@ -185,12 +194,21 @@ Ripple beim Aufprall, Fall über unterdämpfte `@react-spring/three`-Feder, Plat
 Goldener-Winkel-Spirale. **Alle Tuning-Werte in `config/sceneConfig.js`.**
 Fehlende Assets → prozeduraler Platzhalter, nichts crasht.
 
+Der **Dampf** (`Steam`) erscheint nur, wenn eine **Brühe** gewählt ist — die leere Schüssel
+dampft nicht. (Der Start-Screen zeigt seinen eigenen CSS-Dampf, unabhängig von der Szene.)
+
 ---
 
 ## 8. Bestätigte Produkt-Entscheidungen
 
-- **Start:** leere Schüssel in Draufsicht, klickbar; steigt sanft **dampfend** auf (Marke „Yuge")
-  + Hinweistext „Tippe auf die Schale, um zu starten".
+- **Start:** zwei Spalten (Querformat). **Rechts** die leere, dampfende Schüssel (`bowl_back`),
+  groß und klickbar. **Links** die Aktions-Spalte von laut nach leise: Haupt-CTA
+  „Bowl zusammenstellen" (gefüllt), dann „Nur Getränke &amp; Beilagen" (ghost), dann 1–2
+  Empfehlungs-Karten (fertige Bowls aus `RECOMMENDED_BOWLS` in `menu.js`: Mini-Bowl, Name,
+  Zutaten, Preis via `bowlPrice`). Schüssel, Haupt-CTA und der Hintergrund lösen alle
+  **denselben Flug** in den Builder aus (siehe §5); die anderen Elemente stoppen die
+  Propagation. **Empfehlungs-Karten sind derzeit bewusst nicht klickbar** (nur Optik, Idee),
+  das „+" ist Deko. Kein Hinweistext (selbsterklärend durch den CTA).
 - **Toppings:** insgesamt **4 Stück** über alle Toppings zusammen — die Mengen zählen
   gemeinsam (z. B. 4× Mais, oder 2× Mais + 2× Ajitama).
   (`toppings = { id: menge }`, Regel: **Summe aller Mengen ≤ 4**.)
@@ -213,12 +231,16 @@ Ablauf: Bowl bauen → in den Warenkorb → („noch eine Bowl" / „Getränke &
 Warenkorb** für die nächste Runde. Danach zeigt der Status, dass zubereitet wird.
 
 **Bezahlt wird erst ganz am Ende** (nach dem Essen). Bis dahin kann jederzeit **nachbestellt**
-werden (zurück zum Bauen). Beim Bezahlen: erst die Wahl **Zusammen | Getrennt**. Getrennt
-funktioniert **Person-zuerst** (Hauptweg): Person antippen macht sie aktiv (goldener Rahmen),
-dann weist jeder Tipp auf eine Rechnungs-Position sie dieser Person zu; nochmal tippen legt
-sie zurück. Zusätzlich bleiben der alte Weg (Position vormerken, dann Person antippen) und
-das Ziehen erhalten. Vor jedem Zahlvorgang kommt ein eigener **Bezahlart-Schritt (Bar | Karte)**,
-beim Getrennt-Zahlen pro Person; die Bezahlart ist nur UI-Zustand, nicht in der Datenbank.
+werden (zurück zum Bauen). Die Wahl **Zusammen | Getrennt** steht direkt auf dem **Status-Screen**
+als zwei Buttons (beide gefüllt/rot — bewusste Ausnahme zu §5, im Chat so gewünscht); es gibt
+**keinen** Zwischenscreen mehr. Der `PayScreen` bekommt den Weg als `payMode`-Prop (über
+`onNavigate('pay', { payMode })`) und startet direkt: „Zusammen" → gleich der Bezahlart-Schritt
+für die ganze Rechnung, „Getrennt" → gleich die Aufteilung. Getrennt funktioniert
+**Person-zuerst** (Hauptweg): Person antippen macht sie aktiv (goldener Rahmen), dann weist jeder
+Tipp auf eine Rechnungs-Position sie dieser Person zu; nochmal tippen legt sie zurück. Zusätzlich
+bleiben der alte Weg (Position vormerken, dann Person antippen) und das Ziehen erhalten. Vor jedem
+Zahlvorgang kommt ein eigener **Bezahlart-Schritt (Bar | Karte)**, beim Getrennt-Zahlen pro Person;
+die Bezahlart ist nur UI-Zustand, nicht in der Datenbank.
 
 Getränke &amp; Beilagen teilen sich einen Screen, aber über einen **Umschalter (Getränke | Beilagen)**
 — **keine** lange gemeinsame Scroll-Liste.

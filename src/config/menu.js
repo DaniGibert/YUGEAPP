@@ -82,6 +82,41 @@ export const SIDES = [
   { id: 'reis',    name: 'Reis',    desc: 'Eine Schale gedämpfter Reis, gut zum Auftunken der Brühe.',    price: 3 },
 ];
 
+// ---- Empfehlungen (Start-Screen) ----
+// Fertige Beispiel-Bowls als Daten (Feldnamen wie im orderStore-Bau-Zustand).
+// Kein Preis hier hinterlegen: die Anzeige rechnet ihn ueber bowlPrice(config),
+// damit es nur eine Preisquelle gibt.
+const RECOMMENDED_FINISH = Object.fromEntries(
+  Object.entries(FINISH).map(([key, group]) => [key, group.default]),
+);
+
+export const RECOMMENDED_BOWLS = [
+  {
+    id: 'tonkotsu-klassiker',
+    name: 'Tonkotsu Klassiker',
+    config: {
+      broth: 'tonkotsu',
+      noodle: 'duenn',
+      hardness: NOODLE_FIRMNESS.default,
+      protein: 'chashu-schwein',
+      toppings: { ajitama: 1, nori: 1, fruehlingszwiebeln: 1 },
+      finish: RECOMMENDED_FINISH,
+    },
+  },
+  {
+    id: 'miso-garten',
+    name: 'Miso Garten',
+    config: {
+      broth: 'miso',
+      noodle: 'dick',
+      hardness: NOODLE_FIRMNESS.default,
+      protein: 'tofu',
+      toppings: { mais: 1, ajitama: 1, fruehlingszwiebeln: 1 },
+      finish: RECOMMENDED_FINISH,
+    },
+  },
+];
+
 // ---- Nach dem Essen: Nudeln nachbestellen ----
 // Erscheint als Ein-Tipp-Option in der Nachbestell-/Status-Ansicht.
 // Hinweistext im UI: „nur sinnvoll, wenn noch Brühe da ist".

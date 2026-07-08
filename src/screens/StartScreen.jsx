@@ -1,7 +1,26 @@
 import { useEffect, useRef, useState } from 'react';
+import { Plus } from 'lucide-react';
 import BowlGraphic from '../components/BowlGraphic';
+import BowlThumbnail from '../components/BowlThumbnail';
 import Button from '../components/Button';
+import { BROTHS, PROTEINS, RECOMMENDED_BOWLS, TOPPINGS } from '../config/menu';
+import { bowlPrice } from '../state/orderStore';
 import { t } from '../i18n';
+
+// Kurze Zutaten-Zeile einer Empfehlung: Brühe, Protein und Toppings aus den
+// Menü-Namen zusammensetzen (keine doppelten Texte, alles aus config/menu).
+function ingredientsLine(config) {
+  const names = [];
+  const broth = BROTHS.find((b) => b.id === config.broth);
+  if (broth) names.push(broth.name);
+  const protein = PROTEINS.find((p) => p.id === config.protein);
+  if (protein && protein.id !== 'ohne') names.push(protein.name);
+  for (const id of Object.keys(config.toppings)) {
+    const topping = TOPPINGS.find((tp) => tp.id === id);
+    if (topping) names.push(topping.name);
+  }
+  return names.join(', ');
+}
 
 // Szene-Modul (three/R3F) schon im Leerlauf des Start-Screens laden, damit es
 // beim Wechsel bereitsteht. Gleicher Modulpfad wie der React.lazy-Import im
@@ -64,13 +83,70 @@ export default function StartScreen({ onNavigate }) {
     onNavigate?.('builder', { bowlRect: img.getBoundingClientRect() });
   }
 
+  // Schüssel und Haupt-CTA lösen denselben Flug aus. stopPropagation verhindert,
+  // dass die Section darüber start() ein zweites Mal feuert.
+  function startFromElement(event) {
+    event.stopPropagation();
+    start();
+  }
+
   return (
-    <section className="relative flex h-full w-full flex-col items-center justify-end gap-6 py-8">
-      {/* Schüssel (rechtes Drittel), tippen startet den Bau */}
+    // Die ganze Section ist eine große Klickfläche -> Flug (wie Schüssel/CTA).
+    <section
+      onClick={start}
+      className="relative flex h-full w-full items-center py-8"
+    >
+      {/* Links: Aktions-Spalte, vertikal zentriert */}
+      <div className="flex w-2/5 flex-col items-start justify-center gap-8 p-8">
+        {/* CTA + Sekundärpfad: lauteste bzw. leiseste Aktion */}
+        <div className="flex flex-col items-start gap-3">
+          <Button size="lg" onClick={startFromElement}>
+            {t('start.buildCta')}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={(event) => {
+              event.stopPropagation();
+              onNavigate?.('cart');
+            }}
+          >
+            {t('start.drinksOnly')}
+          </Button>
+        </div>
+
+        {/* Empfehlungen: reine Optik, Klicks fallen nicht in den Bau durch */}
+        <div className="flex w-full flex-col gap-3" onClick={(event) => event.stopPropagation()}>
+          <p className="text-small font-semibold text-ink-400">{t('start.recommendedTitle')}</p>
+          {RECOMMENDED_BOWLS.map((bowl) => (
+            <div
+              key={bowl.id}
+              className="flex items-center gap-3 rounded-lg border-2 border-line bg-surface p-3"
+            >
+              <BowlThumbnail config={bowl.config} className="w-16 shrink-0" />
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="text-body font-semibold text-ink-900">{bowl.name}</span>
+                <span className="truncate text-small text-ink-400">
+                  {ingredientsLine(bowl.config)}
+                </span>
+              </div>
+              <span className="font-display text-h2 text-ink-900">{bowlPrice(bowl.config)} €</span>
+              <span
+                aria-hidden="true"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line text-ink-400"
+              >
+                <Plus size={18} />
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Rechts: Schüssel exakt wie gehabt, tippen startet den Bau */}
       <button
         type="button"
-        onClick={start}
-        aria-label={t('start.hint')}
+        onClick={startFromElement}
+        aria-label={t('start.buildCta')}
         className="start-bowl cursor-pointer"
       >
         <span className="start-bowl-inner relative block">
@@ -104,14 +180,6 @@ export default function StartScreen({ onNavigate }) {
           </span>
         </span>
       </button>
-
-      {/* Hinweis + Sekundärpfad für Gäste ohne Bowl-Wunsch */}
-      <div className="flex flex-col items-center gap-4">
-        <p className="text-body-lg text-ink-400">{t('start.hint')}</p>
-        <Button size="sm" variant="ghost" onClick={() => onNavigate?.('cart')}>
-          {t('start.drinksOnly')}
-        </Button>
-      </div>
     </section>
   );
 }
