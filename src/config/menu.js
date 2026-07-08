@@ -67,7 +67,7 @@ export const BOWL_BASE_PRICE = 10;
 
 // ---- Getränke ----
 export const DRINKS = [
-  { id: 'wasser',    name: 'Wasser',           desc: 'Stilles Wasser, kostenlos und steht schon am Tisch.', price: 0 },
+  { id: 'wasser',    name: 'Wasser',           desc: 'Stilles Wasser, jederzeit kostenlos.', price: 0 },
   { id: 'bier',      name: 'Japanisches Bier', desc: 'Helles japanisches Bier, frisch und leicht herb.',    price: 5, variants: ['Asahi', 'Sapporo'] },
   { id: 'matcha',    name: 'Matcha Tee',       desc: 'Grüner Tee aus fein gemahlenem Matcha, cremig im Geschmack.', price: 4, variants: ['Warm', 'Kalt'] },
   { id: 'ramune',    name: 'Ramune',           desc: 'Japanische Limonade mit der bekannten Murmel im Flaschenhals.', price: 4 },

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Info, X } from 'lucide-react';
 import { t } from '../i18n';
 
@@ -27,6 +28,8 @@ export default function OptionCard({
   className = '',
 }) {
   const [showInfo, setShowInfo] = useState(false);
+  const [infoPos, setInfoPos] = useState(null); // {top,left,width,maxHeight} des Info-Popovers
+  const cardRef = useRef(null);
   const [src, setSrc] = useState(image);
   const [imageHidden, setImageHidden] = useState(false);
 
@@ -44,8 +47,48 @@ export default function OptionCard({
     }
   }
 
+  // Info-Popover schließen: Escape, oder wenn gescrollt/Fenster verändert wird
+  // (sonst bliebe es an seiner alten, jetzt falschen Position hängen).
+  useEffect(() => {
+    if (!showInfo) return undefined;
+    const close = () => setShowInfo(false);
+    const onKey = (e) => {
+      if (e.key === 'Escape') close();
+    };
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [showInfo]);
+
+  // Info-Popover am angeklickten Item verankern: feste, lesbare Breite, in den
+  // sichtbaren Bereich geklemmt. Breite/Position in px, damit sie mit der
+  // rem-Skalierung auf kleinen Geräten nicht auseinanderlaufen.
+  function openInfo(e) {
+    e.stopPropagation();
+    const rect = cardRef.current.getBoundingClientRect();
+    const btn = e.currentTarget.getBoundingClientRect();
+    const margin = 8;
+    const width = Math.min(320, window.innerWidth - margin * 2);
+    const left = Math.max(
+      margin,
+      Math.min(rect.left + rect.width / 2 - width / 2, window.innerWidth - width - margin),
+    );
+    const top = Math.max(margin, Math.min(rect.top, window.innerHeight * 0.5));
+    // Ursprung der Aufskalier-Animation = Mitte des „i", relativ zur Popover-Ecke.
+    const originX = btn.left + btn.width / 2 - left;
+    const originY = btn.top + btn.height / 2 - top;
+    setInfoPos({ top, left, width, maxHeight: window.innerHeight - top - margin, originX, originY });
+    setShowInfo(true);
+  }
+
   return (
     <div
+      ref={cardRef}
       role="button"
       tabIndex={0}
       aria-pressed={selected}
@@ -84,14 +127,11 @@ export default function OptionCard({
         {desc && (
           <button
             type="button"
-            aria-label={showInfo ? t('builder.infoHide') : t('builder.infoShow')}
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowInfo((v) => !v);
-            }}
+            aria-label={t('builder.infoShow')}
+            onClick={openInfo}
             className="cursor-pointer text-ink-400 transition-colors hover:text-ink-900"
           >
-            {showInfo ? <X size={18} /> : <Info size={18} />}
+            <Info size={18} />
           </button>
         )}
       </div>
@@ -112,31 +152,53 @@ export default function OptionCard({
 
       {children}
 
-      {showInfo && (
-        // Tipp irgendwo auf die Beschreibung schließt sie wieder (schließt NICHT
-        // die Auswahl aus, daher stopPropagation). Das X liegt im Overlay selbst,
-        // damit es klickbar bleibt und nicht vom Overlay verdeckt wird.
-        <div
-          className="absolute inset-0 z-10 flex flex-col rounded-lg bg-surface/97 p-4"
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowInfo(false);
-          }}
-        >
-          <button
-            type="button"
-            aria-label={t('builder.infoHide')}
+      {showInfo &&
+        infoPos &&
+        // Popover per Portal an document.body, verankert am angeklickten Item
+        // (kein Container sperrt es ein, keine bildschirmfüllende Fläche). Zeigt
+        // Item-Name als Überschrift plus Beschreibung. Der transparente Fänger
+        // schließt bei Klick daneben; stopPropagation, damit der Klick nicht die
+        // Auswahl der Karte auslöst.
+        createPortal(
+          <div
+            className="fixed inset-0 z-50"
             onClick={(e) => {
               e.stopPropagation();
               setShowInfo(false);
             }}
-            className="mb-2 self-end text-ink-400 transition-colors hover:text-ink-900"
           >
-            <X size={18} />
-          </button>
-          <p className="min-h-0 overflow-y-auto break-words text-small text-ink-600">{desc}</p>
-        </div>
-      )}
+            <div
+              role="dialog"
+              aria-modal="true"
+              style={{
+                position: 'fixed',
+                top: infoPos.top,
+                left: infoPos.left,
+                width: infoPos.width,
+                maxHeight: infoPos.maxHeight,
+                transformOrigin: `${infoPos.originX}px ${infoPos.originY}px`,
+              }}
+              className="animate-popover-in flex flex-col gap-2 rounded-lg border border-line bg-surface p-4 shadow-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="min-w-0 break-words text-h2 text-ink-900">{name}</h3>
+                <button
+                  type="button"
+                  aria-label={t('builder.infoHide')}
+                  onClick={() => setShowInfo(false)}
+                  className="shrink-0 cursor-pointer text-ink-400 transition-colors hover:text-ink-900"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <p className="min-h-0 flex-1 overflow-y-auto break-words text-body text-ink-600">
+                {desc}
+              </p>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
