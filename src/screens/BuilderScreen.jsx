@@ -153,6 +153,21 @@ export default function BuilderScreen({ onNavigate, cameFrom }) {
   const isLastStep = stepIndex === STEPS.length - 1;
   const canProceed = step.type !== 'single' || Boolean(bowl[step.id]);
 
+  // Schrittwechsel-Richtung: vorwaerts kommt der Inhalt von rechts, rueckwaerts
+  // von links (gilt auch fuer Breadcrumb-Spruenge). Die Richtung wird nur bei einem
+  // echten Schrittwechsel neu bestimmt und in einem Ref eingefroren. Wuerden wir sie
+  // bei jedem Render frisch berechnen, wuerden spaetere Re-Renders am selben Schritt
+  // (z. B. durch die Observer weiter unten) die Richtung anhand des inzwischen
+  // aktualisierten Index umkehren und die laufende Animation auf die Gegenrichtung
+  // umspringen lassen.
+  const prevStepIndexRef = useRef(stepIndex);
+  const directionRef = useRef('right');
+  if (stepIndex !== prevStepIndexRef.current) {
+    directionRef.current = stepIndex > prevStepIndexRef.current ? 'right' : 'left';
+    prevStepIndexRef.current = stepIndex;
+  }
+  const direction = directionRef.current;
+
   // Nur Schritte mit Options-Karten bekommen die Übersichts-Leiste (kein Finish/Modifier).
   const hasCards = step.type === 'single' || step.type === 'quantity';
 
@@ -251,73 +266,84 @@ export default function BuilderScreen({ onNavigate, cameFrom }) {
       {/* Aktueller Schritt */}
       <div className="flex min-w-0 flex-1 flex-col gap-4 p-6">
         <Breadcrumb currentIndex={stepIndex} maxVisitedIndex={maxStepIndex} onSelect={goToStep} />
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="flex items-center gap-3 text-h1">
-            <span
-              aria-hidden="true"
-              className="inline-block h-3 w-3 rounded-full"
-              style={{ backgroundColor: `var(--color-${step.accent})` }}
-            />
-            {t(`steps.${step.id}`)}
-          </h2>
-          {step.type === 'quantity' && (
-            <div
-              className="flex items-center gap-3 rounded-full border-2 px-4 py-2"
-              style={{ borderColor: `var(--color-${step.accent})` }}
-            >
-              <span aria-hidden="true" className="flex items-center gap-1.5">
-                {Array.from({ length: step.max }).map((_, i) => (
-                  <span
-                    key={i}
-                    className="inline-block h-3 w-3 rounded-full bg-line"
-                    style={
-                      i < toppingCount(bowl.toppings)
-                        ? { backgroundColor: `var(--color-${step.accent})` }
-                        : undefined
-                    }
-                  />
-                ))}
-              </span>
-              <span className="text-body font-medium text-ink-900">
-                {t('builder.toppingCounter', { used: toppingCount(bowl.toppings), max: step.max })}
-              </span>
-            </div>
-          )}
-        </div>
-        {step.type === 'quantity' && (
-          <p className="text-small text-ink-600">
-            {t('builder.toppingHint', { max: step.max })}
-          </p>
-        )}
-
-        <div className="flex min-h-0 flex-1 gap-4">
-          <div className="relative min-w-0 flex-1">
-            <div
-              ref={scrollRef}
-              onScroll={handleScroll}
-              className="@container h-full overflow-y-auto overflow-x-hidden pr-1"
-            >
-              <StepContent step={step} />
-            </div>
-            {/* Scroll-Affordanz: Verlauf zur Hintergrundfarbe, solange unten noch Inhalt liegt. */}
-            {hasCards && overflowing && (
-              <div
+        {/* Schrittwechsel-Animation: nur der neue Inhalt (Titel, Hinweis, Karten)
+            gleitet ein, Breadcrumb und Footer bleiben statisch. key={stepIndex}
+            haengt den Wrapper bei jedem Schritt neu ein, damit die Animation
+            erneut abspielt (Richtung aus direction). */}
+        <div
+          key={stepIndex}
+          className={`flex min-h-0 flex-1 flex-col gap-4 motion-reduce:animate-none ${
+            direction === 'right' ? 'animate-step-in-right' : 'animate-step-in-left'
+          }`}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="flex items-center gap-3 text-h1">
+              <span
                 aria-hidden="true"
-                className={`pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-bg to-transparent transition-opacity ${
-                  atBottom ? 'opacity-0' : 'opacity-100'
-                }`}
+                className="inline-block h-3 w-3 rounded-full"
+                style={{ backgroundColor: `var(--color-${step.accent})` }}
+              />
+              {t(`steps.${step.id}`)}
+            </h2>
+            {step.type === 'quantity' && (
+              <div
+                className="flex items-center gap-3 rounded-full border-2 px-4 py-2"
+                style={{ borderColor: `var(--color-${step.accent})` }}
+              >
+                <span aria-hidden="true" className="flex items-center gap-1.5">
+                  {Array.from({ length: step.max }).map((_, i) => (
+                    <span
+                      key={i}
+                      className="inline-block h-3 w-3 rounded-full bg-line"
+                      style={
+                        i < toppingCount(bowl.toppings)
+                          ? { backgroundColor: `var(--color-${step.accent})` }
+                          : undefined
+                      }
+                    />
+                  ))}
+                </span>
+                <span className="text-body font-medium text-ink-900">
+                  {t('builder.toppingCounter', { used: toppingCount(bowl.toppings), max: step.max })}
+                </span>
+              </div>
+            )}
+          </div>
+          {step.type === 'quantity' && (
+            <p className="text-small text-ink-600">
+              {t('builder.toppingHint', { max: step.max })}
+            </p>
+          )}
+
+          <div className="flex min-h-0 flex-1 gap-4">
+            <div className="relative min-w-0 flex-1">
+              <div
+                ref={scrollRef}
+                onScroll={handleScroll}
+                className="@container h-full overflow-y-auto overflow-x-hidden pr-1"
+              >
+                <StepContent step={step} />
+              </div>
+              {/* Scroll-Affordanz: Verlauf zur Hintergrundfarbe, solange unten noch Inhalt liegt. */}
+              {hasCards && overflowing && (
+                <div
+                  aria-hidden="true"
+                  className={`pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-bg to-transparent transition-opacity ${
+                    atBottom ? 'opacity-0' : 'opacity-100'
+                  }`}
+                />
+              )}
+            </div>
+            {hasCards && overflowing && (
+              <OptionIndex
+                options={step.options}
+                visibleIds={visibleIds}
+                selectedIds={selectedIds}
+                accent={step.accent}
+                onJump={jumpTo}
               />
             )}
           </div>
-          {hasCards && overflowing && (
-            <OptionIndex
-              options={step.options}
-              visibleIds={visibleIds}
-              selectedIds={selectedIds}
-              accent={step.accent}
-              onJump={jumpTo}
-            />
-          )}
         </div>
 
         <footer className="flex items-center justify-between border-t border-line pt-4">
