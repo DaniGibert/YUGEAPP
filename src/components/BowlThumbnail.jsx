@@ -1,6 +1,18 @@
 import { useState } from 'react';
 import { BROTHS } from '../config/menu';
-import { BOWL_CY, BOWL_W, BROTH_CY, BROTH_RX, BROTH_RY, RO } from '../config/sceneConfig';
+import {
+  BOWL_CY,
+  BOWL_W,
+  BROTH_CY,
+  BROTH_RX,
+  BROTH_RY,
+  GROUND_SHADOW_CX,
+  GROUND_SHADOW_CY,
+  GROUND_SHADOW_H,
+  GROUND_SHADOW_OPACITY,
+  GROUND_SHADOW_W,
+  RO,
+} from '../config/sceneConfig';
 import { composeBowlItems } from '../scene/composeBowl';
 import { bowlSceneIngredients } from '../state/orderStore';
 
@@ -58,6 +70,16 @@ export default function BowlThumbnail({ config, className = '' }) {
       className={`relative isolate overflow-hidden ${className}`}
       style={{ aspectRatio: `${VIEW_W} / ${VIEW_H}` }}
     >
+      {/* Boden-/Steh-Schatten: flache, weiche Ellipse unter der Schüssel
+          (gleiche Werte wie die 3D-Szene), erdet die Mini-Bowl. */}
+      <span
+        className="absolute block"
+        style={{
+          ...worldStyle(GROUND_SHADOW_CX, GROUND_SHADOW_CY, GROUND_SHADOW_W, RO.groundShadow),
+          aspectRatio: `${GROUND_SHADOW_W} / ${GROUND_SHADOW_H}`,
+          background: `radial-gradient(closest-side, rgba(28, 23, 20, ${GROUND_SHADOW_OPACITY}), rgba(28, 23, 20, 0))`,
+        }}
+      />
       <LayerImage
         src="/assets/bowl/bowl_back.png"
         color="var(--color-line)"
