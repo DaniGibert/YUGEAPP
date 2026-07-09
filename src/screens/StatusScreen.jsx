@@ -361,9 +361,11 @@ export default function StatusScreen({ onNavigate }) {
         {/* Aktuelle Runde: Status-Hero und Nachbestell-Weiche. Bezahlen sitzt bewusst
             rechts unter der Rechnungssumme (keine Dopplung mit der Gesamtsumme). */}
         <section className="flex min-w-0 flex-1 flex-col items-center justify-center gap-10 p-6">
-          {/* Zone 1: Status-Hero, guarded weil latest beim Laden undefined ist */}
+          {/* Zone 1: Status-Hero, guarded weil latest beim Laden undefined ist.
+              Feste Hero-Breite (max-w-xl): sonst schrumpft der Container auf die
+              jeweilige Headline und der Tracker (w-full) springt beim Wechsel mit. */}
           {latest && (
-            <div className="flex flex-col items-center gap-4 text-center">
+            <div className="flex w-full max-w-xl flex-col items-center gap-4 text-center">
               <p className="text-body font-semibold text-ink-400">
                 {t('status.round', { n: orders.length })}
               </p>

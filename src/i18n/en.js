@@ -73,8 +73,8 @@ const en = {
     },
     headlines: {
       aufgenommen: 'Order received',
-      in_zubereitung: 'Your round is being prepared',
-      fertig: 'Your round is ready!',
+      in_zubereitung: 'Your order is being prepared',
+      fertig: 'Your order is ready!',
     },
     round: 'Round {n}',
     reorderTitle: 'Next round?',
