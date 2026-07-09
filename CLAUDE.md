@@ -24,6 +24,7 @@ Danach: Übersicht → Warenkorb (Getränke/Beilagen/weitere Bowl) → Bestellen
 - **Vite + React 19**
 - **Tailwind CSS v4** über `@tailwindcss/vite`, Tokens in `src/styles/theme.css` (`@theme`)
 - **Bowl-Szene:** `three` + `@react-three/fiber` v9 + `@react-spring/three` (eigene Szenen-Komponenten, kein `drei`)
+- **UI-Animationen:** `motion` v12 (Framer Motion), Import ausschließlich aus `motion/react`. Nur für datengetriebene UI-Übergänge (derzeit `StatusScreen`); die Bowl-Szene bleibt bei `@react-spring/three`.
 - **Backend:** **Supabase** (Datenbank + Realtime für den Live-Status)
 - **State:** ein leichter globaler Store (z. B. `zustand`) für Bau-Zustand + Warenkorb
 - **Analytics:** `@vercel/analytics` (Web Analytics, zählt nur auf der Live-Version)
@@ -154,6 +155,13 @@ public/
   `drag-hint` (Getrennt-Zahlen). Schritt-/Tab-Wechsel in Builder und Warenkorb laufen als
   „Filmstreifen" (alle Panels nebeneinander, Track per `translateX`), die aktive Auswahl in
   `ModifierGroup` gleitet als Pill. Bewegung immer über `theme.css`, `motion-reduce` respektieren.
+- **Grenze CSS vs. `motion/react`:** statische, deklarative Bewegung (Loops, Eintritte, Hover,
+  der Flug Start → Builder) bleibt CSS in `theme.css`. Datengetriebene Übergänge, deren Ablauf
+  von Live-Daten abhängt (Status-Choreografie, Runden-Ankunft, Summen-Ticker im `StatusScreen`),
+  laufen über `motion` aus `motion/react`. Dort Pflicht: `reducedMotion`-Handling
+  (`MotionConfig reducedMotion="user"`, Ticker separat über `useReducedMotion` + `jump()`),
+  refetch-sicher via `initial={false}` + Varianten-Labels statt Inline-Keyframes, und nur billige
+  Properties (transform, opacity, Farben).
 - **Start → Builder ist ein Shared-Element-Flug (nicht kaputt machen).** Beim Tippen misst
   `StartScreen` das Ist-Rect der Schüssel und übergibt es (`onNavigate('builder', { bowlRect })`).
   `App.jsx` fährt den Übergang: die Schüssel (`bowl_back`) fliegt als Overlay (Klassen

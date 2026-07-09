@@ -80,6 +80,10 @@ export const useOrderStore = create((set) => ({
   cart: [],
   // Rechnung/Tab: bereits bestellte Runden (Spiegel der dataService-Antworten)
   orders: [],
+  // Id der zuletzt abgeschickten Runde: der Status-Screen liest sie einmalig,
+  // um die frisch bestellte Runde trotz Remount als "neu angekommen" zu
+  // animieren (Slide-in, Gold-Glow, Summen-Ticker).
+  lastPlacedOrderId: null,
 
   goToStep: (index) =>
     set((s) => ({ stepIndex: index, maxStepIndex: Math.max(s.maxStepIndex, index) })),
@@ -149,6 +153,12 @@ export const useOrderStore = create((set) => ({
 
   removeCartItem: (key) => set((s) => ({ cart: s.cart.filter((i) => i.key !== key) })),
 
-  // Nach erfolgreichem Bestellen (dataService): Runde in die Rechnung, Warenkorb leeren.
-  orderPlaced: (order) => set((s) => ({ orders: [...s.orders, order], cart: [] })),
+  // Nach erfolgreichem Bestellen (dataService): Runde in die Rechnung, Warenkorb
+  // leeren und die Id für die Ankunfts-Animation im Status-Screen merken.
+  orderPlaced: (order) =>
+    set((s) => ({ orders: [...s.orders, order], cart: [], lastPlacedOrderId: order.id })),
+
+  // One-shot: der Status-Screen konsumiert die Id, sobald die Runde wirklich
+  // geliefert und animiert wurde; erneutes Öffnen animiert dann nicht wieder.
+  consumeLastPlacedOrderId: () => set({ lastPlacedOrderId: null }),
 }));

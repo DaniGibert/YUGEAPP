@@ -1,6 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import {
+  motion,
+  AnimatePresence,
+  MotionConfig,
+  useMotionValue,
+  useTransform,
+  useReducedMotion,
+  animate,
+} from 'motion/react';
 import { ClipboardList, ChefHat, BellRing, Soup, CupSoda } from 'lucide-react';
 import { fetchSessionOrders, subscribeToOrders } from '../services/dataService';
+import { useOrderStore } from '../state/orderStore';
 import Button from '../components/Button';
 import BowlThumbnail from '../components/BowlThumbnail';
 import ItemThumbnail from '../components/ItemThumbnail';
@@ -9,10 +19,54 @@ import { t } from '../i18n';
 // Live-Status: links der Fortschritt der letzten Runde (Supabase-Realtime,
 // CLAUDE.md §6) mit Nachbestell-Weiche, rechts die ganze Rechnung samt Bezahlen
 // direkt unter der Gesamtsumme. Nachbestellen jederzeit möglich.
+//
+// Bewegung ist hier Nutzerführung (CLAUDE.md §5, Grenze CSS vs. motion/react):
+// die Choreografie läuft über motion/react, weil sie datengetrieben ist. Der
+// Realtime-Refetch ersetzt bei jedem Event alle Objekt-Identitäten, darum überall
+// initial={false} + Varianten-Labels (statt Inline-Keyframes) + primitive Keys;
+// motion re-triggert nur bei echtem Label-Wechsel, ein Re-Render mit gleichem
+// Status bleibt ein No-Op.
 
 const STATUS_FLOW = ['aufgenommen', 'in_zubereitung', 'fertig'];
 const STATUS_ICONS = { aufgenommen: ClipboardList, in_zubereitung: ChefHat, fertig: BellRing };
 const STATUS_COLORS = { aufgenommen: 'gold', in_zubereitung: 'warning', fertig: 'success' };
+
+// --- Bewegungs-Tuning (alle Zeiten in Sekunden) ---
+const HALF_FILL_S = 0.25; // eine Halblinie füllt sich
+const SEGMENT_FILL_S = 0.5; // ganzes Segment voll -> danach poppt/färbt der Schritt
+const STEP_STAGGER_S = 0.6; // Versatz je übersprungenem Schritt (Küche schaltet mehrstufig)
+const POP_SPRING = { type: 'spring', stiffness: 500, damping: 20 }; // Icon-Pop
+const HEADLINE_SPRING = { type: 'spring', stiffness: 320, damping: 14 }; // Headline-Wechsel
+const HEADLINE_SPRING_FERTIG = { type: 'spring', stiffness: 550, damping: 12 }; // Fertig kräftiger
+
+// Halblinie: absolute Füll-Schicht, wächst per scaleX von links (originX am Element).
+const LINE_VARIANTS = { empty: { scaleX: 0 }, filled: { scaleX: 1 } };
+
+// Transform-Choreografie des Icons (NUR transform, damit der CSS-Puls am äußeren
+// Badge konfliktfrei bleibt: dort laufen die Farben über motion, der Puls über CSS).
+// Varianten-Labels statt Inline-Keyframes -> die Endlos-Wippe startet beim Refetch
+// nicht neu. Der Delay kommt bei pop/ring über die custom-Prop rein.
+const ICON_VARIANTS = {
+  still: { scale: 1, rotate: 0, transition: { duration: 0 } },
+  // D: Koch wippt sanft im Loop, solange "in Zubereitung" aktiv ist
+  wobble: {
+    scale: 1,
+    rotate: [-4, 4],
+    transition: { duration: 1.8, ease: 'easeInOut', repeat: Infinity, repeatType: 'mirror' },
+  },
+  // A: Icon poppt beim Erreichen des Schritts
+  pop: (delay) => ({
+    scale: [1, 1.25, 1],
+    rotate: 0,
+    transition: { ...POP_SPRING, delay },
+  }),
+  // C: Glocke klingelt beim Erreichen von "fertig"
+  ring: (delay) => ({
+    scale: [1, 1.25, 1],
+    rotate: [0, -14, 11, -8, 5, -2, 0],
+    transition: { duration: 0.9, ease: 'easeOut', delay },
+  }),
+};
 
 // Getränke/Beilagen zusammenfassen ("2× Gyoza (Gebraten)"), Bowls bleiben
 // einzelne Zeilen, damit jede ihr eigenes Bild zeigen kann.
@@ -49,7 +103,11 @@ function ReorderCard({ icon: Icon, label, onClick }) {
   );
 }
 
-function StatusTracker({ status }) {
+// prevIndex = Status-Index der letzten Runde im vorherigen Render (aus dem Parent).
+// Nur Schritte mit prevIndex < index <= currentIndex sind NEU erreicht und tragen
+// die Choreografie; Erst-Mount und neue Runde liefern prevIndex === currentIndex
+// (Differenz 0 => alles steht ohne Animation sofort richtig).
+function StatusTracker({ status, prevIndex }) {
   const currentIndex = STATUS_FLOW.indexOf(status);
   const lastIndex = STATUS_FLOW.length - 1;
   return (
@@ -59,15 +117,54 @@ function StatusTracker({ status }) {
         const reached = index <= currentIndex;
         const isCurrent = index === currentIndex;
         const nextStep = STATUS_FLOW[index + 1];
-        // Halblinien-Stepper: die linke Halblinie von Schritt i und die rechte
-        // Halblinie von Schritt i-1 bilden zusammen das Segment dazwischen. Das
-        // Segment trägt die Akzentfarbe seines rechten Schritts, sobald dieser
-        // erreicht ist -> beide Hälften sehen dadurch immer identisch aus.
-        const leftColor = reached ? `var(--color-${STATUS_COLORS[step]})` : 'var(--color-line)';
-        const rightReached = index + 1 <= currentIndex;
-        const rightColor = rightReached
+        const justReached = prevIndex < index && index <= currentIndex;
+        // Versatz dieses Schritts bei Mehrstufen-Sprung: der erste neue Schritt
+        // startet bei 0, jeder weitere um STEP_STAGGER_S später.
+        const stepBase = (index - prevIndex - 1) * STEP_STAGGER_S;
+
+        // --- Halblinien: die Linie läuft ins Icon hinein ---
+        // Rechte Hälfte dieses Schritts = erste Hälfte des Segments zum nächsten
+        // Schritt; füllt sich, sobald der nächste Schritt neu erreicht wird.
+        const rightFilled = index + 1 <= currentIndex;
+        const rightJustReached = prevIndex < index + 1 && index + 1 <= currentIndex;
+        const rightDelay = rightJustReached ? (index - prevIndex) * STEP_STAGGER_S : 0;
+        const rightColor = nextStep
           ? `var(--color-${STATUS_COLORS[nextStep]})`
           : 'var(--color-line)';
+        // Linke Hälfte dieses Schritts = zweite Hälfte des Segments vom vorherigen
+        // Schritt; füllt sich eine Halblinie nach der rechten Hälfte.
+        const leftFilled = index > 0 && index <= currentIndex;
+        const leftDelay = justReached ? stepBase + HALF_FILL_S : 0;
+        const leftColor = `var(--color-${STATUS_COLORS[step]})`;
+
+        // --- Badge: NUR Farben (bg/border/color), Transform-Pop liegt separat auf
+        // dem inneren Icon-Wrapper. Delay nach vollem Segment-Fill. ---
+        const badgeDelay = justReached ? stepBase + SEGMENT_FILL_S : 0;
+        const badgeAnimate = reached
+          ? {
+              backgroundColor: `var(--color-${STATUS_COLORS[step]})`,
+              borderColor: `var(--color-${STATUS_COLORS[step]})`,
+              color: 'var(--color-surface)',
+            }
+          : {
+              backgroundColor: 'var(--color-surface)',
+              borderColor: 'var(--color-line)',
+              color: 'var(--color-ink-400)',
+            };
+
+        // --- Icon-Transform: Wippen (D), Klingeln (C) oder Pop (A) ---
+        let iconLabel = 'still';
+        let iconDelay = 0;
+        if (step === 'in_zubereitung' && isCurrent) {
+          iconLabel = 'wobble';
+        } else if (step === 'fertig' && justReached) {
+          iconLabel = 'ring';
+          iconDelay = stepBase + SEGMENT_FILL_S + 0.25;
+        } else if (justReached) {
+          iconLabel = 'pop';
+          iconDelay = stepBase + SEGMENT_FILL_S;
+        }
+
         return (
           <li key={step} className="flex flex-1 flex-col items-center gap-3">
             {/* Icon-Zeile voller Breite: Halblinien und Badge werden gegen die feste
@@ -75,29 +172,55 @@ function StatusTracker({ status }) {
             <div className="flex h-20 w-full items-center">
               <span
                 aria-hidden="true"
-                className={`mr-3 h-1 flex-1 rounded-full${index === 0 ? ' invisible' : ''}`}
-                style={{ backgroundColor: leftColor }}
-              />
-              <span
-                className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                  reached ? 'text-surface' : 'border-line bg-surface text-ink-400'
-                } ${isCurrent ? 'animate-pulse-soft' : ''}`}
-                style={
-                  reached
-                    ? {
-                        backgroundColor: `var(--color-${STATUS_COLORS[step]})`,
-                        borderColor: `var(--color-${STATUS_COLORS[step]})`,
-                      }
-                    : undefined
-                }
+                className={`relative mr-3 h-1 flex-1 overflow-hidden rounded-full bg-line${
+                  index === 0 ? ' invisible' : ''
+                }`}
               >
-                <Icon size={32} aria-hidden="true" />
+                <motion.span
+                  className="absolute inset-0 rounded-full"
+                  style={{ backgroundColor: leftColor, originX: 0 }}
+                  variants={LINE_VARIANTS}
+                  initial={false}
+                  animate={leftFilled ? 'filled' : 'empty'}
+                  transition={{ duration: HALF_FILL_S, ease: 'easeOut', delay: leftDelay }}
+                />
               </span>
+              <motion.span
+                className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2${
+                  isCurrent ? ' animate-pulse-soft motion-reduce:animate-none' : ''
+                }`}
+                initial={false}
+                animate={badgeAnimate}
+                transition={{ duration: 0.3, delay: badgeDelay }}
+              >
+                {/* Innerer Wrapper trägt NUR transform (Pop/Wippen/Klingeln); initial="still"
+                    statt false, damit die Wippe auch beim Öffnen eines laufenden
+                    "in Zubereitung" sofort anläuft (still -> wobble). */}
+                <motion.span
+                  className="inline-flex"
+                  variants={ICON_VARIANTS}
+                  custom={iconDelay}
+                  initial="still"
+                  animate={iconLabel}
+                >
+                  <Icon size={32} aria-hidden="true" />
+                </motion.span>
+              </motion.span>
               <span
                 aria-hidden="true"
-                className={`ml-3 h-1 flex-1 rounded-full${index === lastIndex ? ' invisible' : ''}`}
-                style={{ backgroundColor: rightColor }}
-              />
+                className={`relative ml-3 h-1 flex-1 overflow-hidden rounded-full bg-line${
+                  index === lastIndex ? ' invisible' : ''
+                }`}
+              >
+                <motion.span
+                  className="absolute inset-0 rounded-full"
+                  style={{ backgroundColor: rightColor, originX: 0 }}
+                  variants={LINE_VARIANTS}
+                  initial={false}
+                  animate={rightFilled ? 'filled' : 'empty'}
+                  transition={{ duration: HALF_FILL_S, ease: 'easeOut', delay: rightDelay }}
+                />
+              </span>
             </div>
             <span
               className={`text-body font-semibold ${reached ? 'text-ink-900' : 'text-ink-400'}`}
@@ -114,6 +237,20 @@ function StatusTracker({ status }) {
 
 export default function StatusScreen({ onNavigate }) {
   const [orders, setOrders] = useState(null); // null = lädt noch
+  // Vorheriger Render-Stand der letzten Runde (id + Status-Index). Trennt echten
+  // Statuswechsel (gleiche id, Index steigt) von Erst-Mount und neuer Runde
+  // (id wechselt) -> nur der echte Wechsel löst die Tracker-Choreografie aus.
+  const prevLatestRef = useRef(null);
+  // Set der bereits gesehenen Runden-ids (null = noch keine Daten). Die erste
+  // Datenlieferung markiert alles ohne Animation; erst danach slidet Neues rein.
+  const seenIdsRef = useRef(null);
+  const reduceMotion = useReducedMotion();
+  // Frisch bestellte Runde: nach "Bestellen" remountet dieser Screen, die erste
+  // Datenlieferung würde sonst ALLE Runden als bekannt markieren. Die Id aus dem
+  // Store macht genau diese Runde trotzdem als "neu angekommen" erlebbar
+  // (Slide-in, Gold-Glow, Ticker) und wird danach one-shot konsumiert.
+  const lastPlacedOrderId = useOrderStore((s) => s.lastPlacedOrderId);
+  const consumeLastPlacedOrderId = useOrderStore((s) => s.consumeLastPlacedOrderId);
 
   useEffect(() => {
     let active = true;
@@ -135,6 +272,70 @@ export default function StatusScreen({ onNavigate }) {
   }, []);
 
   const latest = orders?.[orders.length - 1];
+  const currentIndex = latest ? STATUS_FLOW.indexOf(latest.status) : -1;
+  // prevIndex aus dem Ref lesen: gleiche Runde -> echter Vorgänger-Index;
+  // Erst-Mount/neue Runde -> currentIndex (keine Choreografie).
+  const prevSame = prevLatestRef.current && latest && prevLatestRef.current.id === latest.id;
+  const prevIndex = prevSame ? prevLatestRef.current.index : currentIndex;
+
+  // Ref erst nach dem Commit nachziehen (der Render oben hat den alten Stand
+  // schon gelesen).
+  useEffect(() => {
+    if (latest) {
+      prevLatestRef.current = { id: latest.id, index: STATUS_FLOW.indexOf(latest.status) };
+    }
+  }, [latest?.id, latest?.status]);
+
+  // Gesehene ids nach jedem orders-Commit nachziehen. Die frisch bestellte Runde
+  // (lastPlacedOrderId) bleibt bewusst bis zum nächsten Refetch draußen: so
+  // überlebt ihr isNew den Re-Render des Konsums und der Gold-Glow läuft zu Ende.
+  // Konsumiert wird erst, wenn die Id wirklich geliefert wurde (sonst darf ein
+  // späterer Refetch sie noch als neu animieren). lastPlacedOrderId fehlt
+  // bewusst in den Deps: pro Daten-Lieferung zählt der Stand ihres Renders.
+  useEffect(() => {
+    if (!orders) return;
+    if (seenIdsRef.current === null) seenIdsRef.current = new Set();
+    const placedArrived =
+      lastPlacedOrderId !== null && orders.some((o) => o.id === lastPlacedOrderId);
+    for (const o of orders) {
+      if (placedArrived && o.id === lastPlacedOrderId) continue;
+      seenIdsRef.current.add(o.id);
+    }
+    if (placedArrived) consumeLastPlacedOrderId();
+  }, [orders]);
+
+  const grandTotal = (orders ?? []).reduce((sum, o) => sum + o.total, 0);
+
+  // Summen-Ticker: zählt die Gesamtsumme sichtbar hoch, wenn eine Runde
+  // dazukommt. Erst-Load und reduced-motion springen hart (jump), sonst animiert
+  // ein Standalone-animate() den MotionValue (kein React-Re-Render pro Frame).
+  // Ausnahme beim Erst-Load: enthält die erste Lieferung die frisch bestellte
+  // Runde (Remount nach "Bestellen"), startet der Ticker bei der Summe OHNE
+  // diese Runde und tickt sie sichtbar hoch. lastPlacedOrderId fehlt bewusst in
+  // den Deps: One-Shot-Lesung beim Erst-Load, der Konsum im Effect oben darf
+  // die laufende Animation nicht stoppen.
+  const totalMv = useMotionValue(grandTotal);
+  const totalRounded = useTransform(totalMv, (v) => Math.round(v));
+  const tickerReadyRef = useRef(false);
+  useEffect(() => {
+    if (!tickerReadyRef.current) {
+      if (orders) tickerReadyRef.current = true; // erst nach echten Daten "scharf"
+      const placed =
+        !reduceMotion && lastPlacedOrderId !== null
+          ? (orders ?? []).find((o) => o.id === lastPlacedOrderId)
+          : undefined;
+      if (!placed) {
+        totalMv.jump(grandTotal);
+        return;
+      }
+      totalMv.jump(grandTotal - placed.total);
+    } else if (reduceMotion) {
+      totalMv.jump(grandTotal);
+      return;
+    }
+    const controls = animate(totalMv, grandTotal, { duration: 0.8, ease: 'easeOut' });
+    return () => controls.stop();
+  }, [grandTotal, orders, reduceMotion, totalMv]);
 
   if (orders && !latest) {
     return (
@@ -146,129 +347,184 @@ export default function StatusScreen({ onNavigate }) {
     );
   }
 
-  const grandTotal = (orders ?? []).reduce((sum, o) => sum + o.total, 0);
+  // Headline erscheint nach dem Fill des letzten neuen Segments (synchron zum
+  // Icon-Pop); bei Mehrstufen-Sprung entsprechend später, nie negativ.
+  const headlineDelay = Math.max(
+    0,
+    (currentIndex - prevIndex - 1) * STEP_STAGGER_S + SEGMENT_FILL_S,
+  );
+  const headlineSpring = latest?.status === 'fertig' ? HEADLINE_SPRING_FERTIG : HEADLINE_SPRING;
 
   return (
-    <div className="flex h-full min-h-0">
-      {/* Aktuelle Runde: Status-Hero und Nachbestell-Weiche. Bezahlen sitzt bewusst
-          rechts unter der Rechnungssumme (keine Dopplung mit der Gesamtsumme). */}
-      <section className="flex min-w-0 flex-1 flex-col items-center justify-center gap-10 p-6">
-        {/* Zone 1: Status-Hero, guarded weil latest beim Laden undefined ist */}
-        {latest && (
-          <div className="flex flex-col items-center gap-4 text-center">
-            <p className="text-body font-semibold text-ink-400">
-              {t('status.round', { n: orders.length })}
-            </p>
-            <h2
-              className="font-display text-display"
-              style={{ color: `var(--color-${STATUS_COLORS[latest.status]})` }}
-            >
-              {t(`status.headlines.${latest.status}`)}
-            </h2>
-            <StatusTracker status={latest.status} />
-          </div>
-        )}
-
-        {/* Zone 2: Nachbestell-Weiche, zwei gleichwertige große Touch-Ziele.
-            Getränke/Beilagen ist der häufigste Fall, darf also nicht hinter
-            dem Bowl-Builder versteckt sein. */}
-        <div className="flex w-full max-w-lg flex-col gap-4 border-t border-line pt-6">
-          <h3 className="text-center text-h2">{t('status.reorderTitle')}</h3>
-          <div className="flex gap-4">
-            <ReorderCard
-              icon={Soup}
-              label={t('status.reorderBowl')}
-              onClick={() => onNavigate?.('builder')}
-            />
-            <ReorderCard
-              icon={CupSoda}
-              label={t('status.reorderDrinks')}
-              onClick={() => onNavigate?.('cart')}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Rechnung / Tab: alle Runden dieser Session */}
-      <aside className="flex w-2/5 min-w-0 flex-col gap-4 border-l border-line p-6">
-        <h3 className="text-h2">{t('status.tab')}</h3>
-        <ul className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
-          {(orders ?? []).map((order, index) => (
-            <li
-              key={order.id}
-              className={`rounded-lg border bg-surface p-4 ${
-                index === (orders?.length ?? 0) - 1 ? 'border-ink-400' : 'border-line'
-              }`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-small font-semibold text-ink-900">
-                  {t('status.round', { n: index + 1 })}
-                </span>
-                <span
-                  className="rounded-sm px-2 py-0.5 text-caption font-semibold text-surface"
-                  style={{ backgroundColor: `var(--color-${STATUS_COLORS[order.status]})` }}
-                >
-                  {t(`status.states.${order.status}`)}
-                </span>
-              </div>
-              <ul className="mt-2 flex flex-col gap-1.5">
-                {groupItems(order.items ?? []).map((item, itemIndex) => (
-                  <li
-                    key={`${item.name}-${itemIndex}`}
-                    className="flex items-center justify-between gap-2 text-small text-ink-600"
+    <MotionConfig reducedMotion="user">
+      <div className="flex h-full min-h-0">
+        {/* Aktuelle Runde: Status-Hero und Nachbestell-Weiche. Bezahlen sitzt bewusst
+            rechts unter der Rechnungssumme (keine Dopplung mit der Gesamtsumme). */}
+        <section className="flex min-w-0 flex-1 flex-col items-center justify-center gap-10 p-6">
+          {/* Zone 1: Status-Hero, guarded weil latest beim Laden undefined ist */}
+          {latest && (
+            <div className="flex flex-col items-center gap-4 text-center">
+              <p className="text-body font-semibold text-ink-400">
+                {t('status.round', { n: orders.length })}
+              </p>
+              {/* Grid-Stack: ein- und ausblendende Headline liegen in derselben
+                  Zelle -> Wechsel ohne Layout-Sprung (kein popLayout). */}
+              <div className="grid place-items-center">
+                <AnimatePresence initial={false}>
+                  <motion.h2
+                    key={latest.status}
+                    className="font-display text-h1 [grid-area:1/1]"
+                    style={{ color: `var(--color-${STATUS_COLORS[latest.status]})` }}
+                    initial={{ opacity: 0, scale: 0.75 }}
+                    animate={{
+                      opacity: 1,
+                      scale: 1,
+                      transition: { ...headlineSpring, delay: headlineDelay },
+                    }}
+                    exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15, ease: 'easeIn' } }}
                   >
-                    <span className="flex min-w-0 items-center gap-2">
-                      {item.config ? (
-                        <BowlThumbnail config={item.config} className="w-12 shrink-0" />
-                      ) : (
-                        <ItemThumbnail item={item} className="h-10 w-10 shrink-0" />
-                      )}
-                      <span className="min-w-0 break-words">
-                        {item.count > 1 ? `${item.count}× ` : ''}
-                        {item.name}
-                      </span>
-                    </span>
-                    <span>{item.price * item.count} €</span>
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-2 flex justify-between border-t border-line pt-2 text-small font-semibold text-ink-900">
-                <span>{t('cart.total')}</span>
-                <span>{order.total} €</span>
+                    {t(`status.headlines.${latest.status}`)}
+                  </motion.h2>
+                </AnimatePresence>
               </div>
-            </li>
-          ))}
-        </ul>
-        <div className="flex items-baseline justify-between border-t border-line pt-3">
-          <span className="text-small text-ink-400">{t('status.tabTotal')}</span>
-          <span className="font-display text-h2 text-ink-900">{grandTotal} €</span>
-        </div>
-        {/* Bezahlen sitzt direkt unter der Gesamtsumme der Rechnung: Summe und
-            Bezahlweg an einem Ort, keine Dopplung mit der linken Spalte. Dunkel
-            gefüllt (Button-Variante dark) statt ghost -> sticht unter der
-            Gesamtsumme klar heraus, bleibt aber ruhiger als das Bestell-Rot
-            (laute Zone ist die Nachbestell-Weiche). Gestapelt in voller Breite,
-            damit die Labels einzeilig bleiben.
-            Die Wahl Zusammen | Getrennt führt in den jeweiligen Bezahl-Weg. */}
-        <div className="flex flex-col gap-3">
-          <Button
-            size="lg"
-            variant="dark"
-            className="w-full"
-            onClick={() => onNavigate?.('pay', { payMode: 'together' })}
-          >
-            {t('pay.together')}
-          </Button>
-          <Button
-            size="lg"
-            variant="dark"
-            className="w-full"
-            onClick={() => onNavigate?.('pay', { payMode: 'split' })}
-          >
-            {t('pay.split')}
-          </Button>
-        </div>
-      </aside>
-    </div>
+              <StatusTracker status={latest.status} prevIndex={prevIndex} />
+            </div>
+          )}
+
+          {/* Zone 2: Nachbestell-Weiche, zwei gleichwertige große Touch-Ziele.
+              Getränke/Beilagen ist der häufigste Fall, darf also nicht hinter
+              dem Bowl-Builder versteckt sein. */}
+          <div className="flex w-full max-w-lg flex-col gap-4 border-t border-line pt-6">
+            <h3 className="text-center text-h2">{t('status.reorderTitle')}</h3>
+            <div className="flex gap-4">
+              <ReorderCard
+                icon={Soup}
+                label={t('status.reorderBowl')}
+                onClick={() => onNavigate?.('builder')}
+              />
+              <ReorderCard
+                icon={CupSoda}
+                label={t('status.reorderDrinks')}
+                onClick={() => onNavigate?.('cart')}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Rechnung / Tab: alle Runden dieser Session */}
+        <aside className="flex w-2/5 min-w-0 flex-col gap-4 border-l border-line p-6">
+          <h3 className="text-h2">{t('status.tab')}</h3>
+          <ul className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
+            {(orders ?? []).map((order, index) => {
+              const isLast = index === (orders?.length ?? 0) - 1;
+              // Neu eingetroffene Runde: slidet mit Spring rein und leuchtet kurz
+              // golden nach. Bekannte Runden (auch nach Refetch) stehen ruhig.
+              // Beim allerersten Daten-Commit (Set noch null, typisch: Remount
+              // direkt nach "Bestellen") zählt genau die frisch bestellte Runde
+              // (lastPlacedOrderId) als neu, alle älteren stehen sofort.
+              const isNew =
+                seenIdsRef.current === null
+                  ? order.id === lastPlacedOrderId
+                  : !seenIdsRef.current.has(order.id);
+              return (
+                <motion.li
+                  key={order.id}
+                  className={`relative rounded-lg border bg-surface p-4 ${
+                    isLast ? 'border-ink-400' : 'border-line'
+                  }`}
+                  initial={isNew ? { x: 48, opacity: 0 } : false}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+                >
+                  {/* Gold-Glow: statisches Overlay, das einmal von deckend auf
+                      transparent fadet (nur opacity -> Compositor, kein boxShadow). */}
+                  {isNew && (
+                    <motion.span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 rounded-lg border-2"
+                      style={{ borderColor: 'var(--color-gold)' }}
+                      initial={{ opacity: 1 }}
+                      animate={{ opacity: 0 }}
+                      transition={{ duration: 1.6, delay: 0.4 }}
+                    />
+                  )}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-small font-semibold text-ink-900">
+                      {t('status.round', { n: index + 1 })}
+                    </span>
+                    <motion.span
+                      className="rounded-sm px-2 py-0.5 text-caption font-semibold text-surface"
+                      initial={false}
+                      animate={{ backgroundColor: `var(--color-${STATUS_COLORS[order.status]})` }}
+                      transition={{ duration: 0.4 }}
+                    >
+                      {t(`status.states.${order.status}`)}
+                    </motion.span>
+                  </div>
+                  <ul className="mt-2 flex flex-col gap-1.5">
+                    {groupItems(order.items ?? []).map((item, itemIndex) => (
+                      <li
+                        key={`${item.name}-${itemIndex}`}
+                        className="flex items-center justify-between gap-2 text-small text-ink-600"
+                      >
+                        <span className="flex min-w-0 items-center gap-2">
+                          {item.config ? (
+                            <BowlThumbnail config={item.config} className="w-12 shrink-0" />
+                          ) : (
+                            <ItemThumbnail item={item} className="h-10 w-10 shrink-0" />
+                          )}
+                          <span className="min-w-0 break-words">
+                            {item.count > 1 ? `${item.count}× ` : ''}
+                            {item.name}
+                          </span>
+                        </span>
+                        <span>{item.price * item.count} €</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-2 flex justify-between border-t border-line pt-2 text-small font-semibold text-ink-900">
+                    <span>{t('cart.total')}</span>
+                    <span>{order.total} €</span>
+                  </div>
+                </motion.li>
+              );
+            })}
+          </ul>
+          <div className="flex items-baseline justify-between border-t border-line pt-3">
+            <span className="text-small text-ink-400">{t('status.tabTotal')}</span>
+            <span className="font-display text-h2 text-ink-900">
+              {/* MotionValue als Text: der Ticker aktualisiert die Zahl pro Frame
+                  ohne React-Re-Render. */}
+              <motion.span>{totalRounded}</motion.span> €
+            </span>
+          </div>
+          {/* Bezahlen sitzt direkt unter der Gesamtsumme der Rechnung: Summe und
+              Bezahlweg an einem Ort, keine Dopplung mit der linken Spalte. Dunkel
+              gefüllt (Button-Variante dark) statt ghost -> sticht unter der
+              Gesamtsumme klar heraus, bleibt aber ruhiger als das Bestell-Rot
+              (laute Zone ist die Nachbestell-Weiche). Gestapelt in voller Breite,
+              damit die Labels einzeilig bleiben.
+              Die Wahl Zusammen | Getrennt führt in den jeweiligen Bezahl-Weg. */}
+          <div className="flex flex-col gap-3">
+            <Button
+              size="lg"
+              variant="dark"
+              className="w-full"
+              onClick={() => onNavigate?.('pay', { payMode: 'together' })}
+            >
+              {t('pay.together')}
+            </Button>
+            <Button
+              size="lg"
+              variant="dark"
+              className="w-full"
+              onClick={() => onNavigate?.('pay', { payMode: 'split' })}
+            >
+              {t('pay.split')}
+            </Button>
+          </div>
+        </aside>
+      </div>
+    </MotionConfig>
   );
 }
