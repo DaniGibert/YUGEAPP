@@ -102,7 +102,7 @@ src/
     Stage.jsx              # App-Rahmen: füllt das Fenster (fluid, Querformat-optimiert)
     Header.jsx             # Logo (→ Start), Vollbild, Kellner rufen, Sprache, Bestellstatus, Warenkorb
     Breadcrumb.jsx         # Brühe > Nudeln > ...
-    Button.jsx             # Größen: sm | md | lg, Varianten: primary | ghost
+    Button.jsx             # Größen: sm | md | lg, Varianten: primary | ghost | dark
     OptionCard.jsx         # eine Auswahl-Karte (Bild, "i"-Info als verankertes Popover)
     ModifierGroup.jsx      # segmentierte Auswahl mit gleitender Pill (Härte, Schärfe, ...)
     QuantityStepper.jsx    # − 0 + für Toppings
@@ -128,7 +128,8 @@ public/
 
 - Farben/Schrift/Radien: siehe `theme.css`. Immer die Token-Utilities nutzen.
 - **Button:** eine Komponente mit Prop `size` (`sm`/`md`/`lg`) und `variant`
-  (`primary` = gefülltes Tare-Rot, `ghost` = umrandet). Die Größen sind **im Button**
+  (`primary` = gefülltes Tare-Rot, `ghost` = umrandet, `dark` = gefüllt ink-dunkel
+  für ruhige, sichtbare Aktionen wie Bezahlen). Die Größen sind **im Button**
   definiert; global ändern heißt hier ändern.
 - **Kategorie-Farbe pro Schritt:** jeder Bau-Schritt trägt seine Akzentfarbe
   (`broth`/`noodle`/`protein`/`topping`/`finish`) z. B. im Breadcrumb und in aktiven Zuständen,
@@ -231,8 +232,10 @@ Ablauf: Bowl bauen → in den Warenkorb → („noch eine Bowl" / „Getränke &
 Warenkorb** für die nächste Runde. Danach zeigt der Status, dass zubereitet wird.
 
 **Bezahlt wird erst ganz am Ende** (nach dem Essen). Bis dahin kann jederzeit **nachbestellt**
-werden (zurück zum Bauen). Die Wahl **Zusammen | Getrennt** steht direkt auf dem **Status-Screen**
-als zwei Buttons (beide gefüllt/rot — bewusste Ausnahme zu §5, im Chat so gewünscht); es gibt
+werden (zurück zum Bauen). Die Wahl **Zusammen | Getrennt** steht direkt auf dem **Status-Screen
+in der Rechnungs-Spalte, direkt unter der Gesamtsumme** als zwei Buttons (beide bewusst **dunkel gefüllt (Button-Variante dark), gestapelt** — sichtbar unter der Gesamtsumme, aber leiser als das Bestell-Rot, damit der Status-Screen die Geschichte „erst
+essen &amp; nachbestellen, gezahlt wird am Ende" erzählt — die laute Zone ist die Nachbestell-Weiche;
+Entscheidung im Chat vom 09.07.2026, ersetzt die frühere Doppel-Rot-Ausnahme); es gibt
 **keinen** Zwischenscreen mehr. Der `PayScreen` bekommt den Weg als `payMode`-Prop (über
 `onNavigate('pay', { payMode })`) und startet direkt: „Zusammen" → gleich der Bezahlart-Schritt
 für die ganze Rechnung, „Getrennt" → gleich die Aufteilung. Getrennt funktioniert

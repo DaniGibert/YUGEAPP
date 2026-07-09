@@ -7,8 +7,8 @@ import ItemThumbnail from '../components/ItemThumbnail';
 import { t } from '../i18n';
 
 // Live-Status: links der Fortschritt der letzten Runde (Supabase-Realtime,
-// CLAUDE.md §6) mit Nachbestell-Weiche und Bezahlen, rechts die ganze Rechnung.
-// Nachbestellen jederzeit möglich.
+// CLAUDE.md §6) mit Nachbestell-Weiche, rechts die ganze Rechnung samt Bezahlen
+// direkt unter der Gesamtsumme. Nachbestellen jederzeit möglich.
 
 const STATUS_FLOW = ['aufgenommen', 'in_zubereitung', 'fertig'];
 const STATUS_ICONS = { aufgenommen: ClipboardList, in_zubereitung: ChefHat, fertig: BellRing };
@@ -41,9 +41,9 @@ function ReorderCard({ icon: Icon, label, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-1 cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-line bg-surface p-4 text-body font-semibold text-ink-900 transition-colors hover:border-ink-400"
+      className="flex flex-1 cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-line bg-surface p-5 text-body font-semibold text-ink-900 transition-colors hover:border-ink-400"
     >
-      <Icon size={28} className="text-ink-600" aria-hidden="true" />
+      <Icon size={32} className="text-ink-600" aria-hidden="true" />
       {label}
     </button>
   );
@@ -51,26 +51,35 @@ function ReorderCard({ icon: Icon, label, onClick }) {
 
 function StatusTracker({ status }) {
   const currentIndex = STATUS_FLOW.indexOf(status);
+  const lastIndex = STATUS_FLOW.length - 1;
   return (
-    <ol className="flex w-full max-w-xl items-center">
+    <ol className="mt-4 flex w-full max-w-xl">
       {STATUS_FLOW.map((step, index) => {
         const Icon = STATUS_ICONS[step];
         const reached = index <= currentIndex;
         const isCurrent = index === currentIndex;
+        const nextStep = STATUS_FLOW[index + 1];
+        // Halblinien-Stepper: die linke Halblinie von Schritt i und die rechte
+        // Halblinie von Schritt i-1 bilden zusammen das Segment dazwischen. Das
+        // Segment trägt die Akzentfarbe seines rechten Schritts, sobald dieser
+        // erreicht ist -> beide Hälften sehen dadurch immer identisch aus.
+        const leftColor = reached ? `var(--color-${STATUS_COLORS[step]})` : 'var(--color-line)';
+        const rightReached = index + 1 <= currentIndex;
+        const rightColor = rightReached
+          ? `var(--color-${STATUS_COLORS[nextStep]})`
+          : 'var(--color-line)';
         return (
-          <li key={step} className={`flex items-center${index > 0 ? ' flex-1' : ''}`}>
-            {index > 0 && (
+          <li key={step} className="flex flex-1 flex-col items-center gap-3">
+            {/* Icon-Zeile voller Breite: Halblinien und Badge werden gegen die feste
+                Höhe h-20 zentriert, dadurch liegen die Linien exakt auf Icon-Mitte. */}
+            <div className="flex h-20 w-full items-center">
               <span
                 aria-hidden="true"
-                className="mx-3 h-1 min-w-6 flex-1 rounded-full"
-                style={{
-                  backgroundColor: reached ? `var(--color-${STATUS_COLORS[step]})` : 'var(--color-line)',
-                }}
+                className={`mr-3 h-1 flex-1 rounded-full${index === 0 ? ' invisible' : ''}`}
+                style={{ backgroundColor: leftColor }}
               />
-            )}
-            <div className="flex flex-col items-center gap-3">
               <span
-                className={`flex h-20 w-20 items-center justify-center rounded-full border-2 transition-colors ${
+                className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                   reached ? 'text-surface' : 'border-line bg-surface text-ink-400'
                 } ${isCurrent ? 'animate-pulse-soft' : ''}`}
                 style={
@@ -85,12 +94,17 @@ function StatusTracker({ status }) {
                 <Icon size={32} aria-hidden="true" />
               </span>
               <span
-                className={`text-body font-semibold ${reached ? 'text-ink-900' : 'text-ink-400'}`}
-                aria-current={isCurrent ? 'step' : undefined}
-              >
-                {t(`status.states.${step}`)}
-              </span>
+                aria-hidden="true"
+                className={`ml-3 h-1 flex-1 rounded-full${index === lastIndex ? ' invisible' : ''}`}
+                style={{ backgroundColor: rightColor }}
+              />
             </div>
+            <span
+              className={`text-body font-semibold ${reached ? 'text-ink-900' : 'text-ink-400'}`}
+              aria-current={isCurrent ? 'step' : undefined}
+            >
+              {t(`status.states.${step}`)}
+            </span>
           </li>
         );
       })}
@@ -136,11 +150,12 @@ export default function StatusScreen({ onNavigate }) {
 
   return (
     <div className="flex h-full min-h-0">
-      {/* Aktuelle Runde: Status-Hero, Nachbestell-Weiche und Bezahlen in drei Zonen. */}
-      <section className="flex min-w-0 flex-1 flex-col items-center justify-center gap-4 p-6">
+      {/* Aktuelle Runde: Status-Hero und Nachbestell-Weiche. Bezahlen sitzt bewusst
+          rechts unter der Rechnungssumme (keine Dopplung mit der Gesamtsumme). */}
+      <section className="flex min-w-0 flex-1 flex-col items-center justify-center gap-10 p-6">
         {/* Zone 1: Status-Hero, guarded weil latest beim Laden undefined ist */}
         {latest && (
-          <div className="flex flex-col items-center gap-3 text-center">
+          <div className="flex flex-col items-center gap-4 text-center">
             <p className="text-body font-semibold text-ink-400">
               {t('status.round', { n: orders.length })}
             </p>
@@ -157,8 +172,8 @@ export default function StatusScreen({ onNavigate }) {
         {/* Zone 2: Nachbestell-Weiche, zwei gleichwertige große Touch-Ziele.
             Getränke/Beilagen ist der häufigste Fall, darf also nicht hinter
             dem Bowl-Builder versteckt sein. */}
-        <div className="flex w-full max-w-lg flex-col gap-2">
-          <p className="text-center text-small text-ink-400">{t('status.reorderTitle')}</p>
+        <div className="flex w-full max-w-lg flex-col gap-4 border-t border-line pt-6">
+          <h3 className="text-center text-h2">{t('status.reorderTitle')}</h3>
           <div className="flex gap-4">
             <ReorderCard
               icon={Soup}
@@ -170,32 +185,6 @@ export default function StatusScreen({ onNavigate }) {
               label={t('status.reorderDrinks')}
               onClick={() => onNavigate?.('cart')}
             />
-          </div>
-        </div>
-
-        {/* Zone 3: Bezahlen hinter Trennlinie. Die Wahl Zusammen | Getrennt steht
-            direkt hier (kein Zwischenscreen mehr) und führt in den jeweiligen
-            Bezahl-Weg. Zusammen ist der häufige Fall -> die eine laute Aktion. */}
-        <div className="flex w-full max-w-lg flex-col gap-3 border-t border-line pt-3">
-          <div className="flex items-baseline justify-between">
-            <span className="text-small text-ink-400">{t('status.pay')}</span>
-            <span className="font-display text-h2 text-ink-900">{grandTotal} €</span>
-          </div>
-          <div className="flex gap-3">
-            <Button
-              size="lg"
-              className="flex-1"
-              onClick={() => onNavigate?.('pay', { payMode: 'together' })}
-            >
-              {t('pay.together')}
-            </Button>
-            <Button
-              size="lg"
-              className="flex-1"
-              onClick={() => onNavigate?.('pay', { payMode: 'split' })}
-            >
-              {t('pay.split')}
-            </Button>
           </div>
         </div>
       </section>
@@ -253,6 +242,31 @@ export default function StatusScreen({ onNavigate }) {
         <div className="flex items-baseline justify-between border-t border-line pt-3">
           <span className="text-small text-ink-400">{t('status.tabTotal')}</span>
           <span className="font-display text-h2 text-ink-900">{grandTotal} €</span>
+        </div>
+        {/* Bezahlen sitzt direkt unter der Gesamtsumme der Rechnung: Summe und
+            Bezahlweg an einem Ort, keine Dopplung mit der linken Spalte. Dunkel
+            gefüllt (Button-Variante dark) statt ghost -> sticht unter der
+            Gesamtsumme klar heraus, bleibt aber ruhiger als das Bestell-Rot
+            (laute Zone ist die Nachbestell-Weiche). Gestapelt in voller Breite,
+            damit die Labels einzeilig bleiben.
+            Die Wahl Zusammen | Getrennt führt in den jeweiligen Bezahl-Weg. */}
+        <div className="flex flex-col gap-3">
+          <Button
+            size="lg"
+            variant="dark"
+            className="w-full"
+            onClick={() => onNavigate?.('pay', { payMode: 'together' })}
+          >
+            {t('pay.together')}
+          </Button>
+          <Button
+            size="lg"
+            variant="dark"
+            className="w-full"
+            onClick={() => onNavigate?.('pay', { payMode: 'split' })}
+          >
+            {t('pay.split')}
+          </Button>
         </div>
       </aside>
     </div>

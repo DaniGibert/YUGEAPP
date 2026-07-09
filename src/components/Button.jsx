@@ -10,6 +10,9 @@ const sizes = {
 const variants = {
   primary: 'bg-primary text-surface hover:bg-primary-700 active:bg-primary-700',
   ghost: 'border border-line bg-transparent text-ink-600 hover:border-ink-400 hover:text-ink-900',
+  // dark = ruhige, aber klar sichtbare Aktion (z. B. Bezahlen auf dem Status-Screen);
+  // Rot bleibt dem Bestell-Flow vorbehalten. Hover eine Stufe heller.
+  dark: 'bg-ink-900 text-surface hover:bg-ink-600 active:bg-ink-600',
 };
 
 export default function Button({
