@@ -60,6 +60,7 @@ function AddItemCard({ menuItem, type }) {
       desc={menuItem.desc}
       image={image}
       fallbackImage={fallback}
+      imageClassName="h-36"
       priceText={menuItem.price > 0 ? `${menuItem.price} €` : t('cart.free')}
       selected={totalQty > 0}
       accent="gold"

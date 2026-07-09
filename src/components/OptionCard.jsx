@@ -26,6 +26,9 @@ export default function OptionCard({
   onSelect,
   children,
   className = '',
+  // Höhe des Bildbereichs; Default passt zu den Builder-Karten. Getränke/
+  // Beilagen zeigen ihr Produktbild größer (z. B. "h-36").
+  imageClassName = 'h-24',
 }) {
   const [showInfo, setShowInfo] = useState(false);
   const [infoPos, setInfoPos] = useState(null); // {top,left,width,maxHeight} des Info-Popovers
@@ -132,12 +135,12 @@ export default function OptionCard({
       style={selected ? { borderColor: `var(--color-${accent})` } : undefined}
     >
       {visual ? (
-        <div className="flex h-24 items-center justify-center">{visual}</div>
+        <div className={`flex items-center justify-center ${imageClassName}`}>{visual}</div>
       ) : (
         image &&
         src &&
         !imageHidden && (
-          <div className="flex h-24 items-center justify-center">
+          <div className={`flex items-center justify-center ${imageClassName}`}>
             <img
               src={src}
               alt=""
