@@ -251,7 +251,7 @@ export default function BuilderScreen({ onNavigate, cameFrom, onSceneReady }) {
             />
           </Suspense>
         </div>
-        <div className="flex items-baseline justify-between border-t border-line pt-3">
+        <div className="flex items-baseline justify-between border-t border-line pt-3 cascade-item" style={{ '--cascade-i': 0 }}>
           <span className="text-small text-ink-400">{t('builder.price')}</span>
           <span className="font-display text-h2 text-ink-900">{bowlPrice(bowl)} €</span>
         </div>
@@ -264,7 +264,8 @@ export default function BuilderScreen({ onNavigate, cameFrom, onSceneReady }) {
             der per translateX um genau eine Panel-Breite pro Schritt verschoben wird.
             Vorwaerts faehrt der Streifen nach links, rueckwaerts nach rechts. Inaktive
             Panels sind inert (nicht klick-/fokussierbar, fuer Screenreader unsichtbar). */}
-        <div className="relative min-h-0 flex-1 overflow-clip">
+        {/* cascade-item: faehrt nur beim Flug-Eintritt (screen-cascade am Wrapper) von unten rein. */}
+        <div className="relative min-h-0 flex-1 overflow-clip cascade-item" style={{ '--cascade-i': 0 }}>
           <div
             className="flex h-full transition-transform duration-300 ease-out motion-reduce:transition-none"
             style={{ transform: `translateX(-${stepIndex * 100}%)` }}
@@ -352,7 +353,7 @@ export default function BuilderScreen({ onNavigate, cameFrom, onSceneReady }) {
           </div>
         </div>
 
-        <footer className="flex items-center justify-between border-t border-line pt-4">
+        <footer className="flex items-center justify-between border-t border-line pt-4 cascade-item" style={{ '--cascade-i': 1 }}>
           <Button
             variant="ghost"
             onClick={() => (stepIndex === 0 ? leaveBuilder() : goToStep(stepIndex - 1))}

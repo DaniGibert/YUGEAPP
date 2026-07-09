@@ -84,6 +84,8 @@
   --animate-drag-hint: drag-hint 1.6s ease-in-out both;
   --animate-nudge-x: nudge-x 1.6s ease-in-out infinite;
   --animate-popover-in: popover-in 0.15s ease-out;
+  --animate-fade-in: fade-in 0.15s ease-out;
+  --animate-cascade-in: cascade-in 260ms ease-out backwards;
 
   @keyframes steam {
     0%   { transform: translateY(1rem) scale(0.7); opacity: 0; }
@@ -116,6 +118,14 @@
   @keyframes popover-in {
     0%   { transform: scale(0.85); opacity: 0; }
     100% { transform: scale(1);    opacity: 1; }
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+  }
+
+  @keyframes cascade-in {
+    from { opacity: 0; transform: translateY(1.25rem); }
   }
 }
 
@@ -235,4 +245,18 @@
   .start-handoff,
   .start-handoff-bowl,
   .screen-veil.is-revealing { transition: none; }
+}
+
+/* ---- Eintritts-Kaskade nach dem Bowl-Flug (Start -> Builder) ----
+   App.jsx setzt .screen-cascade zusammen mit .is-revealing: erst wenn die
+   Schuessel gelandet ist, fahren die markierten Builder-Bausteine
+   (.cascade-item + --cascade-i) gestaffelt von unten rein. Nur
+   opacity/transform -> Compositor, kein Layout. */
+.screen-cascade .cascade-item {
+  --cascade-step: 60ms;
+  animation: var(--animate-cascade-in);
+  animation-delay: calc(var(--cascade-i, 0) * var(--cascade-step));
+}
+@media (prefers-reduced-motion: reduce) {
+  .screen-cascade .cascade-item { animation: none; }
 }

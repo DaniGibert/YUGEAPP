@@ -164,11 +164,11 @@ export default function Header({ onNavigate, minimal = false }) {
           role="dialog"
           aria-modal="true"
           onClick={() => setWaiterCalled(false)}
-          className="animate-popover-in fixed inset-0 z-50 flex items-center justify-center bg-ink-900/50 p-8"
+          className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-ink-900/50 p-8"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="flex w-full max-w-md flex-col items-center gap-6 rounded-lg border border-line bg-surface p-8 text-center shadow-lg"
+            className="animate-popover-in flex w-full max-w-md flex-col items-center gap-6 rounded-lg border border-line bg-surface p-8 text-center shadow-lg"
           >
             <span className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-surface">
               <ConciergeBell size={32} />

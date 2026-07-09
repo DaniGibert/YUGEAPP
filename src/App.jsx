@@ -144,7 +144,7 @@ export default function App() {
       <main ref={mainRef} className="relative min-h-0 flex-1">
         {/* Veil: während des Flugs ist der Builder gemountet (Ziel messbar,
             Szene lädt/malt), aber unsichtbar; blendet nach der Landung ein. */}
-        <div className={`h-full ${handoffActive ? `screen-veil ${revealing ? 'is-revealing' : ''}` : ''}`}>
+        <div className={`h-full ${handoffActive ? `screen-veil ${revealing ? 'is-revealing screen-cascade' : ''}` : ''}`}>
           <Screen
             onNavigate={navigate}
             cameFrom={nav.from}
