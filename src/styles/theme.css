@@ -173,6 +173,29 @@
   transform: scale(var(--start-bowl-scale, 1.5));
   transform-origin: center;
 }
+/* Boden-/Steh-Schatten der Start-Schuessel: flache, weiche Ellipse am Fuss.
+   Liegt fest am Boden (bewegt sich NICHT mit hoch), reagiert aber auf die
+   Schwebe-Hoehe: dieselbe Dauer/Kurve wie animate-float -> steigt die Bowl,
+   wird der Schatten kleiner und heller (und umgekehrt), synchron zum Bob. */
+.start-bowl-shadow {
+  position: absolute;
+  left: 58%;
+  bottom: 7%;
+  width: 56%;
+  aspect-ratio: 5 / 1;
+  transform: translateX(-50%);
+  transform-origin: center;
+  background: radial-gradient(closest-side, rgba(28, 23, 20, 0.34), rgba(28, 23, 20, 0));
+  filter: blur(4px);
+  animation: bowl-shadow 6s ease-in-out infinite;
+}
+@keyframes bowl-shadow {
+  0%, 100% { transform: translateX(-50%) scale(1);    opacity: 1; }
+  50%      { transform: translateX(-50%) scale(0.85); opacity: 0.65; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .start-bowl-shadow { animation: none; }
+}
 
 /* ---- Uebergabe Start -> Builder (Shared-Element-Flug) ----
    App.jsx misst Start (Ist-Rect der Start-Schuessel, inkl. Schwebe-Offset) und

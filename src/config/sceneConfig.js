@@ -17,6 +17,15 @@ export const BOWL_W = 640;
 export const BOWL_H = 350; // nur Fallback, falls Textur-Maße fehlen
 export const BOWL_CY = -30; // Schüssel-Mitte (etwas tief, lässt oben Platz für Dampf)
 
+// Boden-/Steh-Schatten: weicher, flacher Fleck UNTER der Schüssel (liegt hinter
+// bowlBack). Erdet die Schüssel, statt sie schweben zu lassen. Weiche Kante über
+// die softCircle-Textur; Ellipse durch unterschiedliche Breite/Höhe.
+export const GROUND_SHADOW_CX = 60; // Welt-x: leicht nach rechts versetzt
+export const GROUND_SHADOW_CY = -150; // Welt-y am Fuß der Schüssel
+export const GROUND_SHADOW_W = 400; // Gesamtbreite
+export const GROUND_SHADOW_H = 96; // Gesamthöhe (flach)
+export const GROUND_SHADOW_OPACITY = 0.3;
+
 // Brühe-Oberfläche (füllt die Schüssel-Öffnung). Nutzt das Brühe-PNG als Textur.
 export const BROTH_CY = 2;
 export const BROTH_RX = 180;
@@ -40,6 +49,7 @@ export const SUBMERGE_FADE = 0.22; // wie stark der Unterteil ausblendet (0..1, 
 
 // renderOrder-Strata (hinten -> vorne). Maler-Algorithmus, depthTest aus.
 export const RO = {
+  groundShadow: -10, // Boden-Schatten hinter/unter der Schüssel
   bowlBack: 0,
   submerged: 10, // (optional) hinter der Brühe
   broth: 20,

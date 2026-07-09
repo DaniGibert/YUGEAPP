@@ -169,6 +169,11 @@ export default function StartScreen({ onNavigate }) {
         className="start-bowl cursor-pointer"
       >
         <span className="start-bowl-inner relative block">
+          {/* Boden-/Steh-Schatten: flache, weiche Ellipse am Fuß der Schüssel.
+              Liegt fest auf dem "Boden" (schwebt NICHT mit der Bowl mit) und
+              erdet sie so. */}
+          <span aria-hidden="true" className="start-bowl-shadow pointer-events-none" />
+
           {/* Dampf: mittig über der Schüssel */}
           <span
             aria-hidden="true"
@@ -186,14 +191,14 @@ export default function StartScreen({ onNavigate }) {
           {/* Schüssel (bowl_back), schwebt sanft */}
           <span className="animate-float block">
             {bowlMissing ? (
-              <BowlGraphic className="h-auto w-full drop-shadow-xl" />
+              <BowlGraphic className="relative h-auto w-full" />
             ) : (
               <img
                 ref={imgRef}
                 src="/assets/bowl/bowl_back.png"
                 alt=""
                 onError={() => setBowlMissing(true)}
-                className="h-auto w-full object-contain drop-shadow-xl"
+                className="relative h-auto w-full object-contain"
               />
             )}
           </span>

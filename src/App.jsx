@@ -167,7 +167,7 @@ export default function App() {
               ref={flightRef}
               src="/assets/bowl/bowl_back.png"
               alt=""
-              className="start-handoff-bowl h-auto object-contain drop-shadow-xl"
+              className="start-handoff-bowl h-auto object-contain"
               onTransitionEnd={(e) => {
                 // Gelandet (transform-Transition fertig) -> ggf. Crossfade.
                 if (e.propertyName !== 'transform') return;

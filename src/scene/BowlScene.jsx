@@ -13,8 +13,20 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { BROTHS } from '../config/menu';
-import { BOWL_CY, BOWL_W, CANVAS_H, CANVAS_W, RO, WATERLINE_Y } from '../config/sceneConfig';
-import { useBowlTexture } from './sceneTextures';
+import {
+  BOWL_CY,
+  BOWL_W,
+  CANVAS_H,
+  CANVAS_W,
+  GROUND_SHADOW_CX,
+  GROUND_SHADOW_CY,
+  GROUND_SHADOW_H,
+  GROUND_SHADOW_OPACITY,
+  GROUND_SHADOW_W,
+  RO,
+  WATERLINE_Y,
+} from '../config/sceneConfig';
+import { useBowlTexture, softCircleTexture } from './sceneTextures';
 import { composeBowlItems } from './composeBowl';
 import Broth from './Broth';
 import Steam from './Steam';
@@ -29,6 +41,30 @@ function FitCamera() {
     camera.updateProjectionMatrix();
   }, [camera, size]);
   return null;
+}
+
+/* Boden-/Steh-Schatten unter der Schüssel: eine flache, weiche Ellipse (weiße
+   softCircle-Textur, schwarz eingefärbt) hinter bowlBack. Erdet die Schüssel. */
+function GroundShadow() {
+  const tex = useMemo(() => softCircleTexture(), []);
+  return (
+    <mesh
+      position={[GROUND_SHADOW_CX, GROUND_SHADOW_CY, 0]}
+      scale={[GROUND_SHADOW_W, GROUND_SHADOW_H, 1]}
+      renderOrder={RO.groundShadow}
+    >
+      <planeGeometry args={[1, 1]} />
+      <meshBasicMaterial
+        map={tex}
+        color="#000000"
+        transparent
+        opacity={GROUND_SHADOW_OPACITY}
+        depthTest={false}
+        depthWrite={false}
+        toneMapped={false}
+      />
+    </mesh>
+  );
 }
 
 /* Schüssel: hintere Ebene (volles PNG) + vordere Lippe (freigestelltes PNG).
@@ -116,6 +152,7 @@ export default function BowlScene({ broth = null, ingredients = [], onReady }) {
       >
         <FitCamera />
         {onReady && <SceneReadySignal onReady={onReady} />}
+        <GroundShadow />
         <Bowl />
         <Broth ref={brothRef} broth={brothData} visible={!!brothData} />
         {items.map((item) => (
