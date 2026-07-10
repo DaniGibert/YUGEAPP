@@ -4,7 +4,7 @@ import BowlGraphic from '../components/BowlGraphic';
 import BowlThumbnail from '../components/BowlThumbnail';
 import Button from '../components/Button';
 import { BROTHS, PROTEINS, RECOMMENDED_BOWLS, TOPPINGS } from '../config/menu';
-import { bowlPrice } from '../state/orderStore';
+import { bowlPrice, useOrderStore } from '../state/orderStore';
 import { t } from '../i18n';
 
 // Kurze Zutaten-Zeile einer Empfehlung: Brühe, Protein und Toppings aus den
@@ -38,6 +38,7 @@ export default function StartScreen({ onNavigate }) {
   // Echtes Schüssel-Foto (bowl_back); fehlt es, greift der prozedurale
   // Platzhalter BowlGraphic (CLAUDE.md §7).
   const [bowlMissing, setBowlMissing] = useState(false);
+  const loadBowl = useOrderStore((s) => s.loadBowl);
   // Sichtbares Schüssel-Bild: sein Rect (inkl. Schwebe-Offset und Idle-Scale)
   // ist der Startpunkt des Flugs.
   const imgRef = useRef(null);
@@ -134,13 +135,22 @@ export default function StartScreen({ onNavigate }) {
           </Button>
         </div>
 
-        {/* Empfehlungen: reine Optik, Klicks fallen nicht in den Bau durch */}
+        {/* Empfehlungen: Schnellstart für Unentschlossene. Ein Tipp lädt die
+            fertige Bowl in den Bau-Zustand und führt auf die Übersicht (dort
+            prüfen, pro Schritt ändern oder in den Warenkorb legen). Der Wrapper
+            stoppt die Propagation, damit die Karten nicht den Start→Builder-Flug
+            der Section auslösen. */}
         <div className="flex w-full flex-col gap-3" onClick={(event) => event.stopPropagation()}>
           <p className="text-small font-semibold text-ink-400">{t('start.recommendedTitle')}</p>
           {RECOMMENDED_BOWLS.map((bowl) => (
-            <div
+            <button
               key={bowl.id}
-              className="flex items-center gap-3 rounded-lg border-2 border-line bg-surface p-3"
+              type="button"
+              onClick={() => {
+                loadBowl(bowl.config);
+                onNavigate?.('overview');
+              }}
+              className="group flex cursor-pointer items-center gap-3 rounded-lg border-2 border-line bg-surface p-3 text-left transition-colors hover:border-ink-400 active:scale-[0.98]"
             >
               <BowlThumbnail config={bowl.config} className="w-16 shrink-0" />
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -152,11 +162,11 @@ export default function StartScreen({ onNavigate }) {
               <span className="font-display text-h2 text-ink-900">{bowlPrice(bowl.config)} €</span>
               <span
                 aria-hidden="true"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line text-ink-400"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line text-ink-400 transition-colors group-hover:border-primary group-hover:text-primary"
               >
                 <Plus size={18} />
               </span>
-            </div>
+            </button>
           ))}
         </div>
       </div>

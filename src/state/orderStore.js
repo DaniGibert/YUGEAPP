@@ -15,6 +15,7 @@ import {
   TOPPINGS,
   TOPPING_MAX,
 } from '../config/menu';
+import { STEPS } from '../config/steps';
 
 const emptyBowl = () => ({
   broth: null,
@@ -107,6 +108,18 @@ export const useOrderStore = create((set) => ({
     }),
 
   resetBowl: () => set({ bowl: emptyBowl(), stepIndex: 0, maxStepIndex: 0 }),
+
+  // Fertige Bowl (z. B. eine Empfehlung vom Start) als Bau-Zustand laden und
+  // damit auf die Übersicht springen. Die Config wird kopiert (inkl. der
+  // verschachtelten toppings/finish), damit spätere Änderungen die Vorlage nicht
+  // berühren; maxStepIndex auf den letzten Schritt, weil die Bowl schon komplett
+  // ist und der Breadcrumb voll navigierbar sein soll.
+  loadBowl: (config) =>
+    set({
+      bowl: { ...config, toppings: { ...config.toppings }, finish: { ...config.finish } },
+      stepIndex: 0,
+      maxStepIndex: STEPS.length - 1,
+    }),
 
   // Fertige Bowl in den Warenkorb (Entwurf) legen und den Builder leeren.
   // Struktur wie order_items in CLAUDE.md §6: type, name, price, config.

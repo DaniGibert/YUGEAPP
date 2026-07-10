@@ -268,8 +268,14 @@ dampft nicht. (Der Start-Screen zeigt seinen eigenen CSS-Dampf, unabhängig von 
   Empfehlungs-Karten (fertige Bowls aus `RECOMMENDED_BOWLS` in `menu.js`: Mini-Bowl, Name,
   Zutaten, Preis via `bowlPrice`). Schüssel, Haupt-CTA und der Hintergrund lösen alle
   **denselben Flug** in den Builder aus (siehe §5); die anderen Elemente stoppen die
-  Propagation. **Empfehlungs-Karten sind derzeit bewusst nicht klickbar** (nur Optik, Idee),
-  das „+" ist Deko. Kein Hinweistext (selbsterklärend durch den CTA).
+  Propagation. **Empfehlungs-Karten sind der Schnellstart für Unentschlossene:** ein Tipp
+  lädt die fertige Bowl in den Bau-Zustand (`loadBowl` im `orderStore`, Config kopiert,
+  `maxStepIndex` auf den letzten Schritt) und führt auf die **Übersicht** (dort prüfen, pro
+  Schritt ändern oder in den Warenkorb legen) — bewusst nicht direkt in den Warenkorb, damit
+  ein Bestätigungs- und Anpass-Moment bleibt. Sie lösen **nicht** den Start→Builder-Flug aus.
+  Kein Hinweistext (selbsterklärend durch den CTA). Die zwei „Noch ein Ramen"-Wege (Warenkorb,
+  Nachbestellen im Status) führen weiter in den **Builder** und zeigen bewusst **keine**
+  Empfehlungen (die sind Erst-Entscheidungs-Hilfe, kein Wiederhol-Weg).
 - **Toppings:** insgesamt **4 Stück** über alle Toppings zusammen — die Mengen zählen
   gemeinsam (z. B. 4× Mais, oder 2× Mais + 2× Ajitama).
   (`toppings = { id: menge }`, Regel: **Summe aller Mengen ≤ 4**.)
