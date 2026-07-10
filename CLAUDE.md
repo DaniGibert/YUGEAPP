@@ -66,11 +66,16 @@ Nichts anderes ohne Rückfrage hinzufügen.
    rem-basierte Media-Queries in `theme.css` proportional herunter (Handy quer/hoch),
    damit alles sichtbar und bedienbar bleibt; iPad und Desktop bleiben unverändert.
 
-7. **„Kellner rufen" ist global** und auf **jedem** Screen im Header sichtbar. Ein Klick
-   zeigt eine kurze Bestätigung („Ein:e Kellner:in kommt gleich").
+7. **„Kellner rufen" ist global** und auf **jedem** Screen im Header sichtbar (Icon **plus
+   Text-Label**, wie „Bestellstatus" und „Warenkorb"). Ein Klick öffnet ein zentriertes
+   Bestätigungs-Modal („Ein:e Kellner:in kommt gleich"), das man wegklickt (der abgedunkelte
+   Hintergrund blendet nur ein, `animate-fade-in`; nur die Karte poppt auf).
 
 8. **Schreibweise & Preise.** Deutsche UI-Texte in Sentence-Case. Preise sind **Ganzzahlen**
-   (z. B. `5`, nicht `4,99`).
+   (z. B. `5`, nicht `4,99`). Der Gast-facing Begriff für die Bowl ist **„Ramen"** (alle
+   i18n-Texte: „Ramen zusammenstellen", „Dein Ramen", „Noch ein Ramen"; „der Ramen",
+   also keinen/deinen/einen). **Code-Bezeichner bleiben `bowl`** (`bowlPrice`,
+   `RECOMMENDED_BOWLS`, DB-Typ `bowl`, Asset-Pfade) — nur sichtbarer Text ist „Ramen".
 
 ---
 
@@ -154,10 +159,15 @@ docs/
   `document.body`, feste lesbare Breite) mit Item-Name als Überschrift plus Beschreibung,
   nicht mehr an die Kartenbreite gebunden.
 - **Animationen** leben als Tokens/Keyframes in `theme.css` (`animate-*`): u. a.
-  `steam`/`float` (Start), `pulse-soft` (aktiver Status-Schritt), `popover-in` („i"-Info),
+  `steam`/`float` (Start), `bowl-shadow` (Boden-Schatten der Start-Schüssel, synchron zur
+  Schwebe), `nudge-x` (Pfeil am Start-CTA), `pulse-soft` (aktiver Status-Schritt),
+  `popover-in` („i"-Info), `fade-in` (Modal-Hintergrund), `cascade-in` (Builder-Eintritt),
   `drag-hint` (Getrennt-Zahlen). Schritt-/Tab-Wechsel in Builder und Warenkorb laufen als
   „Filmstreifen" (alle Panels nebeneinander, Track per `translateX`), die aktive Auswahl in
-  `ModifierGroup` gleitet als Pill. Bewegung immer über `theme.css`, `motion-reduce` respektieren.
+  `ModifierGroup` gleitet als Pill. **Nach dem Start→Builder-Flug** fahren die Builder-Bausteine
+  gestaffelt von unten ein (`.screen-cascade` am Wrapper + `.cascade-item` mit `--cascade-i`,
+  gesetzt nur im `revealing`-Zustand des Handoffs — läuft also **nur** beim Flug-Eintritt, nicht
+  bei Direkteinstiegen). Bewegung immer über `theme.css`, `motion-reduce` respektieren.
 - **Grenze CSS vs. `motion/react`:** statische, deklarative Bewegung (Loops, Eintritte, Hover,
   der Flug Start → Builder) bleibt CSS in `theme.css`. Datengetriebene Übergänge, deren Ablauf
   von Live-Daten abhängt (Status-Choreografie, Runden-Ankunft, Summen-Ticker im `StatusScreen`),
@@ -204,7 +214,19 @@ Die Technik ist ein 2.5D-„Papier-Diorama" aus flachen PNGs (siehe separate Not
 Schüssel als zwei PNGs (`bowl_back` + `bowl_front`), Wasserlinien-Shader fürs Eintauchen,
 Ripple beim Aufprall, Fall über unterdämpfte `@react-spring/three`-Feder.
 **Alle Tuning-Werte in `config/sceneConfig.js`.** Fehlende Assets → prozeduraler
-Platzhalter (Farb-Blob aus `sceneColor`), nichts crasht.
+Platzhalter (Farb-Blob aus `sceneColor`), nichts crasht. Die Schüssel steht auf
+einer weichen **Boden-Schatten-Ellipse** (Szene: `GroundShadow`-Mesh; Start-Screen
+und Thumbnails: CSS/DOM-Pendant), damit sie nicht schwebt.
+
+**Datengetriebene Szenen-Choreografie** (alle Werte in `sceneConfig.js`, clock-getrieben
+in `useFrame` statt Timer; `scene/reducedMotion.js` schaltet sie bei
+`prefers-reduced-motion` instant): Die **erste** Brühe in leerer Bowl **füllt sich von
+unten** (Oberflächen-Pegel steigt aus der Tiefe und wächst, `FILL_*`; Begleit-Ripples
+gedämpft über `FILL_RIPPLE_STRENGTH`). Jeder **Brühen-Wechsel mit Zutaten** ist ein
+weicher Farb-/Textur-**Crossfade** (`BLEND_DURATION`, kein Neu-Füllen), die Zutaten
+bleiben liegen. Eine **entfernte Zutat versinkt** in der Brühe (`useTransition`-Leave →
+`exitT`, `SINK_*`: absinken + Submerge-Deckel auf + ausblenden; ohne Brühe: Schrumpfen).
+Bleibt bewusst bei `@react-spring/three` (nicht `motion`, siehe §5-Grenze).
 
 **Platzierung = Anrichte-Karte, keine Zufalls-/Spiral-Streuung.** Jede Zutat hat
 einen **festen Anker** pro `id` in `sceneConfig.js` (`ANCHORS`, Fallback pro Kategorie
@@ -230,7 +252,8 @@ dampft nicht. (Der Start-Screen zeigt seinen eigenen CSS-Dampf, unabhängig von 
 
 - **Start:** zwei Spalten (Querformat). **Rechts** die leere, dampfende Schüssel (`bowl_back`),
   groß und klickbar. **Links** die Aktions-Spalte von laut nach leise: Haupt-CTA
-  „Bowl zusammenstellen" (gefüllt), dann „Nur Getränke &amp; Beilagen" (ghost), dann 1–2
+  „Ramen zusammenstellen" (**reiner Text, kein Hintergrund/Rand**: die Wörter untereinander,
+  groß, im Tare-Rot, mit dezent wippendem Pfeil `nudge-x`), dann „Nur Getränke &amp; Beilagen" (ghost), dann 1–2
   Empfehlungs-Karten (fertige Bowls aus `RECOMMENDED_BOWLS` in `menu.js`: Mini-Bowl, Name,
   Zutaten, Preis via `bowlPrice`). Schüssel, Haupt-CTA und der Hintergrund lösen alle
   **denselben Flug** in den Builder aus (siehe §5); die anderen Elemente stoppen die
