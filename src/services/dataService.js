@@ -36,8 +36,56 @@ function toOrderItems(cartItems) {
   );
 }
 
-// Demo-Modus: Bestellungen leben nur im Speicher dieses Tabs.
+// Demo-Modus: Bestellungen leben nur im Speicher dieses Tabs. Alle Änderungen
+// (neue Bestellung, Status) werden an die demoListeners gemeldet, damit Status-
+// und Küchen-Screen ohne Supabase-Realtime live nachziehen.
 const demoOrders = [];
+const demoListeners = new Set();
+function emitDemoChange(order) {
+  demoListeners.forEach((fn) => fn(order));
+}
+
+// Status-Reihenfolge (Küche und Auto-Simulation gehen nur vorwärts).
+const STATUS_ORDER = ['aufgenommen', 'in_zubereitung', 'fertig'];
+
+// Auto-Simulation der Küche: damit die App ohne Wechsel in die Küchen-Ansicht
+// präsentierbar ist, wandert jede neue Bestellung automatisch weiter
+// (aufgenommen → in_zubereitung → fertig). Läuft über setOrderStatus, also den
+// exakt gleichen Pfad wie die Küche (Realtime-/Demo-Update beim Kunden). Ein
+// manueller Küchen-Sprung nach vorn wird nie überschrieben: vor jedem Schritt
+// prüfen wir den Ist-Status und setzen nur, wenn er noch dahinter liegt.
+const SIM_STEPS = [
+  { status: 'in_zubereitung', delayMs: 5000 },
+  { status: 'fertig', delayMs: 10000 },
+];
+
+async function currentStatus(orderId) {
+  if (isDemoMode()) {
+    return demoOrders.find((o) => o.id === orderId)?.status ?? null;
+  }
+  const { data, error } = await supabase
+    .from('orders')
+    .select('status')
+    .eq('id', orderId)
+    .single();
+  if (error) throw error;
+  return data?.status ?? null;
+}
+
+function simulateKitchen(orderId) {
+  for (const { status, delayMs } of SIM_STEPS) {
+    setTimeout(async () => {
+      try {
+        const now = await currentStatus(orderId);
+        if (now === null) return; // Bestellung existiert nicht mehr
+        if (STATUS_ORDER.indexOf(now) >= STATUS_ORDER.indexOf(status)) return; // Küche war schneller
+        await setOrderStatus(orderId, status);
+      } catch (err) {
+        console.error('Auto-Simulation Status fehlgeschlagen:', err);
+      }
+    }, delayMs);
+  }
+}
 
 // Schickt die aktuelle Runde ab. Rückgabe: die angelegte Bestellung
 // ({ id, session_id, status, total, paid, created_at, items }).
@@ -55,6 +103,8 @@ export async function submitOrder(cartItems, total) {
       items: toOrderItems(cartItems),
     };
     demoOrders.push(order);
+    emitDemoChange(order);
+    simulateKitchen(order.id);
     return order;
   }
 
@@ -69,6 +119,7 @@ export async function submitOrder(cartItems, total) {
   const { error: itemsError } = await supabase.from('order_items').insert(rows);
   if (itemsError) throw itemsError;
 
+  simulateKitchen(order.id);
   return { ...order, items: rows };
 }
 
@@ -125,7 +176,10 @@ export async function fetchOpenOrders() {
 export async function setOrderStatus(orderId, status) {
   if (isDemoMode()) {
     const order = demoOrders.find((o) => o.id === orderId);
-    if (order) order.status = status;
+    if (order) {
+      order.status = status;
+      emitDemoChange(order);
+    }
     return order;
   }
 
@@ -142,7 +196,11 @@ export async function setOrderStatus(orderId, status) {
 // Küchen-Ansicht: bei jeder Änderung an orders (neue Bestellung, Status)
 // benachrichtigen. Rückgabe: Abmelde-Funktion.
 export function subscribeToAllOrders(onChange) {
-  if (isDemoMode()) return () => {};
+  if (isDemoMode()) {
+    const listener = () => onChange();
+    demoListeners.add(listener);
+    return () => demoListeners.delete(listener);
+  }
 
   const channel = supabase
     .channel(`kitchen-orders-${crypto.randomUUID()}`)
@@ -154,17 +212,16 @@ export function subscribeToAllOrders(onChange) {
 // Live-Status (CLAUDE.md §6): Änderungen und neue Bestellungen dieser
 // Session abonnieren. Rückgabe: Abmelde-Funktion. Der einmalige Kanalname
 // verhindert Topic-Races bei Ab- und Neuanmeldung (Screen-Wechsel, StrictMode).
-// Demo-Modus: der Status wandert automatisch weiter, damit der Screen erlebbar ist.
+// Demo-Modus: die Auto-Simulation (simulateKitchen) treibt den Status, hier wird
+// nur die eigene Session benachrichtigt.
 export function subscribeToOrders(onChange) {
   if (isDemoMode()) {
-    const latest = demoOrders[demoOrders.length - 1];
-    const timers = latest
-      ? [
-          setTimeout(() => onChange({ ...latest, status: (latest.status = 'in_zubereitung') }), 8000),
-          setTimeout(() => onChange({ ...latest, status: (latest.status = 'fertig') }), 16000),
-        ]
-      : [];
-    return () => timers.forEach(clearTimeout);
+    const sessionId = getSessionId();
+    const listener = (order) => {
+      if (!order || order.session_id === sessionId) onChange(order);
+    };
+    demoListeners.add(listener);
+    return () => demoListeners.delete(listener);
   }
 
   const channel = supabase

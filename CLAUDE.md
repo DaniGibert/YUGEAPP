@@ -201,6 +201,17 @@ Nur das **Dynamische** kommt in die Datenbank. **Menü & Preise bleiben in `conf
 **Live-Status:** Das Kunden-Tablet abonniert seine `order` per Supabase-**Realtime**.
 Die `KitchenScreen`-Ansicht ändert den `status`; das Tablet aktualisiert sich automatisch.
 
+**Auto-Simulation der Küche (Präsentation):** Damit die App ohne Wechsel in die
+Küchen-Ansicht vorführbar ist, wandert jede neue Bestellung nach dem Absenden
+automatisch weiter (`aufgenommen` → `in_zubereitung` nach 5s → `fertig` nach 10s).
+Das läuft ausschließlich in `dataService.js` (`simulateKitchen`, Timing in `SIM_STEPS`)
+und **immer** über `setOrderStatus` — also exakt der Küchen-Pfad, inklusive Realtime-/
+Demo-Update beim Kunden. Die Küche bleibt voll funktionsfähig und kann jederzeit manuell
+vorspringen; die Simulation prüft vor jedem Schritt den Ist-Status und setzt **nur vorwärts**,
+überschreibt einen manuellen Sprung also nie zurück. Im Demo-Modus (ohne Supabase) treiben
+dieselben Timer den Status; die Screens ziehen über einen lokalen Listener (`demoListeners`)
+nach, den `submitOrder`/`setOrderStatus` benachrichtigen.
+
 **Sicherheit:** ENV-Variablen (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`) in `.env`,
 **niemals** committen. Row-Level-Security-Policies bewusst setzen (öffentliches Tablet!) —
 kurz mit dem Menschen abstimmen, bevor Policies scharf gestellt werden.
