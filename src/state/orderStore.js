@@ -55,19 +55,20 @@ export function bowlIngredients(bowl) {
   return chips;
 }
 
-// Szenen-Instanzen für BowlScene: Mengen als Einzel-Instanzen, deterministische
-// Reihenfolge (Menü-Ordnung) -> gleiche Auswahl ergibt immer dieselbe Komposition.
+// Szenen-Zutaten für BowlScene/BowlThumbnail: EIN Eintrag pro Zutat (gruppiert,
+// nicht mehr pro Instanz). Die Menge (qty) löst composeBowlItems zur Varianten-
+// Leiter + Satelliten auf. Deterministische Reihenfolge (Menü-Ordnung) -> gleiche
+// Auswahl ergibt immer dieselbe Komposition. Der stabile key `topping-${id}` hält
+// das Haupt-Item über Mengenwechsel hinweg (ermöglicht den Mini-Plop).
 export function bowlSceneIngredients(bowl) {
   const list = [];
-  if (bowl.noodle) list.push({ key: `noodle-${bowl.noodle}`, id: bowl.noodle, category: 'noodle' });
+  if (bowl.noodle) list.push({ key: `noodle-${bowl.noodle}`, id: bowl.noodle, category: 'noodle', qty: 1 });
   if (bowl.protein && bowl.protein !== 'ohne') {
-    list.push({ key: `protein-${bowl.protein}`, id: bowl.protein, category: 'protein' });
+    list.push({ key: `protein-${bowl.protein}`, id: bowl.protein, category: 'protein', qty: 1 });
   }
   for (const topping of TOPPINGS) {
     const qty = bowl.toppings[topping.id] ?? 0;
-    for (let i = 0; i < qty; i++) {
-      list.push({ key: `topping-${topping.id}-${i}`, id: topping.id, category: 'topping' });
-    }
+    if (qty > 0) list.push({ key: `topping-${topping.id}`, id: topping.id, category: 'topping', qty });
   }
   return list;
 }

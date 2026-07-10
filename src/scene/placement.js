@@ -1,40 +1,39 @@
 /* =============================================================================
- * Organische Platzierung per Goldener-Winkel-Spirale (Phyllotaxis).
- * Komponiert & deterministisch statt zufällig, die Schüssel sieht jedes Mal
- * ausgewogen aus. Kategorie steuert das Radius-Band (Zone) auf der Streu-Ellipse.
+ * Anrichte-Karte: fester Anker pro Zutaten-id statt Goldener-Winkel-Spirale.
+ * Jede Zutat landet an ihrem kuratierten Platz (ANCHORS), Mengen 3/4 an
+ * deterministischen Satelliten-Offsets. Kein Index, kein Zufall -> gleiche
+ * Auswahl ergibt immer dieselbe, komponierte Schüssel; Bestands-Zutaten
+ * bewegen sich nicht, wenn etwas dazukommt (Position = f(id), nicht f(index)).
+ * Alle Positions-/Look-Werte leben in sceneConfig.js (CLAUDE.md §3.5).
  * ===========================================================================*/
-import { SCAT_CX, SCAT_CY, SCAT_RX, SCAT_RY } from "../config/sceneConfig.js";
-
-const GOLDEN = Math.PI * (3 - Math.sqrt(5)); // ~137.5°
-
-// Radius-Band [innen, außen] (Anteil der Streu-Ellipse) + Winkel-Offset je Kategorie
-const ZONES = {
-  noodle: { band: [0.0, 0.5], offset: 0.0 },
-  protein: { band: [0.22, 0.62], offset: 1.2 },
-  topping: { band: [0.34, 1.0], offset: 2.4 },
-};
+import { ANCHORS, ANCHOR_DEFAULT, SCAT_CY, SCAT_RY } from "../config/sceneConfig.js";
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 /**
- * @param {string} category  z.B. "noodle" | "protein" | "topping"
- * @param {number} index     wievielte Zutat dieser Kategorie (0-basiert)
- * @param {number} spread    Erwartungswert für gleichmäßige Verteilung (Tuning)
- * @returns {{x,y,frontness,scale}}
+ * @param {string} id         Zutaten-id (Anker-Schlüssel)
+ * @param {string} category   "noodle" | "protein" | "topping" (Fallback-Anker)
+ * @param {number|null} satellite  Satelliten-Index (null = Haupt-Item am Anker)
+ * @returns {{x,y,frontness,scale,layer,float}}
  */
-export function placeIngredient(category, index, spread = 6) {
-  const zone = ZONES[category] || { band: [0.0, 1.0], offset: 0.0 };
-  const t = clamp((index + 0.5) / spread, 0, 1);
-  const rNorm = Math.sqrt(t); // gleichmäßige Flächenfüllung von innen nach außen
-  const r = zone.band[0] + rNorm * (zone.band[1] - zone.band[0]);
-  const angle = index * GOLDEN + zone.offset;
+export function placeIngredient(id, category, satellite = null) {
+  const anchor = ANCHORS[id] ?? ANCHOR_DEFAULT[category] ?? ANCHOR_DEFAULT.topping;
+  let x = anchor.x;
+  let y = anchor.y;
+  let s = anchor.scale ?? 1;
 
-  const x = SCAT_CX + Math.cos(angle) * r * SCAT_RX;
-  const y = SCAT_CY + Math.sin(angle) * r * SCAT_RY;
+  if (satellite != null) {
+    const sats = anchor.satellites ?? ANCHOR_DEFAULT.topping.satellites;
+    const sat = sats[satellite % sats.length];
+    x += sat.dx;
+    y += sat.dy;
+    s *= sat.scale;
+  }
 
-  // frontness: 1 = vorne (unten am Bildschirm), 0 = hinten (oben)
+  // frontness: 1 = vorne (unten am Bildschirm, kleines y), 0 = hinten (oben).
+  // Ein Wert steuert Position, renderOrder und Perspektiv-Scale konsistent.
   const frontness = clamp((SCAT_CY + SCAT_RY - y) / (2 * SCAT_RY), 0, 1);
-  const scale = 1 + frontness * 0.16; // vorne etwas größer (Perspektive)
+  const scale = (1 + frontness * 0.16) * s; // vorne etwas größer (Perspektive)
 
-  return { x, y, frontness, scale };
+  return { x, y, frontness, scale, layer: anchor.layer ?? null, float: anchor.float ?? 1 };
 }

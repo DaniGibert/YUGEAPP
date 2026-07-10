@@ -86,9 +86,9 @@ src/
     de.js / en.js          # UI-Texte (Menü-Namen/-Beschreibungen bleiben in menu.js)
     index.js               # t(), Sprachwechsel
   config/
-    menu.js                # alle Zutaten, Getränke, Beilagen + Preise + RECOMMENDED_BOWLS (Daten)
+    menu.js                # alle Zutaten, Getränke, Beilagen + Preise + RECOMMENDED_BOWLS (Daten); sceneVariants je Topping
     steps.js               # die 5 Bau-Schritte als Daten
-    sceneConfig.js         # Positions-/Look-Werte der Bowl-Szene
+    sceneConfig.js         # Positions-/Look-Werte der Bowl-Szene (inkl. ANCHORS: Anrichte-Karte, LAYER_RO)
   services/
     supabaseClient.js      # erstellt den Client aus ENV-Variablen
     dataService.js         # EINZIGE Stelle für Lesen/Schreiben (Bestellungen, Status)
@@ -120,7 +120,10 @@ src/
     KitchenScreen.jsx      # Küchen-Ansicht: Status ändern (löst Live-Update aus)
 public/
   manifest.json / icon.svg      # PWA (display fullscreen, orientation landscape) + App-Icon
-  assets/<kategorie>/<id>.png   # Dateiname == Options-id; Varianten: <id>-<variante>.png
+  assets/<kategorie>/<id>.png   # Dateiname == Options-id; Varianten: <id>-<variante>.png;
+                                # Toppings zusätzlich Mengen-Variante <id>-x2.png (vollerer Haufen)
+docs/
+  asset-spec.md                 # Look-/Naming-Spec der Zutaten-PNGs (nicht deployt)
 ```
 
 ---
@@ -199,9 +202,24 @@ kurz mit dem Menschen abstimmen, bevor Policies scharf gestellt werden.
 Die Technik ist ein 2.5D-„Papier-Diorama" aus flachen PNGs (siehe separate Notizen
 `TestApp.md`): Layer-Sandwich per `renderOrder`, orthografische Kamera (1 Welt-Einheit ≈ 1 px),
 Schüssel als zwei PNGs (`bowl_back` + `bowl_front`), Wasserlinien-Shader fürs Eintauchen,
-Ripple beim Aufprall, Fall über unterdämpfte `@react-spring/three`-Feder, Platzierung per
-Goldener-Winkel-Spirale. **Alle Tuning-Werte in `config/sceneConfig.js`.**
-Fehlende Assets → prozeduraler Platzhalter, nichts crasht.
+Ripple beim Aufprall, Fall über unterdämpfte `@react-spring/three`-Feder.
+**Alle Tuning-Werte in `config/sceneConfig.js`.** Fehlende Assets → prozeduraler
+Platzhalter (Farb-Blob aus `sceneColor`), nichts crasht.
+
+**Platzierung = Anrichte-Karte, keine Zufalls-/Spiral-Streuung.** Jede Zutat hat
+einen **festen Anker** pro `id` in `sceneConfig.js` (`ANCHORS`, Fallback pro Kategorie
+`ANCHOR_DEFAULT`) — komponiert wie vom Koch angerichtet, und jeder Anker sieht auch
+allein gut aus. Position = f(id): Bestands-Zutaten bewegen sich **nie**, wenn etwas
+dazukommt. Mengen jenseits des Bild-Assets werden über deterministische
+**Satelliten-Offsets** (im Anker) zu einem volleren Haufen gestapelt. Ein Topping
+kann ein **Mengen-Varianten-Asset** `-x2.png` deklarieren (`sceneVariants` in
+`menu.js`, deklarativ, kein Laufzeit-Probing); die Leiter wählt das höchste
+deklarierte `≤ qty`, den Rest übernehmen Satelliten. Beim Mengen-/Varianten-Wechsel
+plopt das Haupt-Item kurz (**Mini-Plop**, `PLOP_DROP`) und der Ripple feuert erneut.
+Beide Renderpfade (WebGL `BowlScene`/`Ingredient3D` **und** DOM `BowlThumbnail`)
+teilen `composeBowlItems`, die Ebenen-Map `LAYER_RO` (inkl. `back` für stehendes
+Nori) und dieselbe Fallback-Leiter (`-x2` → Basis → Farb-Blob) — ein Look überall.
+Asset-Anforderungen (Look, Naming, Bedarfsliste): siehe `docs/asset-spec.md`.
 
 Der **Dampf** (`Steam`) erscheint nur, wenn eine **Brühe** gewählt ist — die leere Schüssel
 dampft nicht. (Der Start-Screen zeigt seinen eigenen CSS-Dampf, unabhängig von der Szene.)

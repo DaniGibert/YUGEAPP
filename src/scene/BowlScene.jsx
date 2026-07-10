@@ -2,7 +2,8 @@
  * BowlScene: R3F-Canvas mit dem Layer-Sandwich (2.5D-"Papier-Diorama").
  * Bekommt NUR Props (CLAUDE.md §3.5):
  *   broth       Options-Id der Brühe (oder null)
- *   ingredients [{ key, id, category }] (Mengen bereits als Einzel-Instanzen)
+ *   ingredients [{ key, id, category, qty }] (Menge als qty; composeBowlItems
+ *               löst Varianten-Assets + Satelliten auf, nicht der Aufrufer)
  *   modifiers   (aktuell ohne visuelle Wirkung)
  * Alle Tuning-Werte liegen in config/sceneConfig.js.
  *

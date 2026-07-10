@@ -11,14 +11,15 @@ import {
   GROUND_SHADOW_H,
   GROUND_SHADOW_OPACITY,
   GROUND_SHADOW_W,
+  LAYER_RO,
   RO,
 } from '../config/sceneConfig';
 import { composeBowlItems } from '../scene/composeBowl';
 import { bowlSceneIngredients } from '../state/orderStore';
 
 // Statisches Mini-Bild einer gebauten Bowl, komponiert aus denselben Assets,
-// derselben Platzierung (Goldener-Winkel-Spirale) und denselben Ebenen wie die
-// WebGL-Szene, aber als leichtes DOM/IMG-Komposit ohne Three.js.
+// derselben Platzierung (Anrichte-Karte, composeBowlItems) und denselben Ebenen
+// (LAYER_RO) wie die WebGL-Szene, aber als leichtes DOM/IMG-Komposit ohne Three.js.
 // Funktioniert überall (Warenkorb, Bezahlen, Status), auch für Bowls aus der
 // Datenbank: Es braucht nur das config-JSON (broth, noodle, protein, toppings).
 
@@ -38,11 +39,15 @@ function worldStyle(x, y, width, zIndex) {
   };
 }
 
-// Ein Bild-Layer mit Platzhalter-Fallback (fehlt das PNG -> farbige Form,
-// analog zum prozeduralen Fallback der Szene).
-function LayerImage({ src, color, style, aspect = '1 / 1' }) {
+// Ein Bild-Layer mit Fallback-Leiter (gespiegelt zur Szene/useTextureOrColor):
+// src -> fallbackSrc (z. B. Varianten-Asset -> Basis-Asset) -> farbige Form
+// (Platzhalter). onError läuft die Kette ab, wie bei ItemThumbnail.
+function LayerImage({ src, fallbackSrc = null, color, style, aspect = '1 / 1' }) {
+  const chain = [src, fallbackSrc].filter(Boolean);
+  const [step, setStep] = useState(0);
   const [failed, setFailed] = useState(false);
-  if (failed) {
+  const current = chain[step];
+  if (failed || !current) {
     if (!color) return null;
     return (
       <span
@@ -52,7 +57,13 @@ function LayerImage({ src, color, style, aspect = '1 / 1' }) {
     );
   }
   return (
-    <img src={src} alt="" className="absolute block max-w-none" style={style} onError={() => setFailed(true)} />
+    <img
+      src={current}
+      alt=""
+      className="absolute block max-w-none"
+      style={style}
+      onError={() => (step < chain.length - 1 ? setStep(step + 1) : setFailed(true))}
+    />
   );
 }
 
@@ -97,12 +108,13 @@ export default function BowlThumbnail({ config, className = '' }) {
         <LayerImage
           key={item.key}
           src={item.option.src}
+          fallbackSrc={item.option.fallbackSrc}
           color={item.option.color}
           style={worldStyle(
             item.x,
             item.y,
             item.option.size * item.scale,
-            (item.layer === 'noodle' ? RO.noodle : RO.surface) + Math.round(item.frontness * 9),
+            (LAYER_RO[item.layer] ?? RO.surface) + Math.round(item.frontness * 9),
           )}
         />
       ))}

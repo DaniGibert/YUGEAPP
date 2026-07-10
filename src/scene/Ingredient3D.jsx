@@ -11,7 +11,7 @@ import { useFrame } from "@react-three/fiber";
 import { useSpring, animated } from "@react-spring/three";
 import * as THREE from "three";
 import { useTextureOrColor, softCircleTexture } from "./sceneTextures.js";
-import { DROP_FROM, RO, SUBMERGE_FADE, SUBMERGE_TINT, WATER_BAND } from "../config/sceneConfig.js";
+import { DROP_FROM, LAYER_RO, PLOP_DROP, RO, SUBMERGE_FADE, SUBMERGE_TINT, WATER_BAND } from "../config/sceneConfig.js";
 
 // 1x1-Dummy, damit der sampler2D nie "null" ist.
 const DUMMY = new THREE.DataTexture(new Uint8Array([0, 0, 0, 0]), 1, 1, THREE.RGBAFormat);
@@ -49,8 +49,8 @@ const fragmentShader = /* glsl */ `
 `;
 
 export default function Ingredient3D({ item, onImpact, waterY = -9999, brothColor }) {
-  const { option, x, y, scale, frontness, layer } = item;
-  const map = useTextureOrColor(option.src, option.color);
+  const { option, x, y, scale, frontness, layer, float = 1 } = item;
+  const map = useTextureOrColor(option.src, option.color, option.fallbackSrc);
   const shadowTex = useRef(softCircleTexture());
 
   // option.size = Breite in Welt-px; Höhe folgt dem Seitenverhältnis des PNG.
@@ -90,6 +90,20 @@ export default function Ingredient3D({ item, onImpact, waterY = -9999, brothColo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Mini-Plop bei Bild-/Mengenwechsel: das Haupt-Item behält seinen key, tauscht
+  // aber die Textur (Varianten). prevSrc-Guard verhindert einen Plop beim Erst-
+  // Mount. Reihenfolge (set VOR start): erst hochsetzen, DANN Aufprall neu scharf
+  // schalten, dann fallen lassen -> kein Sofort-Ripple; der bestehende useFrame-
+  // Aufprall feuert den Ripple beim Wieder-Landen.
+  const prevSrc = useRef(option.src);
+  useEffect(() => {
+    if (prevSrc.current === option.src) return; // Erst-Mount / kein Bildwechsel
+    prevSrc.current = option.src;
+    api.set({ posY: y + PLOP_DROP });
+    landedRef.current = false;
+    api.start({ posY: y });
+  }, [option.src, y, api]);
+
   useFrame((state) => {
     const m = matRef.current;
     if (m) {
@@ -106,13 +120,14 @@ export default function Ingredient3D({ item, onImpact, waterY = -9999, brothColo
     }
     if (landedRef.current && innerRef.current) {
       const t = state.clock.elapsedTime;
-      innerRef.current.position.y = Math.sin(t * 0.8 + phase.current) * 2;
-      innerRef.current.rotation.z = Math.sin(t * 0.5 + phase.current) * 0.03;
+      // float dämpft die Wipp-Amplitude (Nori steht hinten und wippt kaum).
+      innerRef.current.position.y = Math.sin(t * 0.8 + phase.current) * 2 * float;
+      innerRef.current.rotation.z = Math.sin(t * 0.5 + phase.current) * 0.03 * float;
     }
   });
 
-  const ORDER = { submerged: RO.submerged, noodle: RO.noodle, surface: RO.surface };
-  const renderOrder = (ORDER[layer] ?? RO.surface) + frontness * 9;
+  // Gemeinsame Ebenen-Map (mit 'back' für Nori) aus sceneConfig, gespiegelt zum Thumbnail.
+  const renderOrder = (LAYER_RO[layer] ?? RO.surface) + frontness * 9;
 
   return (
     <animated.group position-x={x} position-y={spring.posY} scale={scale}>

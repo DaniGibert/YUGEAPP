@@ -124,30 +124,48 @@ function loadTexture(src) {
   return p;
 }
 
-/* Hook: liefert die geladene Textur oder (bei Fehler) einen Platzhalter. */
-export function useTextureOrColor(src, color) {
+/* Setzt Farbraum/Anisotropie und gibt die Textur zurück. */
+function tuneTexture(t) {
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}
+
+/* Hook: liefert die geladene Textur. Fallback-Leiter bei Fehler (gespiegelt zum
+   DOM-Thumbnail): src -> fallbackSrc (z. B. Varianten-Asset -> Basis-Asset) ->
+   Farb-Blob (Platzhalter). fallbackSrc ist optional (Satelliten/Basis-Assets). */
+export function useTextureOrColor(src, color, fallbackSrc = null) {
   const [map, setMap] = useState(null);
   useEffect(() => {
     let alive = true;
+    const setIfAlive = (t) => alive && setMap(t);
+    const toColor = () => setIfAlive(placeholderIngredientTexture(color));
+
+    // Versucht das Fallback-Asset, fällt sonst auf den Farb-Blob zurück.
+    const tryFallback = () => {
+      if (!fallbackSrc || failed.has(fallbackSrc)) return toColor();
+      loadTexture(fallbackSrc)
+        .then((t) => setIfAlive(tuneTexture(t)))
+        .catch(() => {
+          failed.add(fallbackSrc);
+          toColor();
+        });
+    };
+
     if (!src || failed.has(src)) {
-      setMap(placeholderIngredientTexture(color));
-      return;
+      tryFallback();
+    } else {
+      loadTexture(src)
+        .then((t) => setIfAlive(tuneTexture(t)))
+        .catch(() => {
+          failed.add(src);
+          tryFallback();
+        });
     }
-    loadTexture(src)
-      .then((t) => {
-        if (!alive) return;
-        t.colorSpace = THREE.SRGBColorSpace;
-        t.anisotropy = 4;
-        setMap(t);
-      })
-      .catch(() => {
-        failed.add(src);
-        if (alive) setMap(placeholderIngredientTexture(color));
-      });
     return () => {
       alive = false;
     };
-  }, [src, color]);
+  }, [src, color, fallbackSrc]);
   return map;
 }
 
