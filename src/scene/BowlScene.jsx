@@ -13,22 +13,26 @@
  * ===========================================================================*/
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { useTransition, easings } from '@react-spring/three';
 import { BROTHS } from '../config/menu';
 import {
   BOWL_CY,
   BOWL_W,
   CANVAS_H,
   CANVAS_W,
+  FILL_DURATION,
   GROUND_SHADOW_CX,
   GROUND_SHADOW_CY,
   GROUND_SHADOW_H,
   GROUND_SHADOW_OPACITY,
   GROUND_SHADOW_W,
   RO,
+  SINK_DURATION,
   WATERLINE_Y,
 } from '../config/sceneConfig';
 import { useBowlTexture, softCircleTexture } from './sceneTextures';
 import { composeBowlItems } from './composeBowl';
+import { PREFERS_REDUCED_MOTION } from './reducedMotion';
 import Broth from './Broth';
 import Steam from './Steam';
 import Ingredient3D from './Ingredient3D';
@@ -137,8 +141,42 @@ export default function BowlScene({ broth = null, ingredients = [], onReady }) {
     ? { color: brothOption.sceneColor, src: `/assets/broth/${brothOption.id}.png` }
     : null;
 
+  // Radiales Füllen NUR beim allerersten Brühen-Wählen in leerer Bowl (kein Vorgänger,
+  // keine Zutaten). Danach übernimmt Broth den Crossfade selbst. isFirstFill wird auch
+  // im Render gelesen (Steam-delay) -> Dampf blendet erst nach dem Füllen ein.
+  const prevBrothRef = useRef(null);
+  const isFirstFill = !prevBrothRef.current && !!broth && ingredients.length === 0;
+  useEffect(() => {
+    if (isFirstFill) brothRef.current?.fill();
+    prevBrothRef.current = broth;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [broth]);
+
   // Semantische Liste -> platzierte Instanzen (gemeinsame Logik mit BowlThumbnail).
   const items = useMemo(() => composeBowlItems(ingredients), [ingredients]);
+
+  // Exit-Choreografie: useTransition besitzt den Lebenszyklus (Leave-Ende = Unmount,
+  // Re-Add mit gleichem key kehrt den Spring um statt zu remounten). t: 1 (lebt) -> 0
+  // (versunken). Nur die Leave-Phase animiert; Enter/Update sind sofort (der Fall
+  // läuft weiterhin in Ingredient3D selbst).
+  const transitions = useTransition(items, {
+    keys: (it) => it.key,
+    from: { t: 1 },
+    enter: { t: 1 },
+    leave: { t: 0 },
+    config: (_item, _index, phase) =>
+      phase === 'leave' && !PREFERS_REDUCED_MOTION
+        ? { duration: SINK_DURATION, easing: easings.easeInCubic }
+        : { duration: 0 },
+  });
+
+  // Pflicht-Lookup: bei lebenden keys IMMER das aktuelle Item rendern (src-/qty-
+  // Updates + Mini-Plop fließen weiter); nur Leaving-Items nutzen den Snapshot.
+  const itemsByKey = useMemo(() => {
+    const m = new Map();
+    for (const it of items) m.set(it.key, it);
+    return m;
+  }, [items]);
 
   // Wasserlinie nur aktiv, wenn eine Brühe gewählt ist.
   const waterY = brothData ? WATERLINE_Y : -9999;
@@ -156,17 +194,21 @@ export default function BowlScene({ broth = null, ingredients = [], onReady }) {
         <GroundShadow />
         <Bowl />
         <Broth ref={brothRef} broth={brothData} visible={!!brothData} />
-        {items.map((item) => (
-          <Ingredient3D
-            key={item.key}
-            item={item}
-            onImpact={handleImpact}
-            waterY={waterY}
-            brothColor={brothData?.color}
-          />
-        ))}
-        {/* Dampf nur, wenn eine Bruehe drin ist: die leere Schuessel dampft nicht. */}
-        {brothData && <Steam />}
+        {transitions((style, item) => {
+          const live = itemsByKey.get(item.key) ?? item;
+          return (
+            <Ingredient3D
+              item={live}
+              exitT={style.t}
+              onImpact={handleImpact}
+              waterY={waterY}
+              brothColor={brothData?.color}
+            />
+          );
+        })}
+        {/* Dampf nur, wenn eine Bruehe drin ist: die leere Schuessel dampft nicht.
+            Beim ersten Fuellen wartet er, bis die Bruehe steht. */}
+        {brothData && <Steam delay={isFirstFill ? FILL_DURATION : 0} />}
       </Canvas>
     </div>
   );

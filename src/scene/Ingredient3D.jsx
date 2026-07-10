@@ -11,7 +11,17 @@ import { useFrame } from "@react-three/fiber";
 import { useSpring, animated } from "@react-spring/three";
 import * as THREE from "three";
 import { useTextureOrColor, softCircleTexture } from "./sceneTextures.js";
-import { DROP_FROM, LAYER_RO, PLOP_DROP, RO, SUBMERGE_FADE, SUBMERGE_TINT, WATER_BAND } from "../config/sceneConfig.js";
+import {
+  DROP_FROM,
+  LAYER_RO,
+  PLOP_DROP,
+  RO,
+  SINK_DEPTH,
+  SINK_FADE_TAIL,
+  SUBMERGE_FADE,
+  SUBMERGE_TINT,
+  WATER_BAND,
+} from "../config/sceneConfig.js";
 
 // 1x1-Dummy, damit der sampler2D nie "null" ist.
 const DUMMY = new THREE.DataTexture(new Uint8Array([0, 0, 0, 0]), 1, 1, THREE.RGBAFormat);
@@ -48,10 +58,14 @@ const fragmentShader = /* glsl */ `
   }
 `;
 
-export default function Ingredient3D({ item, onImpact, waterY = -9999, brothColor }) {
+export default function Ingredient3D({ item, exitT, onImpact, waterY = -9999, brothColor }) {
   const { option, x, y, scale, frontness, layer, float = 1 } = item;
   const map = useTextureOrColor(option.src, option.color, option.fallbackSrc);
   const shadowTex = useRef(softCircleTexture());
+
+  // Steckt die Zutat in einer Brühe? Steuert, ob "Entfernen" versinkt (in Brühe)
+  // oder als Fallback schrumpft + ausblendet (leere Schüssel).
+  const inBroth = waterY > -9000;
 
   // option.size = Breite in Welt-px; Höhe folgt dem Seitenverhältnis des PNG.
   const w = option.size ?? 80;
@@ -63,6 +77,7 @@ export default function Ingredient3D({ item, onImpact, waterY = -9999, brothColo
   const landedRef = useRef(false);
   const [landed, setLanded] = useState(false);
   const phase = useRef(Math.random() * Math.PI * 2);
+  const prevExitRef = useRef(1); // Flanken-Erkennung für den einmaligen Versink-Ripple
 
   const uniforms = useMemo(
     () => ({
@@ -105,20 +120,37 @@ export default function Ingredient3D({ item, onImpact, waterY = -9999, brothColo
   }, [option.src, y, api]);
 
   useFrame((state) => {
+    const tv = exitT.get(); // 1 = lebt, -> 0 beim Entfernen (Absinken/Ausblenden)
     const m = matRef.current;
     if (m) {
       m.uniforms.uMap.value = map || DUMMY;
-      m.uniforms.uOpacity.value = map ? 1 : 0;
       m.uniforms.uWaterY.value = waterY;
       if (brothColor) m.uniforms.uBrothColor.value.set(brothColor);
+      // Versinken: der eingetauchte Teil blendet mit fortschreitendem Absinken
+      // komplett weg (Deckel auf uFade), damit die Zutat sauber in der Brühe verschwindet.
+      m.uniforms.uFade.value = SUBMERGE_FADE + (1 - tv) * (1 - SUBMERGE_FADE);
+      const baseOp = map ? 1 : 0;
+      // In der Brühe erst spät ausblenden (die letzte SINK_FADE_TAIL-Strecke);
+      // ohne Brühe (Fallback) linear mit dem Schrumpfen ausblenden.
+      m.uniforms.uOpacity.value =
+        baseOp * (inBroth ? Math.min(1, tv / SINK_FADE_TAIL) : tv);
     }
+
+    // Versink-Ripple: fällt tv erstmals unter 1 (Zutat wird entfernt) -> genau EIN
+    // Ripple auf der Brühe. Nur mit Brühe (ohne gibt es keine Oberfläche).
+    if (prevExitRef.current >= 1 && tv < 1 && inBroth) {
+      onImpact?.(x, y);
+    }
+    prevExitRef.current = tv;
+
     // Aufprall: sobald die Zutat zum ersten Mal die Oberfläche (y) erreicht -> Ripple + Floaten an.
     if (!landedRef.current && spring.posY.get() <= y) {
       landedRef.current = true;
       setLanded(true);
       onImpact?.(x, y);
     }
-    if (landedRef.current && innerRef.current) {
+    // Float nur solange die Zutat lebt (tv == 1); beim Versinken einfrieren.
+    if (landedRef.current && innerRef.current && tv >= 1) {
       const t = state.clock.elapsedTime;
       // float dämpft die Wipp-Amplitude (Nori steht hinten und wippt kaum).
       innerRef.current.position.y = Math.sin(t * 0.8 + phase.current) * 2 * float;
@@ -130,35 +162,44 @@ export default function Ingredient3D({ item, onImpact, waterY = -9999, brothColo
   const renderOrder = (LAYER_RO[layer] ?? RO.surface) + frontness * 9;
 
   return (
+    // Äußere Gruppe: Platzierung + Fall-Feder (unberührt).
     <animated.group position-x={x} position-y={spring.posY} scale={scale}>
-      {/* Kontaktschatten auf der Brühe (nur Surface-Zutaten, erst nach dem Landen) */}
-      {layer === "surface" && landed && (
-        <mesh position={[0, -h * 0.36, 0]} renderOrder={RO.shadow + frontness * 0.5}>
-          <planeGeometry args={[w * 0.95, h * 0.42]} />
-          <meshBasicMaterial
-            map={shadowTex.current}
-            color="#000000"
+      {/* Innere Gruppe: Versinken beim Entfernen. In der Brühe sinkt sie um
+          SINK_DEPTH ab (Skala bleibt 1); ohne Brühe schrumpft sie stattdessen. */}
+      <animated.group
+        position-y={exitT.to((v) => (v - 1) * SINK_DEPTH * (inBroth ? 1 : 0))}
+        scale={exitT.to((v) => (inBroth ? 1 : 0.6 + 0.4 * v))}
+      >
+        {/* Kontaktschatten auf der Brühe (nur Surface-Zutaten, erst nach dem Landen);
+            verblasst mit dem Versinken. */}
+        {layer === "surface" && landed && (
+          <mesh position={[0, -h * 0.36, 0]} renderOrder={RO.shadow + frontness * 0.5}>
+            <planeGeometry args={[w * 0.95, h * 0.42]} />
+            <animated.meshBasicMaterial
+              map={shadowTex.current}
+              color="#000000"
+              transparent
+              opacity={exitT.to((v) => 0.24 * v)}
+              depthTest={false}
+              depthWrite={false}
+              toneMapped={false}
+            />
+          </mesh>
+        )}
+
+        <mesh ref={innerRef} renderOrder={renderOrder}>
+          <planeGeometry args={[w, h]} />
+          <shaderMaterial
+            ref={matRef}
+            vertexShader={vertexShader}
+            fragmentShader={fragmentShader}
+            uniforms={uniforms}
             transparent
-            opacity={0.24}
             depthTest={false}
             depthWrite={false}
-            toneMapped={false}
           />
         </mesh>
-      )}
-
-      <mesh ref={innerRef} renderOrder={renderOrder}>
-        <planeGeometry args={[w, h]} />
-        <shaderMaterial
-          ref={matRef}
-          vertexShader={vertexShader}
-          fragmentShader={fragmentShader}
-          uniforms={uniforms}
-          transparent
-          depthTest={false}
-          depthWrite={false}
-        />
-      </mesh>
+      </animated.group>
     </animated.group>
   );
 }

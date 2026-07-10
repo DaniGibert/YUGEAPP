@@ -80,6 +80,40 @@ export const WATER_BAND = 18; // weiche Übergangsbreite (halb)
 export const SUBMERGE_TINT = 0.5; // wie stark der Unterteil zur Brühenfarbe tönt (0..1)
 export const SUBMERGE_FADE = 0.22; // wie stark der Unterteil ausblendet (0..1, klein = bleibt sichtbar)
 
+// ---- Szenen-Animationen (Brühe füllen/blenden, Zutaten versinken, Dampf) ----
+// A) Erste Brühe in leerer Bowl "füllt sich von unten": die Oberflächen-Ellipse
+// startet tief und klein (Flüssigkeitsspiegel am Schüsselboden) und steigt/wächst
+// zur Endposition — die Perspektiv-Logik des Dioramas (tiefer Pegel = kleinere
+// sichtbare Oberfläche). Clock-getrieben in Broth.
+export const FILL_DURATION = 1.1; // s: Dauer des Füllens (easeOutCubic)
+export const FILL_RISE = 40; // Welt-px: Start-Tiefe des Pegels unter BROTH_CY
+export const FILL_START_SCALE = 0.55; // Start-Skala der Oberflächen-Ellipse (0..1)
+// Begleit-Ripples während des Füllens: at = Anteil der Fülldauer (0..1), x/y = Welt-px
+// relativ zur Oberfläche (wandern beim Steigen/Wachsen mit der Plane mit).
+export const FILL_RIPPLES = [
+  { at: 0.15, x: 0, y: 0 },
+  { at: 0.45, x: -42, y: 10 },
+  { at: 0.78, x: 38, y: -8 },
+];
+// Stärke der Füll-Ripples (0..1): dezenter als die vollen Aufprall-Ripples der
+// Zutaten (die bleiben 1). Kleiner = ruhigere Wellen beim Füllen.
+export const FILL_RIPPLE_STRENGTH = 0.4;
+// B) Brühen-Wechsel: weicher Farb-/Textur-Crossfade statt hartem Umschalten.
+export const BLEND_DURATION = 0.4; // s: Dauer des Crossfades (smoothstep)
+// C) Entfernte Zutat versinkt in der Brühe (Fallback ohne Brühe: Schrumpfen + Ausblenden).
+export const SINK_DEPTH = 46; // Welt-px: wie tief die Zutat beim Entfernen absinkt
+export const SINK_DURATION = 650; // ms: Dauer des Versinkens (useTransition leave)
+export const SINK_FADE_TAIL = 0.35; // Anteil der Reststrecke, über den es ausblendet
+// Dampf blendet nach dem ersten Füllen sanft ein (statt schlagartig da zu sein).
+export const STEAM_FADE_IN = 1.0; // s: Einblenddauer des Dampfs
+
+// ---- Dampf-Look (Steam): deutlich sichtbar über der Suppe, aber weich/additiv,
+// kein Nebel-Teppich. Wenige Partikel (Tablet-freundlich). ----
+export const STEAM_COUNT = 18; // Anzahl Partikel
+export const STEAM_OPACITY = 0.3; // Peak-Opacity eines Partikels (Sinus-Zyklus)
+export const STEAM_SCALE_MIN = 60; // kleinste Sprite-Grundgröße (Welt-px)
+export const STEAM_SCALE_MAX = 130; // größte Sprite-Grundgröße (Welt-px)
+
 // renderOrder-Strata (hinten -> vorne). Maler-Algorithmus, depthTest aus.
 export const RO = {
   groundShadow: -10, // Boden-Schatten hinter/unter der Schüssel
