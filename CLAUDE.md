@@ -111,7 +111,7 @@ src/
     Breadcrumb.jsx         # Brühe > Nudeln > ... (Haken auf erledigten Schritten, hohler Punkt auf offenen Pflichtschritten)
     Button.jsx             # Größen: sm | md | lg, Varianten: primary | ghost | dark
     AddCard.jsx            # gestrichelte "Hinzufügen"-Karte (Warenkorb: Noch ein Ramen; Status: Nächste Runde)
-    SteamPuffs.jsx         # CSS-Dampf (DOM-Pendant zum Szenen-Dampf): Start-Schüssel + Status-Hero
+    SteamPuffs.jsx         # CSS-Dampf (DOM-Pendant zum Szenen-Dampf) über der Start-Schüssel
     OptionCard.jsx         # eine Auswahl-Karte (Bild, "i"-Info als verankertes Popover)
     ModifierGroup.jsx      # segmentierte Auswahl mit gleitender Pill (Härte, Schärfe, ...)
     QuantityStepper.jsx    # − 0 + für Toppings
@@ -209,7 +209,9 @@ fertig" kurz vor Schluss, bei `fertig` ein Gruß. Nur eine Schätzung, kein exak
 
 **Auto-Simulation der Küche (Präsentation):** Damit die App ohne Wechsel in die
 Küchen-Ansicht vorführbar ist, wandert jede neue Bestellung nach dem Absenden
-automatisch weiter (`aufgenommen` → `in_zubereitung` nach 5s → `fertig` nach 10s).
+automatisch weiter (`aufgenommen` → `in_zubereitung` nach 5s → `fertig` nach 25s;
+das Zubereitungs-Fenster gibt der Koch-Choreografie im Status-Hero Zeit, alle
+Zutaten fallen zu lassen).
 Das läuft ausschließlich in `dataService.js` (`simulateKitchen`, Timing in `SIM_STEPS`)
 und **immer** über `setOrderStatus` — also exakt der Küchen-Pfad, inklusive Realtime-/
 Demo-Update beim Kunden. Die Küche bleibt voll funktionsfähig und kann jederzeit manuell
@@ -261,8 +263,9 @@ Nori) und dieselbe Fallback-Leiter (`-x2` → Basis → Farb-Blob) — ein Look 
 Asset-Anforderungen (Look, Naming, Bedarfsliste): siehe `docs/asset-spec.md`.
 
 Der **Dampf** (`Steam`) erscheint nur, wenn eine **Brühe** gewählt ist — die leere Schüssel
-dampft nicht. (Start-Schüssel und Status-Hero zeigen ihren eigenen CSS-Dampf, unabhängig
-von der Szene: geteilte Komponente `SteamPuffs`, bei reduced motion unsichtbar.)
+dampft nicht. (Die Start-Schüssel zeigt ihren eigenen CSS-Dampf, unabhängig von der
+Szene: Komponente `SteamPuffs`, bei reduced motion unsichtbar. Der Status-Hero nutzt
+die echte Szene und damit deren Dampf.)
 
 ---
 
@@ -308,11 +311,30 @@ Warenkorb** für die nächste Runde. Danach zeigt der Status, dass zubereitet wi
 Entscheidung im Chat vom 10.07.2026, keine Erklärtexte): Die **Nachbestell-Weiche ist an den
 Tracker angedockt** (im Hero-Block, warme Fläche `bg-gold/10`, Titel „Noch Hunger? Bestell
 jederzeit nach") statt als abgetrennter Fußbereich — „dein Essen kommt" und „du kannst mehr
-bestellen" lesen sich als eine Botschaft. Der Hero zeigt als **Status-Illustration die
-bestellte Bowl der Runde** (`BowlThumbnail` der ersten Bowl; ruhig bei „aufgenommen", ab
-„in Zubereitung" mit `SteamPuffs`-Dampf, der bei „fertig" weiterläuft; Runden ohne Bowl
-zeigen das `ItemThumbnail` des ersten Artikels ohne Dampf, ganz ohne Artikel gibt es kein
-Bild). Die Rundenliste **endet mit einer Ghost-Zeile
+bestellen" lesen sich als eine Botschaft. Der Hero ist eine **lebende Koch-Szene**
+(echte `BowlScene` der ersten Bowl der Runde): „aufgenommen" zeigt die leere Schüssel,
+ab „in Zubereitung" füllt sich die Brühe und die bestellten Zutaten fallen nacheinander,
+„fertig" steht komplett; der Dampf kommt aus der Szene, sobald Brühe drin ist. Timing
+(`COOK_START_S`, `COOK_STEP_S`) im `StatusScreen`; Zeitbasis ist `created_at`
+(deterministisch, Wiederbesuch zeigt den Zwischenstand statt neu zu kochen), der
+**Status hat Vorrang** („fertig" zeigt immer alles). Um die Hero-Bowl herum ploppen die
+**Begleiter der Runde** als **große, eng überlappende Menü-Komposition** ein (Menü-Foto):
+weitere Bowls je als `BowlThumbnail`, dann Getränke/Beilagen als **Sorten** (dedupliziert,
+2× Cola = eine Cola). Die PNGs sind ~1.83:1-Rahmen mit zentriertem Objekt + gebackenem
+Schatten; darum bekommen Begleiter **breite Boxen** (`SIDE_W` für Beilagen, `DRINK_W` für
+Getränke, `BOWL_COMPANION_W` für weitere Bowls; einzelne Artikel per `ITEM_W_OVERRIDE`
+feinjustiert, z. B. Matcha warm / Edamame kleiner), damit Glas/Teller in Bowl-nahe Größe
+erscheinen (der transparente Rand überlappt harmlos), alles auf einer gemeinsamen Standlinie.
+Platzierung (`layoutCompanions`): **Flanker** (weitere Bowls + Beilagen, Bowls zuerst) füllen
+über `flankSlot` die Slots L0, R0, dann nach rechts-außen (R1 …), dann links-außen — die
+erste weitere Bowl sitzt links neben der Hero, weitere sammeln sich rechts; äußere Flanker
+sitzen etwas höher (`FLANK_RISE`, wirken hinter statt unter). **Getränke** stehen eng
+nebeneinander rechts (`DRINK_X0`/`DRINK_SPREAD`, `DRINK_SHIFT` hält 3–4 im Bild) und ragen
+hoch (`DRINK_LIFT`); sie liegen **hinter** dem Canvas und ragen hinter Bowl/Beilagen hoch —
+steht rechts aber eine weitere **Bowl**, kommen sie nach **vorne** (sichtbar davor,
+`DRINK_BOWL_SHIFT`). Begrenzt auf `HERO_COMPANION_LIMIT` (4) — bewusste Veranschaulichung
+ohne Erklärtext, die Rechnung rechts zeigt die exakten Mengen. Runden ohne Bowl zeigen nur
+die Begleiter als eng zentrierte Reihe (`NOHERO_SPREAD`), ganz ohne Artikel kein Bild. Die Rundenliste **endet mit einer Ghost-Zeile
 „+ Nächste Runde"** (geteilte `AddCard`, gleiche gestrichelte Karte wie „Noch ein Ramen" im
 Warenkorb → Builder), und über den Bezahl-Buttons steht die kleine Zustands-Zeile
 **„Bezahlt wird am Ende"** (Uhr-Icon). Bewusst **kein** „offen/bezahlt"-Schild an der

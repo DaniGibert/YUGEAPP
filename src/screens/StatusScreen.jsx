@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import {
   motion,
   AnimatePresence,
@@ -11,13 +11,16 @@ import {
 import { ClipboardList, ChefHat, BellRing, Soup, CupSoda, Clock } from 'lucide-react';
 import { STATUS_FLOW, STATUS_COLORS } from '../config/orderStatus';
 import { fetchSessionOrders, subscribeToOrders } from '../services/dataService';
-import { useOrderStore } from '../state/orderStore';
+import { useOrderStore, bowlSceneIngredients } from '../state/orderStore';
 import AddCard from '../components/AddCard';
 import Button from '../components/Button';
-import SteamPuffs from '../components/SteamPuffs';
 import BowlThumbnail from '../components/BowlThumbnail';
 import ItemThumbnail from '../components/ItemThumbnail';
 import { t } from '../i18n';
+
+// Die echte Bowl-Szene kocht im Hero die Runde nach; wie im Builder lazy,
+// damit der Status-Screen ohne Bestellung three.js nicht lädt.
+const BowlScene = lazy(() => import('../scene/BowlScene'));
 
 // Live-Status: links der Fortschritt der letzten Runde (Supabase-Realtime,
 // CLAUDE.md §6) mit Nachbestell-Weiche, rechts die ganze Rechnung samt Bezahlen
@@ -35,7 +38,49 @@ const STATUS_ICONS = { aufgenommen: ClipboardList, in_zubereitung: ChefHat, fert
 // Geschätzte Zubereitungszeit gesamt (Minuten) für den ruhigen ETA-Hinweis am
 // Status-Hero. Bewusst eine Schätzung ab created_at, kein sekundengenauer Timer:
 // die Küche schaltet manuell, die Auto-Simulation schnell. Läuft fertig -> done.
-const PREP_ESTIMATE_MIN = 10;
+// 7 statt 10: eine Ramen-Küche ist schnell.
+const PREP_ESTIMATE_MIN = 7;
+
+// --- Küchen-Choreografie im Status-Hero (Zeiten in Sekunden) ---
+// Der Anrichte-Plan (Brühe -> Zutaten -> Beilagen/Getränke) wird während
+// "in Zubereitung" Schritt für Schritt sichtbar. Zeitbasis ist created_at:
+// deterministisch, ein Wiederbesuch des Screens zeigt den richtigen
+// Zwischenstand statt von vorn zu kochen. Der Status hat immer Vorrang:
+// "aufgenommen" zeigt nichts bzw. die leere Schüssel, "fertig" alles.
+const COOK_START_S = 5; // ab hier füllt sich die Brühe (Sim schaltet nach 5s um)
+const COOK_STEP_S = 2.5; // Abstand, in dem der nächste Baustein erscheint
+// Max. Begleiter (weitere Bowls + Getränke/Beilagen als Sorten) neben der
+// Hero-Bowl. Getränke/Beilagen zählen als Sorte (2× Cola = eine Cola): reine
+// Menü-Veranschaulichung, die Rechnung rechts zeigt die exakten Mengen. Nach
+// dem Ansehen leicht auf 5 änderbar.
+const HERO_COMPANION_LIMIT = 4;
+
+// Große, rahmen-proportionierte Begleiter: die PNGs sind ~1.83:1-Querformat-Rahmen
+// mit zentriertem Objekt + gebackenem Schatten. Breite Boxen lassen Glas/Teller in
+// Referenz-Größe erscheinen (Glas ragt hoch, Teller/Schale sitzen tief); der
+// transparente Rand überlappt die Nachbarn harmlos.
+// Breite der Begleiter-Boxen in px. SELBST ANPASSBAR: kleiner = kleineres Bild.
+const SIDE_W = 200; // Beilagen (Gyoza, Reis, Karaage ...) -> Standard für Beilagen
+const DRINK_W = 300; // Getränke (Glas, Flasche, Dose)
+const BOWL_COMPANION_W = 240; // px, Breite einer weiteren Bowl (Thumbnail)
+// Einzelne Artikel, die im eigenen Rahmen größer/kleiner wirken, gezielt per Name
+// feinjustieren (überschreibt SIDE_W/DRINK_W nur für diesen Artikel). SELBST ANPASSBAR.
+const ITEM_W_OVERRIDE = {
+  'Matcha Tee (Warm)': 205, // Tasse füllt den Rahmen stärker -> kleiner
+  Edamame: 165, // Schälchen wirkt sonst groß -> kleiner
+};
+// Fächerung der Flanker (Teller/Schalen/weitere Bowls) um die Bowl, HINTER dem
+// Canvas (z < Hero), eng überlappend wie ein Menü-Foto. Slot-Reihenfolge siehe
+// flankSlot (erst links, dann rechts, weitere nach rechts-außen).
+const FAN_BASE = 100; // px, Versatz des ersten Flankers von der Mitte
+const FAN_STEP = 105; // px, Zuwachs nach außen
+const FLANK_RISE = 16; // px, äußere Flanker sitzen höher = wirken weiter hinten
+const DRINK_LIFT = '4.25rem'; // Getränk steht höher = weiter hinten
+const DRINK_X0 = 100; // px, ein einzelnes Getränk sitzt rechts hinter der Bowl
+const DRINK_SPREAD = 70; // px, Abstand nebeneinander stehender Getränke (eng)
+const DRINK_SHIFT = 0.35; // wie stark die Getränke-Reihe je Anzahl nach links rückt (bleibt im Bild)
+const DRINK_BOWL_SHIFT = 80; // px, extra Versatz nach rechts, wenn eine weitere Bowl rechts steht
+const NOHERO_SPREAD = 130; // px, Abstand der Begleiter im Fall ohne Ramen (zentrierte Reihe)
 
 // ETA-Text je Status: "fertig" grüßt, sonst geschätzte Restzeit ab Bestellzeit
 // (nach unten offen -> "gleich fertig"). nowMs kommt vom Minuten-Ticker im Screen.
@@ -116,6 +161,71 @@ function ReorderCard({ icon: Icon, label, onClick }) {
       {label}
     </button>
   );
+}
+
+// Ein Begleiter der Menü-Komposition (Getränk/Beilage): das große Produktbild.
+// Die PNGs bringen ihren eigenen gebackenen Schatten mit (kein extra Schatten),
+// der beim Bottom-Ausrichten die gemeinsame Standlinie bildet.
+function HeroSideItem({ item }) {
+  const width = ITEM_W_OVERRIDE[item.name] ?? (item.type === 'drink' ? DRINK_W : SIDE_W);
+  return (
+    <span className="block" style={{ width: `${width}px` }}>
+      <ItemThumbnail item={item} className="w-full" />
+    </span>
+  );
+}
+
+// Position als Style: horizontaler Versatz von der Mitte, Standlinie, z-Ebene.
+function posStyle(offset, bottom, zIndex) {
+  return { left: '50%', bottom, transform: `translateX(calc(-50% + ${offset}px))`, zIndex };
+}
+
+// Platzierung aller Begleiter nach Rolle:
+//  - Getränke: hintere Reihe (z=1), hoch, nach RECHTS gruppiert -> ragen hinter
+//    Bowl und Beilagen hoch.
+//  - Beilagen: flankieren VOR den Getränken (z hoch), LINKS zuerst; äußere sitzen
+//    höher (FLANK_RISE) -> wirken weiter hinten statt "unter" der inneren.
+//  - Weitere Bowls: breit, deshalb nach LINKS-außen (hinter die inneren Beilagen),
+//    damit sie das rechts sitzende Getränk nicht verdecken.
+// Flanker-Slot je Reihenfolge: erst L0, dann R0, danach nach RECHTS-außen (R1, R2 …),
+// dann links-außen (L1, L2 …). So sitzt die erste weitere Bowl links neben der Hero,
+// weitere sammeln sich rechts daneben statt links auszufransen.
+function flankSlot(i) {
+  if (i === 0) return { side: -1, rank: 0 };
+  if (i === 1) return { side: 1, rank: 0 };
+  const j = i - 2;
+  return j % 2 === 0 ? { side: 1, rank: 1 + j / 2 } : { side: -1, rank: 1 + (j - 1) / 2 };
+}
+
+function layoutCompanions(list) {
+  const roleOf = (c) => (c.kind === 'bowl' ? 'bowl' : c.item.type === 'drink' ? 'drink' : 'side');
+  const rise = (rank) => `calc(3rem + ${rank * FLANK_RISE}px)`;
+  // 1. Durchgang: Flanker (weitere Bowls + Beilagen, Bowls-first) platzieren und
+  //    merken, ob rechts eine Bowl steht (dann kommt das Getränk davor statt dahinter).
+  const flank = new Map();
+  let fi = 0;
+  let hasRightBowl = false;
+  list.forEach((c, idx) => {
+    if (roleOf(c) === 'drink') return;
+    const { side, rank } = flankSlot(fi);
+    fi += 1;
+    const offset = side * (FAN_BASE + rank * FAN_STEP);
+    flank.set(idx, { offset, rank });
+    if (roleOf(c) === 'bowl' && offset > 0) hasRightBowl = true;
+  });
+  const nDrinks = list.filter((c) => roleOf(c) === 'drink').length;
+  const drinkBase = DRINK_X0 + (hasRightBowl ? DRINK_BOWL_SHIFT : 0);
+  const drinkZ = hasRightBowl ? 8 : 1; // vor die weitere Bowl (sichtbar) statt dahinter
+  let di = 0;
+  return list.map((c, idx) => {
+    if (roleOf(c) === 'drink') {
+      const offset = drinkBase + (di - (nDrinks - 1) * DRINK_SHIFT) * DRINK_SPREAD;
+      di += 1;
+      return posStyle(offset, DRINK_LIFT, drinkZ);
+    }
+    const { offset, rank } = flank.get(idx);
+    return posStyle(offset, rise(rank), 5 - rank);
+  });
 }
 
 // prevIndex = Status-Index der letzten Runde im vorherigen Render (aus dem Parent).
@@ -289,11 +399,25 @@ export default function StatusScreen({ onNavigate }) {
   }, []);
 
   const latest = orders?.[orders.length - 1];
-  // Status-Illustration: die erste Bowl der letzten Runde; Runden ohne Bowl
-  // (nur Getränke/Beilagen) zeigen stattdessen das Produktbild des ersten
-  // Artikels — ohne Dampf, Getränke dampfen nicht.
+  // Koch-Szene: die erste Bowl der Runde kocht (Hero). Begleiter für die
+  // Menü-Komposition drumherum: zuerst weitere Bowls (je als Thumbnail), dann
+  // Getränke/Beilagen als Sorten (dedupliziert über den Positions-Namen, der
+  // die Variante enthält). Begrenzt auf HERO_COMPANION_LIMIT.
   const heroBowl = latest?.items?.find((i) => i.type === 'bowl')?.config ?? null;
-  const heroItem = heroBowl ? null : (latest?.items?.[0] ?? null);
+  const companions = [];
+  for (const item of latest?.items ?? []) {
+    if (companions.length >= HERO_COMPANION_LIMIT) break;
+    if (item.type === 'bowl' && item.config !== heroBowl) {
+      companions.push({ kind: 'bowl', key: `bowl-${companions.length}`, config: item.config });
+    }
+  }
+  for (const item of latest?.items ?? []) {
+    if (companions.length >= HERO_COMPANION_LIMIT) break;
+    if (item.type === 'bowl') continue;
+    if (!companions.some((c) => c.kind === 'item' && c.name === item.name)) {
+      companions.push({ kind: 'item', key: `item-${item.name}`, item });
+    }
+  }
   const currentIndex = latest ? STATUS_FLOW.indexOf(latest.status) : -1;
   // prevIndex aus dem Ref lesen: gleiche Runde -> echter Vorgänger-Index;
   // Erst-Mount/neue Runde -> currentIndex (keine Choreografie).
@@ -316,6 +440,36 @@ export default function StatusScreen({ onNavigate }) {
     const id = setInterval(() => setNowMs(Date.now()), 60000);
     return () => clearInterval(id);
   }, [latest?.id, latest?.status]);
+
+  // Sekunden-Uhr der Koch-Choreografie, läuft nur solange "in Zubereitung":
+  // sie schaltet die nächste Zutat frei, die Fall-Animation macht die Szene.
+  const [cookNowMs, setCookNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    if (!latest || latest.status !== 'in_zubereitung') return undefined;
+    setCookNowMs(Date.now());
+    const id = setInterval(() => setCookNowMs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [latest?.id, latest?.status]);
+
+  // Anrichte-Plan: Brühe (1) -> Bowl-Zutaten -> Begleiter. `cooked` = wie viele
+  // Plan-Schritte sichtbar sind; Status hat Vorrang ("fertig" zeigt alles).
+  // Zeitbasis created_at -> Wiederbesuch zeigt den Zwischenstand statt neu zu
+  // kochen.
+  const recipe = heroBowl ? bowlSceneIngredients(heroBowl) : [];
+  const heroSteps = heroBowl ? 1 + recipe.length : 0;
+  const planLength = heroSteps + companions.length;
+  let cooked = 0;
+  if (latest?.status === 'fertig') {
+    cooked = planLength;
+  } else if (latest?.status === 'in_zubereitung') {
+    const elapsedS = (cookNowMs - new Date(latest.created_at).getTime()) / 1000;
+    cooked = Math.max(0, Math.min(planLength, Math.floor((elapsedS - COOK_START_S) / COOK_STEP_S) + 1));
+  }
+  const visibleBroth = heroBowl && cooked >= 1 ? heroBowl.broth : null;
+  const visibleIngredients = recipe.slice(0, Math.max(0, cooked - 1));
+  const visibleCompanions = companions.slice(0, Math.max(0, cooked - heroSteps));
+  // Position je Begleiter (stabil über alle companions, visibleCompanions ist ein Prefix).
+  const companionStyles = layoutCompanions(companions);
 
   // Gesehene ids nach jedem orders-Commit nachziehen. Die frisch bestellte Runde
   // (lastPlacedOrderId) bleibt bewusst bis zum nächsten Refetch draußen: so
@@ -396,7 +550,7 @@ export default function StatusScreen({ onNavigate }) {
               Feste Hero-Breite (max-w-xl): sonst schrumpft der Container auf die
               jeweilige Headline und der Tracker (w-full) springt beim Wechsel mit. */}
           {latest && (
-            <div className="flex w-full max-w-xl flex-col items-center gap-4 text-center">
+            <div className="flex w-full max-w-xl flex-col items-center gap-3 text-center">
               <p className="text-body font-semibold text-ink-400">
                 {t('status.round', { n: orders.length })}
               </p>
@@ -425,21 +579,66 @@ export default function StatusScreen({ onNavigate }) {
               <p className="text-body font-medium text-ink-400">
                 {etaText(latest.status, latest.created_at, nowMs)}
               </p>
-              {/* Status-Illustration (Chipotle-Muster mit Yuges Wow-Asset): die
-                  eigene Bowl der Runde. Bei "aufgenommen" steht sie ruhig, ab
-                  "in Zubereitung" dampft sie (die Küche kocht) und bei "fertig"
-                  dampft sie frisch weiter. Der Dampf liegt im DOM vor der Bowl,
-                  die Schwaden steigen also hinter dem Schüsselrand auf. */}
-              {heroBowl ? (
-                <span className="relative mt-1">
-                  {latest.status !== 'aufgenommen' && (
-                    <SteamPuffs className="absolute inset-x-0 -top-9" puffClassName="h-9 w-2" />
-                  )}
-                  <BowlThumbnail config={heroBowl} className="relative w-36" />
-                </span>
-              ) : (
-                heroItem && <ItemThumbnail item={heroItem} className="mt-1 h-24 w-24" />
-              )}
+              {/* Lebende Koch-Szene (Chipotle-Muster mit Yuges Wow-Asset): die
+                  echte BowlScene kocht die Runde nach. "Aufgenommen" zeigt die
+                  leere Schüssel, ab "in Zubereitung" füllt sich die Brühe und
+                  die bestellten Zutaten fallen nacheinander (der Dampf kommt
+                  aus der Szene, sobald Brühe drin ist), "fertig" steht komplett.
+                  Links/rechts ploppt die Anrichte der Runde ein. Der Container
+                  hat feste Höhe, damit beim Kochen nichts im Layout springt. */}
+              {(heroBowl || companions.length > 0) &&
+                (heroBowl ? (
+                  <div className="relative flex h-60 w-full items-end justify-center">
+                    {/* Begleiter absolut um die Bowl gefächert, HINTER dem Canvas
+                        (Menü-Tiefe), ploppen beim Kochen einzeln ein. */}
+                    {visibleCompanions.map((c, i) => (
+                      <span
+                        key={c.key}
+                        className="absolute animate-cascade-in motion-reduce:animate-none"
+                        style={companionStyles[i]}
+                      >
+                        {c.kind === 'bowl' ? (
+                          <span className="block" style={{ width: `${BOWL_COMPANION_W}px` }}>
+                            <BowlThumbnail config={c.config} className="w-full" />
+                          </span>
+                        ) : (
+                          <HeroSideItem item={c.item} />
+                        )}
+                      </span>
+                    ))}
+                    <div className="relative z-10 aspect-[700/640] h-full">
+                      <Suspense fallback={null}>
+                        <BowlScene broth={visibleBroth} ingredients={visibleIngredients} />
+                      </Suspense>
+                    </div>
+                  </div>
+                ) : (
+                  // Runde ohne Bowl: nur die Begleiter, eng zentrierte Reihe.
+                  // Getränke stehen näher zusammen (DRINK_SPREAD) als Beilagen.
+                  <div className="relative flex h-60 w-full items-end justify-center overflow-hidden">
+                    {visibleCompanions.map((c, idx) => {
+                      const n = visibleCompanions.length;
+                      const spacing = visibleCompanions.every((x) => x.item.type === 'drink')
+                        ? DRINK_SPREAD
+                        : NOHERO_SPREAD;
+                      const offset = (idx - (n - 1) / 2) * spacing;
+                      return (
+                        <span
+                          key={c.key}
+                          className="absolute animate-cascade-in motion-reduce:animate-none"
+                          style={{
+                            left: '50%',
+                            bottom: '2rem',
+                            transform: `translateX(calc(-50% + ${offset}px))`,
+                            zIndex: 10 - idx,
+                          }}
+                        >
+                          <HeroSideItem item={c.item} />
+                        </span>
+                      );
+                    })}
+                  </div>
+                ))}
               <StatusTracker status={latest.status} prevIndex={prevIndex} />
 
               {/* Nachbestell-Weiche, direkt an den Tracker angedockt (keine
@@ -448,7 +647,7 @@ export default function StatusScreen({ onNavigate }) {
                   §9). Warme Gold-Fläche macht die Zone zur Einladung statt zum
                   Fußbereich; Getränke/Beilagen ist der häufigste Fall, darf also
                   nicht hinter dem Bowl-Builder versteckt sein. */}
-              <div className="mt-2 flex w-full flex-col gap-3 rounded-lg bg-gold/10 p-4">
+              <div className="flex w-full flex-col gap-3 rounded-lg bg-gold/10 p-4">
                 <h3 className="text-center text-body-lg">{t('status.reorderTitle')}</h3>
                 <div className="flex gap-4">
                   <ReorderCard
