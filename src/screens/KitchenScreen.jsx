@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { TOPPINGS } from '../config/menu';
+import { STATUS_FLOW, STATUS_COLORS } from '../config/orderStatus';
 import { fetchOpenOrders, setOrderStatus, subscribeToAllOrders } from '../services/dataService';
 import ModifierGroup from '../components/ModifierGroup';
 import { t } from '../i18n';
@@ -8,9 +9,6 @@ const toppingName = (id) => TOPPINGS.find((topping) => topping.id === id)?.name 
 
 // Küchen-Ansicht (Personal-Gerät): alle offenen Bestellungen, Status per Tipp
 // ändern, das Kunden-Tablet aktualisiert sich über Realtime (CLAUDE.md §6).
-
-const STATUS_FLOW = ['aufgenommen', 'in_zubereitung', 'fertig'];
-const STATUS_COLORS = { aufgenommen: 'gold', in_zubereitung: 'warning', fertig: 'success' };
 
 function timeLabel(isoString) {
   return new Date(isoString).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });

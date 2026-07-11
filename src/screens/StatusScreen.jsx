@@ -8,10 +8,13 @@ import {
   useReducedMotion,
   animate,
 } from 'motion/react';
-import { ClipboardList, ChefHat, BellRing, Soup, CupSoda } from 'lucide-react';
+import { ClipboardList, ChefHat, BellRing, Soup, CupSoda, Clock } from 'lucide-react';
+import { STATUS_FLOW, STATUS_COLORS } from '../config/orderStatus';
 import { fetchSessionOrders, subscribeToOrders } from '../services/dataService';
 import { useOrderStore } from '../state/orderStore';
+import AddCard from '../components/AddCard';
 import Button from '../components/Button';
+import SteamPuffs from '../components/SteamPuffs';
 import BowlThumbnail from '../components/BowlThumbnail';
 import ItemThumbnail from '../components/ItemThumbnail';
 import { t } from '../i18n';
@@ -27,9 +30,21 @@ import { t } from '../i18n';
 // motion re-triggert nur bei echtem Label-Wechsel, ein Re-Render mit gleichem
 // Status bleibt ein No-Op.
 
-const STATUS_FLOW = ['aufgenommen', 'in_zubereitung', 'fertig'];
 const STATUS_ICONS = { aufgenommen: ClipboardList, in_zubereitung: ChefHat, fertig: BellRing };
-const STATUS_COLORS = { aufgenommen: 'gold', in_zubereitung: 'warning', fertig: 'success' };
+
+// Geschätzte Zubereitungszeit gesamt (Minuten) für den ruhigen ETA-Hinweis am
+// Status-Hero. Bewusst eine Schätzung ab created_at, kein sekundengenauer Timer:
+// die Küche schaltet manuell, die Auto-Simulation schnell. Läuft fertig -> done.
+const PREP_ESTIMATE_MIN = 10;
+
+// ETA-Text je Status: "fertig" grüßt, sonst geschätzte Restzeit ab Bestellzeit
+// (nach unten offen -> "gleich fertig"). nowMs kommt vom Minuten-Ticker im Screen.
+function etaText(status, createdAt, nowMs) {
+  if (status === 'fertig') return t('status.eta.done');
+  const createdMs = createdAt ? new Date(createdAt).getTime() : nowMs;
+  const remaining = Math.ceil(PREP_ESTIMATE_MIN - (nowMs - createdMs) / 60000);
+  return remaining >= 1 ? t('status.eta.remaining', { min: remaining }) : t('status.eta.soon');
+}
 
 // --- Bewegungs-Tuning (alle Zeiten in Sekunden) ---
 const HALF_FILL_S = 0.25; // eine Halblinie füllt sich
@@ -245,6 +260,8 @@ export default function StatusScreen({ onNavigate }) {
   // Datenlieferung markiert alles ohne Animation; erst danach slidet Neues rein.
   const seenIdsRef = useRef(null);
   const reduceMotion = useReducedMotion();
+  // Grobe Uhr für den ETA-Hinweis: tickt minütlich, solange nicht "fertig".
+  const [nowMs, setNowMs] = useState(() => Date.now());
   // Frisch bestellte Runde: nach "Bestellen" remountet dieser Screen, die erste
   // Datenlieferung würde sonst ALLE Runden als bekannt markieren. Die Id aus dem
   // Store macht genau diese Runde trotzdem als "neu angekommen" erlebbar
@@ -272,6 +289,11 @@ export default function StatusScreen({ onNavigate }) {
   }, []);
 
   const latest = orders?.[orders.length - 1];
+  // Status-Illustration: die erste Bowl der letzten Runde; Runden ohne Bowl
+  // (nur Getränke/Beilagen) zeigen stattdessen das Produktbild des ersten
+  // Artikels — ohne Dampf, Getränke dampfen nicht.
+  const heroBowl = latest?.items?.find((i) => i.type === 'bowl')?.config ?? null;
+  const heroItem = heroBowl ? null : (latest?.items?.[0] ?? null);
   const currentIndex = latest ? STATUS_FLOW.indexOf(latest.status) : -1;
   // prevIndex aus dem Ref lesen: gleiche Runde -> echter Vorgänger-Index;
   // Erst-Mount/neue Runde -> currentIndex (keine Choreografie).
@@ -284,6 +306,15 @@ export default function StatusScreen({ onNavigate }) {
     if (latest) {
       prevLatestRef.current = { id: latest.id, index: STATUS_FLOW.indexOf(latest.status) };
     }
+  }, [latest?.id, latest?.status]);
+
+  // ETA-Ticker: minütlich die Restzeit nachziehen; bei "fertig" gibt es nichts
+  // mehr zu zählen, dann läuft kein Intervall.
+  useEffect(() => {
+    if (!latest || latest.status === 'fertig') return;
+    setNowMs(Date.now());
+    const id = setInterval(() => setNowMs(Date.now()), 60000);
+    return () => clearInterval(id);
   }, [latest?.id, latest?.status]);
 
   // Gesehene ids nach jedem orders-Commit nachziehen. Die frisch bestellte Runde
@@ -389,31 +420,57 @@ export default function StatusScreen({ onNavigate }) {
                   </motion.h2>
                 </AnimatePresence>
               </div>
+              {/* Ruhige ETA-Zeile unter der Headline (jede Tracking-Referenz führt
+                  mit Zeit): geschätzte Restzeit bzw. Gruß, wenn fertig. */}
+              <p className="text-body font-medium text-ink-400">
+                {etaText(latest.status, latest.created_at, nowMs)}
+              </p>
+              {/* Status-Illustration (Chipotle-Muster mit Yuges Wow-Asset): die
+                  eigene Bowl der Runde. Bei "aufgenommen" steht sie ruhig, ab
+                  "in Zubereitung" dampft sie (die Küche kocht) und bei "fertig"
+                  dampft sie frisch weiter. Der Dampf liegt im DOM vor der Bowl,
+                  die Schwaden steigen also hinter dem Schüsselrand auf. */}
+              {heroBowl ? (
+                <span className="relative mt-1">
+                  {latest.status !== 'aufgenommen' && (
+                    <SteamPuffs className="absolute inset-x-0 -top-9" puffClassName="h-9 w-2" />
+                  )}
+                  <BowlThumbnail config={heroBowl} className="relative w-36" />
+                </span>
+              ) : (
+                heroItem && <ItemThumbnail item={heroItem} className="mt-1 h-24 w-24" />
+              )}
               <StatusTracker status={latest.status} prevIndex={prevIndex} />
+
+              {/* Nachbestell-Weiche, direkt an den Tracker angedockt (keine
+                  Trennlinie): "dein Essen kommt" und "du kannst nachbestellen"
+                  sollen als EINE Botschaft lesbar sein (Runden-Modell, CLAUDE.md
+                  §9). Warme Gold-Fläche macht die Zone zur Einladung statt zum
+                  Fußbereich; Getränke/Beilagen ist der häufigste Fall, darf also
+                  nicht hinter dem Bowl-Builder versteckt sein. */}
+              <div className="mt-2 flex w-full flex-col gap-3 rounded-lg bg-gold/10 p-4">
+                <h3 className="text-center text-body-lg">{t('status.reorderTitle')}</h3>
+                <div className="flex gap-4">
+                  <ReorderCard
+                    icon={Soup}
+                    label={t('status.reorderBowl')}
+                    onClick={() => onNavigate?.('builder')}
+                  />
+                  <ReorderCard
+                    icon={CupSoda}
+                    label={t('status.reorderDrinks')}
+                    onClick={() => onNavigate?.('cart')}
+                  />
+                </div>
+              </div>
             </div>
           )}
-
-          {/* Zone 2: Nachbestell-Weiche, zwei gleichwertige große Touch-Ziele.
-              Getränke/Beilagen ist der häufigste Fall, darf also nicht hinter
-              dem Bowl-Builder versteckt sein. */}
-          <div className="flex w-full max-w-lg flex-col gap-4 border-t border-line pt-6">
-            <h3 className="text-center text-h2">{t('status.reorderTitle')}</h3>
-            <div className="flex gap-4">
-              <ReorderCard
-                icon={Soup}
-                label={t('status.reorderBowl')}
-                onClick={() => onNavigate?.('builder')}
-              />
-              <ReorderCard
-                icon={CupSoda}
-                label={t('status.reorderDrinks')}
-                onClick={() => onNavigate?.('cart')}
-              />
-            </div>
-          </div>
         </section>
 
-        {/* Rechnung / Tab: alle Runden dieser Session */}
+        {/* Rechnung / Tab: alle Runden dieser Session. Bewusst KEIN
+            Zustands-Schild "offen/bezahlt": nach dem Bezahlen resettet die
+            Session auf den Start, den Gegenzustand sähe also nie jemand.
+            Die Zeile "Bezahlt wird am Ende" unten trägt die Botschaft. */}
         <aside className="flex w-2/5 min-w-0 flex-col gap-4 border-l border-line p-6">
           <h3 className="text-h2">{t('status.tab')}</h3>
           <ul className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
@@ -491,6 +548,14 @@ export default function StatusScreen({ onNavigate }) {
                 </motion.li>
               );
             })}
+            {/* Ghost-Zeile: die Rundenliste endet sichtbar offen (gleiche
+                gestrichelte Karte wie im Warenkorb). Die Form der Liste sagt
+                "hier kommt noch was", ohne Erklärtext. */}
+            {(orders?.length ?? 0) > 0 && (
+              <li>
+                <AddCard label={t('status.nextRound')} onClick={() => onNavigate?.('builder')} />
+              </li>
+            )}
           </ul>
           <div className="flex items-baseline justify-between border-t border-line pt-3">
             <span className="text-small text-ink-400">{t('status.tabTotal')}</span>
@@ -507,6 +572,10 @@ export default function StatusScreen({ onNavigate }) {
               (laute Zone ist die Nachbestell-Weiche). Gestapelt in voller Breite,
               damit die Labels einzeilig bleiben.
               Die Wahl Zusammen | Getrennt führt in den jeweiligen Bezahl-Weg. */}
+          <p className="flex items-center justify-center gap-1.5 text-small text-ink-400">
+            <Clock size={14} aria-hidden="true" />
+            {t('status.payLater')}
+          </p>
           <div className="flex flex-col gap-3">
             <Button
               size="lg"

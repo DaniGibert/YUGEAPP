@@ -93,6 +93,7 @@ src/
   config/
     menu.js                # alle Zutaten, Getränke, Beilagen + Preise + RECOMMENDED_BOWLS (Daten); sceneVariants je Topping
     steps.js               # die 5 Bau-Schritte als Daten
+    orderStatus.js         # Status-Reihenfolge + Farb-Token (StatusScreen, Küche, Header-Punkt)
     sceneConfig.js         # Positions-/Look-Werte der Bowl-Szene (inkl. ANCHORS: Anrichte-Karte, LAYER_RO)
   services/
     supabaseClient.js      # erstellt den Client aus ENV-Variablen
@@ -106,9 +107,11 @@ src/
     BowlScene.jsx          # R3F-Canvas, nur Props
   components/
     Stage.jsx              # App-Rahmen: füllt das Fenster (fluid, Querformat-optimiert)
-    Header.jsx             # Logo (→ Start), Vollbild, Kellner rufen, Sprache, Bestellstatus, Warenkorb
-    Breadcrumb.jsx         # Brühe > Nudeln > ...
+    Header.jsx             # Logo (→ Start), Vollbild, Kellner rufen, Sprache, Bestellstatus (Live-Punkt), Warenkorb
+    Breadcrumb.jsx         # Brühe > Nudeln > ... (Haken auf erledigten Schritten, hohler Punkt auf offenen Pflichtschritten)
     Button.jsx             # Größen: sm | md | lg, Varianten: primary | ghost | dark
+    AddCard.jsx            # gestrichelte "Hinzufügen"-Karte (Warenkorb: Noch ein Ramen; Status: Nächste Runde)
+    SteamPuffs.jsx         # CSS-Dampf (DOM-Pendant zum Szenen-Dampf): Start-Schüssel + Status-Hero
     OptionCard.jsx         # eine Auswahl-Karte (Bild, "i"-Info als verankertes Popover)
     ModifierGroup.jsx      # segmentierte Auswahl mit gleitender Pill (Härte, Schärfe, ...)
     QuantityStepper.jsx    # − 0 + für Toppings
@@ -200,6 +203,9 @@ Nur das **Dynamische** kommt in die Datenbank. **Menü & Preise bleiben in `conf
 
 **Live-Status:** Das Kunden-Tablet abonniert seine `order` per Supabase-**Realtime**.
 Die `KitchenScreen`-Ansicht ändert den `status`; das Tablet aktualisiert sich automatisch.
+Unter der Status-Headline steht eine ruhige **ETA-Zeile** (`StatusScreen`, `etaText`):
+geschätzte Restzeit ab `created_at` (`PREP_ESTIMATE_MIN`, minütlicher Ticker), „gleich
+fertig" kurz vor Schluss, bei `fertig` ein Gruß. Nur eine Schätzung, kein exakter Countdown.
 
 **Auto-Simulation der Küche (Präsentation):** Damit die App ohne Wechsel in die
 Küchen-Ansicht vorführbar ist, wandert jede neue Bestellung nach dem Absenden
@@ -255,7 +261,8 @@ Nori) und dieselbe Fallback-Leiter (`-x2` → Basis → Farb-Blob) — ein Look 
 Asset-Anforderungen (Look, Naming, Bedarfsliste): siehe `docs/asset-spec.md`.
 
 Der **Dampf** (`Steam`) erscheint nur, wenn eine **Brühe** gewählt ist — die leere Schüssel
-dampft nicht. (Der Start-Screen zeigt seinen eigenen CSS-Dampf, unabhängig von der Szene.)
+dampft nicht. (Start-Schüssel und Status-Hero zeigen ihren eigenen CSS-Dampf, unabhängig
+von der Szene: geteilte Komponente `SteamPuffs`, bei reduced motion unsichtbar.)
 
 ---
 
@@ -296,6 +303,26 @@ Zwei Ebenen, die **nie** vermischt werden dürfen:
 Ablauf: Bowl bauen → in den Warenkorb → („noch eine Bowl" / „Getränke &amp; Beilagen" / **Bestellen**).
 „Bestellen" schickt den Warenkorb an die Küche, fügt ihn der Rechnung hinzu und **leert den
 Warenkorb** für die nächste Runde. Danach zeigt der Status, dass zubereitet wird.
+
+**Der Status-Screen erzählt das Runden-Modell strukturell** (Mobbin-Abgleich + Usertest,
+Entscheidung im Chat vom 10.07.2026, keine Erklärtexte): Die **Nachbestell-Weiche ist an den
+Tracker angedockt** (im Hero-Block, warme Fläche `bg-gold/10`, Titel „Noch Hunger? Bestell
+jederzeit nach") statt als abgetrennter Fußbereich — „dein Essen kommt" und „du kannst mehr
+bestellen" lesen sich als eine Botschaft. Der Hero zeigt als **Status-Illustration die
+bestellte Bowl der Runde** (`BowlThumbnail` der ersten Bowl; ruhig bei „aufgenommen", ab
+„in Zubereitung" mit `SteamPuffs`-Dampf, der bei „fertig" weiterläuft; Runden ohne Bowl
+zeigen das `ItemThumbnail` des ersten Artikels ohne Dampf, ganz ohne Artikel gibt es kein
+Bild). Die Rundenliste **endet mit einer Ghost-Zeile
+„+ Nächste Runde"** (geteilte `AddCard`, gleiche gestrichelte Karte wie „Noch ein Ramen" im
+Warenkorb → Builder), und über den Bezahl-Buttons steht die kleine Zustands-Zeile
+**„Bezahlt wird am Ende"** (Uhr-Icon). Bewusst **kein** „offen/bezahlt"-Schild an der
+Rechnung: nach dem Bezahlen resettet die Session, den Gegenzustand sähe nie jemand.
+Der **leere Warenkorb nach einer bestellten Runde** sagt „Noch Hunger?" statt „Noch nichts
+in dieser Runde" (`cart.emptyAgainTitle`, via `orders.length` im Store) — der geleerte Korb
+ist sonst das stärkste falsche „fertig"-Signal. Dazu trägt der **Bestellstatus-Knopf im
+Header einen Live-Punkt** in der Status-Farbe der laufenden Runde (pulsiert bis „fertig",
+dann ruhig; Farben aus `config/orderStatus.js`, Daten über `dataService`-Subscription im
+Header) — die offene Session ist damit auf jedem Screen sichtbar, auch auf dem Start.
 
 **Bezahlt wird erst ganz am Ende** (nach dem Essen). Bis dahin kann jederzeit **nachbestellt**
 werden (zurück zum Bauen). Die Wahl **Zusammen | Getrennt** steht direkt auf dem **Status-Screen

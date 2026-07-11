@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { DRINKS, SIDES } from '../config/menu';
 import { useOrderStore, cartTotal, bowlIngredients } from '../state/orderStore';
 import { submitOrder } from '../services/dataService';
+import AddCard from '../components/AddCard';
 import Button from '../components/Button';
 import BowlThumbnail from '../components/BowlThumbnail';
 import ItemThumbnail, { menuImagePaths } from '../components/ItemThumbnail';
@@ -22,21 +23,6 @@ const TABS = {
 
 // Reihenfolge der Tabs im Filmstrip; der Index bestimmt, wie weit der Track faehrt.
 const TAB_ORDER = Object.keys(TABS);
-
-// Add-Item-Karte am Ende der Rundenliste: führt in den Bowl-Builder.
-// Gestrichelt = "hier kannst du hinzufügen", konkurriert nicht mit "Bestellen".
-function AddBowlCard({ onClick }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-line bg-surface p-4 text-body font-semibold text-ink-600 transition-colors hover:border-ink-400 hover:text-ink-900"
-    >
-      <Plus size={18} aria-hidden="true" />
-      {t('cart.anotherBowl')}
-    </button>
-  );
-}
 
 // Eine Getränke-/Beilagen-Karte: Variante wählbar, Menge pro Variante.
 function AddItemCard({ menuItem, type }) {
@@ -83,6 +69,10 @@ export default function CartScreen({ onNavigate }) {
   const removeCartItem = useOrderStore((s) => s.removeCartItem);
   const changeCartQty = useOrderStore((s) => s.changeCartQty);
   const orderPlaced = useOrderStore((s) => s.orderPlaced);
+  // Schon eine Runde bestellt? Dann ist der leere Korb kein "noch nichts",
+  // sondern der Startpunkt der nächsten Runde (Runden-Modell, CLAUDE.md §9):
+  // der geleerte Korb nach "Bestellen" darf nicht wie "fertig" aussehen.
+  const hasOrdered = useOrderStore((s) => s.orders.length > 0);
   const [tab, setTab] = useState('drinks');
   const tabIndex = TAB_ORDER.indexOf(tab);
   const [submitting, setSubmitting] = useState(false);
@@ -111,9 +101,13 @@ export default function CartScreen({ onNavigate }) {
 
         {cart.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-            <p className="text-body font-semibold text-ink-900">{t('cart.emptyTitle')}</p>
-            <p className="text-small text-ink-400">{t('cart.emptyHint')}</p>
-            <AddBowlCard onClick={() => onNavigate?.('builder')} />
+            <p className="text-body font-semibold text-ink-900">
+              {t(hasOrdered ? 'cart.emptyAgainTitle' : 'cart.emptyTitle')}
+            </p>
+            <p className="text-small text-ink-400">
+              {t(hasOrdered ? 'cart.emptyAgainHint' : 'cart.emptyHint')}
+            </p>
+            <AddCard label={t('cart.anotherBowl')} onClick={() => onNavigate?.('builder')} />
           </div>
         ) : (
           <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
@@ -157,7 +151,7 @@ export default function CartScreen({ onNavigate }) {
               </li>
             ))}
             <li>
-              <AddBowlCard onClick={() => onNavigate?.('builder')} />
+              <AddCard label={t('cart.anotherBowl')} onClick={() => onNavigate?.('builder')} />
             </li>
           </ul>
         )}

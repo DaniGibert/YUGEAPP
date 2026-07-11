@@ -3,6 +3,7 @@ import { ArrowRight, Plus } from 'lucide-react';
 import BowlGraphic from '../components/BowlGraphic';
 import BowlThumbnail from '../components/BowlThumbnail';
 import Button from '../components/Button';
+import SteamPuffs from '../components/SteamPuffs';
 import { BROTHS, PROTEINS, RECOMMENDED_BOWLS, TOPPINGS } from '../config/menu';
 import { bowlPrice, useOrderStore } from '../state/orderStore';
 import { t } from '../i18n';
@@ -184,19 +185,8 @@ export default function StartScreen({ onNavigate }) {
               erdet sie so. */}
           <span aria-hidden="true" className="start-bowl-shadow pointer-events-none" />
 
-          {/* Dampf: mittig über der Schüssel */}
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-6 flex justify-center gap-5"
-          >
-            {[0, 0.9, 1.8].map((delay) => (
-              <span
-                key={delay}
-                className="animate-steam h-14 w-3 rounded-full bg-line opacity-0 blur-sm"
-                style={{ animationDelay: `${delay}s` }}
-              />
-            ))}
-          </span>
+          {/* Dampf: mittig über der Schüssel (geteilte Komponente, auch im Status-Hero) */}
+          <SteamPuffs className="absolute inset-x-0 top-6" />
 
           {/* Schüssel (bowl_back), schwebt sanft */}
           <span className="animate-float block">

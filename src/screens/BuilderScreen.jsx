@@ -153,6 +153,16 @@ export default function BuilderScreen({ onNavigate, cameFrom, onSceneReady }) {
   const isLastStep = stepIndex === STEPS.length - 1;
   const canProceed = step.type !== 'single' || Boolean(bowl[step.id]);
 
+  // Erledigt-Zustand je Schritt für den Breadcrumb-Haken (P3): Pflichtschritte
+  // (single) sind erledigt, sobald gewählt; Toppings, sobald eines gewählt ist;
+  // Finish gilt als erledigt, sobald der Schritt besucht wurde (gültige Defaults).
+  // Ob ein Schritt Pflicht ist, leitet der Breadcrumb selbst aus step.type ab.
+  const completedSteps = STEPS.map((s, i) => {
+    if (s.type === 'single') return Boolean(bowl[s.id]);
+    if (s.type === 'quantity') return toppingCount(bowl.toppings) > 0;
+    return i <= maxStepIndex;
+  });
+
   // Nur Schritte mit Options-Karten bekommen die Übersichts-Leiste (kein Finish/Modifier).
   const hasCards = step.type === 'single' || step.type === 'quantity';
 
@@ -251,15 +261,16 @@ export default function BuilderScreen({ onNavigate, cameFrom, onSceneReady }) {
             />
           </Suspense>
         </div>
-        <div className="flex items-baseline justify-between border-t border-line pt-3 cascade-item" style={{ '--cascade-i': 0 }}>
-          <span className="text-small text-ink-400">{t('builder.price')}</span>
-          <span className="font-display text-h2 text-ink-900">{bowlPrice(bowl)} €</span>
-        </div>
       </aside>
 
       {/* Aktueller Schritt */}
       <div className="flex min-w-0 flex-1 flex-col gap-4 p-6">
-        <Breadcrumb currentIndex={stepIndex} maxVisitedIndex={maxStepIndex} onSelect={goToStep} />
+        <Breadcrumb
+          currentIndex={stepIndex}
+          maxVisitedIndex={maxStepIndex}
+          completed={completedSteps}
+          onSelect={goToStep}
+        />
         {/* Filmstrip: alle Schritte liegen als Panels nebeneinander in einem Track,
             der per translateX um genau eine Panel-Breite pro Schritt verschoben wird.
             Vorwaerts faehrt der Streifen nach links, rueckwaerts nach rechts. Inaktive
@@ -360,12 +371,21 @@ export default function BuilderScreen({ onNavigate, cameFrom, onSceneReady }) {
           >
             {t('builder.back')}
           </Button>
-          <Button
-            disabled={!canProceed}
-            onClick={() => (isLastStep ? onNavigate?.('overview') : goToStep(stepIndex + 1))}
-          >
-            {isLastStep ? t('builder.toOverview') : t('builder.next')}
-          </Button>
+          {/* Preis klebt am Haupt-CTA (wie sweetgreen/CHOPT und die Übersicht):
+              laufender Preis und die weiterführende Aktion an einem Ort, kurze
+              Blickwege statt Preis links, Button rechts. */}
+          <div className="flex items-center gap-5">
+            <div className="flex items-baseline gap-2">
+              <span className="text-small text-ink-400">{t('builder.price')}</span>
+              <span className="font-display text-h2 text-ink-900">{bowlPrice(bowl)} €</span>
+            </div>
+            <Button
+              disabled={!canProceed}
+              onClick={() => (isLastStep ? onNavigate?.('overview') : goToStep(stepIndex + 1))}
+            >
+              {isLastStep ? t('builder.toOverview') : t('builder.next')}
+            </Button>
+          </div>
         </footer>
       </div>
     </div>

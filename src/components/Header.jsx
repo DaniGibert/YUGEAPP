@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ConciergeBell, Globe, Maximize, Minimize, ReceiptText, ShoppingBag } from 'lucide-react';
+import { STATUS_COLORS } from '../config/orderStatus';
+import { fetchSessionOrders, subscribeToOrders } from '../services/dataService';
 import { useOrderStore, cartTotal } from '../state/orderStore';
 import { useFullscreen } from '../hooks/useFullscreen';
 import BowlThumbnail from './BowlThumbnail';
@@ -79,6 +81,28 @@ export default function Header({ onNavigate, minimal = false }) {
   const [waiterCalled, setWaiterCalled] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const cartAreaRef = useRef(null);
+  // Live-Punkt am Bestellstatus-Knopf (Ambient-Status, CLAUDE.md §9): Status
+  // der letzten Runde dieser Session, auf JEDEM Screen sichtbar. Der Header
+  // ist dauerhaft gemountet, also eine langlebige Realtime-Subscription über
+  // die Datenschicht; null = noch nichts bestellt, dann gibt es keinen Punkt.
+  const [latestStatus, setLatestStatus] = useState(null);
+
+  useEffect(() => {
+    if (minimal) return undefined; // Küchen-Modus hat keine Gast-Buttons
+    let active = true;
+    const load = () =>
+      fetchSessionOrders()
+        .then((orders) => {
+          if (active) setLatestStatus(orders[orders.length - 1]?.status ?? null);
+        })
+        .catch((err) => console.error('Header: Status laden fehlgeschlagen:', err));
+    load();
+    const unsubscribe = subscribeToOrders(load);
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [minimal]);
 
   function callWaiter() {
     setWaiterCalled(true);
@@ -141,6 +165,19 @@ export default function Header({ onNavigate, minimal = false }) {
             onClick={() => onNavigate?.('status')}
           >
             <ReceiptText size={18} />
+            {/* Live-Punkt: Status-Farbe der laufenden Runde. Pulsiert, solange
+                die Küche arbeitet; bei "fertig" steht er ruhig (der Gast isst,
+                der Header soll nicht ewig blinken). Ring in Surface-Farbe hebt
+                ihn vom Button ab, gleiches Muster wie das Warenkorb-Badge. */}
+            {latestStatus && (
+              <span
+                aria-hidden="true"
+                className={`absolute -right-1 -top-1 h-3.5 w-3.5 rounded-full border-2 border-surface${
+                  latestStatus !== 'fertig' ? ' animate-pulse-soft motion-reduce:animate-none' : ''
+                }`}
+                style={{ backgroundColor: `var(--color-${STATUS_COLORS[latestStatus]})` }}
+              />
+            )}
           </HeaderIconButton>
           <HeaderIconButton
             label={t('header.cart')}
