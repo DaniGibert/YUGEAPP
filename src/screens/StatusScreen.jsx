@@ -61,7 +61,7 @@ const HERO_COMPANION_LIMIT = 4;
 // transparente Rand überlappt die Nachbarn harmlos.
 // Breite der Begleiter-Boxen in px. SELBST ANPASSBAR: kleiner = kleineres Bild.
 const SIDE_W = 200; // Beilagen (Gyoza, Reis, Karaage ...) -> Standard für Beilagen
-const DRINK_W = 300; // Getränke (Glas, Flasche, Dose)
+const DRINK_W = 270; // Getränke (Glas, Flasche, Dose)
 const BOWL_COMPANION_W = 240; // px, Breite einer weiteren Bowl (Thumbnail)
 // Einzelne Artikel, die im eigenen Rahmen größer/kleiner wirken, gezielt per Name
 // feinjustieren (überschreibt SIDE_W/DRINK_W nur für diesen Artikel). SELBST ANPASSBAR.
@@ -75,8 +75,8 @@ const ITEM_W_OVERRIDE = {
 const FAN_BASE = 100; // px, Versatz des ersten Flankers von der Mitte
 const FAN_STEP = 105; // px, Zuwachs nach außen
 const FLANK_RISE = 16; // px, äußere Flanker sitzen höher = wirken weiter hinten
-const DRINK_LIFT = '4.25rem'; // Getränk steht höher = weiter hinten
-const DRINK_X0 = 100; // px, ein einzelnes Getränk sitzt rechts hinter der Bowl
+const DRINK_LIFT = '3rem'; // Getränk steht höher = weiter hinten
+const DRINK_X0 = 130; // px, ein einzelnes Getränk sitzt rechts hinter der Bowl
 const DRINK_SPREAD = 70; // px, Abstand nebeneinander stehender Getränke (eng)
 const DRINK_SHIFT = 0.35; // wie stark die Getränke-Reihe je Anzahl nach links rückt (bleibt im Bild)
 const DRINK_BOWL_SHIFT = 80; // px, extra Versatz nach rechts, wenn eine weitere Bowl rechts steht
@@ -236,7 +236,7 @@ function StatusTracker({ status, prevIndex }) {
   const currentIndex = STATUS_FLOW.indexOf(status);
   const lastIndex = STATUS_FLOW.length - 1;
   return (
-    <ol className="mt-4 flex w-full max-w-xl">
+    <ol className="-mt-3 flex w-full max-w-xl">
       {STATUS_FLOW.map((step, index) => {
         const Icon = STATUS_ICONS[step];
         const reached = index <= currentIndex;
@@ -414,7 +414,7 @@ export default function StatusScreen({ onNavigate }) {
   for (const item of latest?.items ?? []) {
     if (companions.length >= HERO_COMPANION_LIMIT) break;
     if (item.type === 'bowl') continue;
-    if (!companions.some((c) => c.kind === 'item' && c.name === item.name)) {
+    if (!companions.some((c) => c.kind === 'item' && c.item.name === item.name)) {
       companions.push({ kind: 'item', key: `item-${item.name}`, item });
     }
   }
@@ -545,7 +545,7 @@ export default function StatusScreen({ onNavigate }) {
       <div className="flex h-full min-h-0">
         {/* Aktuelle Runde: Status-Hero und Nachbestell-Weiche. Bezahlen sitzt bewusst
             rechts unter der Rechnungssumme (keine Dopplung mit der Gesamtsumme). */}
-        <section className="flex min-w-0 flex-1 flex-col items-center justify-center gap-10 p-6">
+        <section className="flex min-w-0 flex-1 flex-col items-center justify-center gap-10 p-6 pb-16">
           {/* Zone 1: Status-Hero, guarded weil latest beim Laden undefined ist.
               Feste Hero-Breite (max-w-xl): sonst schrumpft der Container auf die
               jeweilige Headline und der Tracker (w-full) springt beim Wechsel mit. */}
@@ -588,7 +588,7 @@ export default function StatusScreen({ onNavigate }) {
                   hat feste Höhe, damit beim Kochen nichts im Layout springt. */}
               {(heroBowl || companions.length > 0) &&
                 (heroBowl ? (
-                  <div className="relative flex h-60 w-full items-end justify-center">
+                  <div className="relative flex h-52 w-full items-end justify-center">
                     {/* Begleiter absolut um die Bowl gefächert, HINTER dem Canvas
                         (Menü-Tiefe), ploppen beim Kochen einzeln ein. */}
                     {visibleCompanions.map((c, i) => (
@@ -615,7 +615,7 @@ export default function StatusScreen({ onNavigate }) {
                 ) : (
                   // Runde ohne Bowl: nur die Begleiter, eng zentrierte Reihe.
                   // Getränke stehen näher zusammen (DRINK_SPREAD) als Beilagen.
-                  <div className="relative flex h-60 w-full items-end justify-center overflow-hidden">
+                  <div className="relative flex h-52 w-full items-end justify-center overflow-hidden">
                     {visibleCompanions.map((c, idx) => {
                       const n = visibleCompanions.length;
                       const spacing = visibleCompanions.every((x) => x.item.type === 'drink')
@@ -647,7 +647,7 @@ export default function StatusScreen({ onNavigate }) {
                   §9). Warme Gold-Fläche macht die Zone zur Einladung statt zum
                   Fußbereich; Getränke/Beilagen ist der häufigste Fall, darf also
                   nicht hinter dem Bowl-Builder versteckt sein. */}
-              <div className="flex w-full flex-col gap-3 rounded-lg bg-gold/10 p-4">
+              <div className="mt-2 flex w-full flex-col gap-3 rounded-lg bg-gold/10 p-4">
                 <h3 className="text-center text-body-lg">{t('status.reorderTitle')}</h3>
                 <div className="flex gap-4">
                   <ReorderCard
