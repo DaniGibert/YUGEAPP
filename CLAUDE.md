@@ -104,7 +104,8 @@ src/
     useFullscreen.js       # Vollbild an/aus (Fullscreen-API), für den Header-Button
     useDisablePullToRefresh.js  # unterbindet die native Refresh-Geste (Kiosk)
   scene/
-    BowlScene.jsx          # R3F-Canvas, nur Props
+    BowlScene.jsx          # R3F-Canvas, nur Props (broth-Geometrie via optionaler brothGeom-Prop überschreibbar, fürs Lab)
+    heroCompanions.js      # Platzierung der Status-Begleiter (HERO_LAYOUT + layoutCompanions/companionWidth); geteilt Status ↔ Scene-Lab
   components/
     Stage.jsx              # App-Rahmen: füllt das Fenster (fluid, Querformat-optimiert)
     Header.jsx             # Logo (→ Start), Vollbild, Kellner rufen, Sprache, Bestellstatus (Live-Punkt), Warenkorb
@@ -126,6 +127,7 @@ src/
     StatusScreen.jsx
     PayScreen.jsx
     KitchenScreen.jsx      # Küchen-Ansicht: Status ändern (löst Live-Update aus)
+    SceneLabScreen.jsx     # Dev-Tool (?ansicht=lab): Brühen-Geometrie + Status-Komposition live per Regler tunen
 public/
   manifest.json / icon.svg      # PWA (display fullscreen, orientation landscape) + App-Icon
   assets/<kategorie>/<id>.png   # Dateiname == Options-id; Varianten: <id>-<variante>.png;
@@ -233,9 +235,14 @@ Die Technik ist ein 2.5D-„Papier-Diorama" aus flachen PNGs (siehe separate Not
 Schüssel als zwei PNGs (`bowl_back` + `bowl_front`), Wasserlinien-Shader fürs Eintauchen,
 Ripple beim Aufprall, Fall über unterdämpfte `@react-spring/three`-Feder.
 **Alle Tuning-Werte in `config/sceneConfig.js`.** Fehlende Assets → prozeduraler
-Platzhalter (Farb-Blob aus `sceneColor`), nichts crasht. Die Schüssel steht auf
-einer weichen **Boden-Schatten-Ellipse** (Szene: `GroundShadow`-Mesh; Start-Screen
-und Thumbnails: CSS/DOM-Pendant), damit sie nicht schwebt.
+Platzhalter (Farb-Blob aus `sceneColor`), nichts crasht. **Ausnahme Brühe:** die
+Brühen-Ebene rendert ohne geladenes PNG **transparent** (kein Farb-Blob), damit
+beim kurzen Laden kein Platzhalter „reinblitzt"; `sceneColor` der Brühen tönt nur
+noch untergetauchte Zutaten + DOM-Thumbnails und ist an die PNG-Farbe angeglichen.
+Die Brühen-Oberfläche (`BROTH_CY/RX/RY`) ist ans Seitenverhältnis der Brühen-PNGs
+(~1.83:1) getunt, damit das Oval die Schüssel füllt statt flachgestaucht zu wirken.
+Die Schüssel steht auf einer weichen **Boden-Schatten-Ellipse** (Szene:
+`GroundShadow`-Mesh; Start-Screen und Thumbnails: CSS/DOM-Pendant), damit sie nicht schwebt.
 
 **Datengetriebene Szenen-Choreografie** (alle Werte in `sceneConfig.js`, clock-getrieben
 in `useFrame` statt Timer; `scene/reducedMotion.js` schaltet sie bei
@@ -325,6 +332,11 @@ Schatten; darum bekommen Begleiter **breite Boxen** (`SIDE_W` für Beilagen, `DR
 Getränke, `BOWL_COMPANION_W` für weitere Bowls; einzelne Artikel per `ITEM_W_OVERRIDE`
 feinjustiert, z. B. Matcha warm / Edamame kleiner), damit Glas/Teller in Bowl-nahe Größe
 erscheinen (der transparente Rand überlappt harmlos), alles auf einer gemeinsamen Standlinie.
+**Alle Platzierungs-/Größen-Werte dieser Komposition liegen in `scene/heroCompanions.js`
+(`HERO_LAYOUT`) und die Layout-Funktionen (`layoutCompanions`, `companionWidth`) dort —
+geteilt vom `StatusScreen` und vom Scene-Lab (`?ansicht=lab`, Modus „Status-Komposition"),
+wo man sie live per Regler tunt.** Die unten genannten Namen (`SIDE_W`, `DRINK_X0` …)
+entsprechen den sprechenden `HERO_LAYOUT`-Feldern (`sideW`, `drinkX0`, …).
 Platzierung (`layoutCompanions`): **Flanker** (weitere Bowls + Beilagen, Bowls zuerst) füllen
 über `flankSlot` die Slots L0, R0, dann nach rechts-außen (R1 …), dann links-außen — die
 erste weitere Bowl sitzt links neben der Hero, weitere sammeln sich rechts; äußere Flanker
@@ -345,6 +357,9 @@ ist sonst das stärkste falsche „fertig"-Signal. Dazu trägt der **Bestellstat
 Header einen Live-Punkt** in der Status-Farbe der laufenden Runde (pulsiert bis „fertig",
 dann ruhig; Farben aus `config/orderStatus.js`, Daten über `dataService`-Subscription im
 Header) — die offene Session ist damit auf jedem Screen sichtbar, auch auf dem Start.
+Die **linke Hero-Spalte ist ein Scroll-Container** (`min-h-full`-Zentrierung): bei genug
+Höhe mittig (iPad/Tablet), bei kurzer Höhe (Handy quer) scrollt sie von oben statt unter
+den Header zu laufen — so bleibt der Status auch auf dem Handy im Querformat bedienbar (§3.6).
 
 **Bezahlt wird erst ganz am Ende** (nach dem Essen). Bis dahin kann jederzeit **nachbestellt**
 werden (zurück zum Bauen). Die Wahl **Zusammen | Getrennt** steht direkt auf dem **Status-Screen
@@ -371,6 +386,17 @@ Getränke &amp; Beilagen teilen sich einen Screen, aber über einen **Umschalter
 - Vor neuem Code prüfen: Gibt es die Komponente/den Token schon? Wiederverwenden statt duplizieren.
 - Keine festen Werte einschmuggeln. Keine zweite Datenquelle neben `dataService`.
 - Bei Unklarheit im Menü/Flow: nachfragen, nicht raten.
+- **Szenen-Werte tunt der Mensch im Scene-Lab** (`?ansicht=lab`, `SceneLabScreen`),
+  statt dass Claude blind über Preview-Screenshots iteriert (langsam, teuer): Regler
+  für Brühen-Geometrie (`BROTH_CY/RX/RY`) und die Status-Komposition (`HERO_LAYOUT`)
+  an der **echten** Szene, Werte-Snippet zum Übernehmen. Der Mensch schiebt live auf
+  dem Zielgerät und gibt die Zahlen durch; Claude trägt sie in `sceneConfig.js` bzw.
+  `scene/heroCompanions.js` ein. Für Platzierungen also erst das Lab anbieten.
+- **Dev-Ansichten über URL-Param** (ohne Gast-Navigation): `?ansicht=kueche` = Küche,
+  `?ansicht=lab` = Scene-Lab. Beide früh in `App.jsx` verzweigt.
+- **Assets komprimieren:** neue PNGs vor dem Commit auf max. 1100 px lange Kante +
+  optimiertes PNG bringen (Asset-Spec). Kein Tool im Repo — bei Bedarf `sharp`
+  temporär mit `npm install sharp --no-save` nutzen (package.json unberührt lassen).
 
 ---
 
