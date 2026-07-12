@@ -16,6 +16,7 @@ import AddCard from '../components/AddCard';
 import Button from '../components/Button';
 import BowlThumbnail from '../components/BowlThumbnail';
 import ItemThumbnail from '../components/ItemThumbnail';
+import { HERO_LAYOUT, companionWidth, layoutCompanions } from '../scene/heroCompanions';
 import { t } from '../i18n';
 
 // Die echte Bowl-Szene kocht im Hero die Runde nach; wie im Builder lazy,
@@ -49,38 +50,9 @@ const PREP_ESTIMATE_MIN = 7;
 // "aufgenommen" zeigt nichts bzw. die leere Schüssel, "fertig" alles.
 const COOK_START_S = 5; // ab hier füllt sich die Brühe (Sim schaltet nach 5s um)
 const COOK_STEP_S = 2.5; // Abstand, in dem der nächste Baustein erscheint
-// Max. Begleiter (weitere Bowls + Getränke/Beilagen als Sorten) neben der
-// Hero-Bowl. Getränke/Beilagen zählen als Sorte (2× Cola = eine Cola): reine
-// Menü-Veranschaulichung, die Rechnung rechts zeigt die exakten Mengen. Nach
-// dem Ansehen leicht auf 5 änderbar.
-const HERO_COMPANION_LIMIT = 4;
-
-// Große, rahmen-proportionierte Begleiter: die PNGs sind ~1.83:1-Querformat-Rahmen
-// mit zentriertem Objekt + gebackenem Schatten. Breite Boxen lassen Glas/Teller in
-// Referenz-Größe erscheinen (Glas ragt hoch, Teller/Schale sitzen tief); der
-// transparente Rand überlappt die Nachbarn harmlos.
-// Breite der Begleiter-Boxen in px. SELBST ANPASSBAR: kleiner = kleineres Bild.
-const SIDE_W = 200; // Beilagen (Gyoza, Reis, Karaage ...) -> Standard für Beilagen
-const DRINK_W = 270; // Getränke (Glas, Flasche, Dose)
-const BOWL_COMPANION_W = 240; // px, Breite einer weiteren Bowl (Thumbnail)
-// Einzelne Artikel, die im eigenen Rahmen größer/kleiner wirken, gezielt per Name
-// feinjustieren (überschreibt SIDE_W/DRINK_W nur für diesen Artikel). SELBST ANPASSBAR.
-const ITEM_W_OVERRIDE = {
-  'Matcha Tee (Warm)': 205, // Tasse füllt den Rahmen stärker -> kleiner
-  Edamame: 165, // Schälchen wirkt sonst groß -> kleiner
-};
-// Fächerung der Flanker (Teller/Schalen/weitere Bowls) um die Bowl, HINTER dem
-// Canvas (z < Hero), eng überlappend wie ein Menü-Foto. Slot-Reihenfolge siehe
-// flankSlot (erst links, dann rechts, weitere nach rechts-außen).
-const FAN_BASE = 100; // px, Versatz des ersten Flankers von der Mitte
-const FAN_STEP = 105; // px, Zuwachs nach außen
-const FLANK_RISE = 16; // px, äußere Flanker sitzen höher = wirken weiter hinten
-const DRINK_LIFT = '3rem'; // Getränk steht höher = weiter hinten
-const DRINK_X0 = 130; // px, ein einzelnes Getränk sitzt rechts hinter der Bowl
-const DRINK_SPREAD = 70; // px, Abstand nebeneinander stehender Getränke (eng)
-const DRINK_SHIFT = 0.35; // wie stark die Getränke-Reihe je Anzahl nach links rückt (bleibt im Bild)
-const DRINK_BOWL_SHIFT = 80; // px, extra Versatz nach rechts, wenn eine weitere Bowl rechts steht
-const NOHERO_SPREAD = 130; // px, Abstand der Begleiter im Fall ohne Ramen (zentrierte Reihe)
+// Platzierung/Größen der Menü-Komposition (Begleiter um die Hero-Bowl) liegen in
+// scene/heroCompanions.js (HERO_LAYOUT) — geteilt mit dem Scene-Lab (?ansicht=lab),
+// wo sie live getunt werden. Werte ändern = dort ändern.
 
 // ETA-Text je Status: "fertig" grüßt, sonst geschätzte Restzeit ab Bestellzeit
 // (nach unten offen -> "gleich fertig"). nowMs kommt vom Minuten-Ticker im Screen.
@@ -164,68 +136,14 @@ function ReorderCard({ icon: Icon, label, onClick }) {
 }
 
 // Ein Begleiter der Menü-Komposition (Getränk/Beilage): das große Produktbild.
-// Die PNGs bringen ihren eigenen gebackenen Schatten mit (kein extra Schatten),
-// der beim Bottom-Ausrichten die gemeinsame Standlinie bildet.
+// Breite kommt aus heroCompanions (geteilt mit dem Scene-Lab); die PNGs bringen
+// ihren eigenen Schatten mit, der beim Bottom-Ausrichten die Standlinie bildet.
 function HeroSideItem({ item }) {
-  const width = ITEM_W_OVERRIDE[item.name] ?? (item.type === 'drink' ? DRINK_W : SIDE_W);
   return (
-    <span className="block" style={{ width: `${width}px` }}>
+    <span className="block" style={{ width: `${companionWidth(item)}px` }}>
       <ItemThumbnail item={item} className="w-full" />
     </span>
   );
-}
-
-// Position als Style: horizontaler Versatz von der Mitte, Standlinie, z-Ebene.
-function posStyle(offset, bottom, zIndex) {
-  return { left: '50%', bottom, transform: `translateX(calc(-50% + ${offset}px))`, zIndex };
-}
-
-// Platzierung aller Begleiter nach Rolle:
-//  - Getränke: hintere Reihe (z=1), hoch, nach RECHTS gruppiert -> ragen hinter
-//    Bowl und Beilagen hoch.
-//  - Beilagen: flankieren VOR den Getränken (z hoch), LINKS zuerst; äußere sitzen
-//    höher (FLANK_RISE) -> wirken weiter hinten statt "unter" der inneren.
-//  - Weitere Bowls: breit, deshalb nach LINKS-außen (hinter die inneren Beilagen),
-//    damit sie das rechts sitzende Getränk nicht verdecken.
-// Flanker-Slot je Reihenfolge: erst L0, dann R0, danach nach RECHTS-außen (R1, R2 …),
-// dann links-außen (L1, L2 …). So sitzt die erste weitere Bowl links neben der Hero,
-// weitere sammeln sich rechts daneben statt links auszufransen.
-function flankSlot(i) {
-  if (i === 0) return { side: -1, rank: 0 };
-  if (i === 1) return { side: 1, rank: 0 };
-  const j = i - 2;
-  return j % 2 === 0 ? { side: 1, rank: 1 + j / 2 } : { side: -1, rank: 1 + (j - 1) / 2 };
-}
-
-function layoutCompanions(list) {
-  const roleOf = (c) => (c.kind === 'bowl' ? 'bowl' : c.item.type === 'drink' ? 'drink' : 'side');
-  const rise = (rank) => `calc(3rem + ${rank * FLANK_RISE}px)`;
-  // 1. Durchgang: Flanker (weitere Bowls + Beilagen, Bowls-first) platzieren und
-  //    merken, ob rechts eine Bowl steht (dann kommt das Getränk davor statt dahinter).
-  const flank = new Map();
-  let fi = 0;
-  let hasRightBowl = false;
-  list.forEach((c, idx) => {
-    if (roleOf(c) === 'drink') return;
-    const { side, rank } = flankSlot(fi);
-    fi += 1;
-    const offset = side * (FAN_BASE + rank * FAN_STEP);
-    flank.set(idx, { offset, rank });
-    if (roleOf(c) === 'bowl' && offset > 0) hasRightBowl = true;
-  });
-  const nDrinks = list.filter((c) => roleOf(c) === 'drink').length;
-  const drinkBase = DRINK_X0 + (hasRightBowl ? DRINK_BOWL_SHIFT : 0);
-  const drinkZ = hasRightBowl ? 8 : 1; // vor die weitere Bowl (sichtbar) statt dahinter
-  let di = 0;
-  return list.map((c, idx) => {
-    if (roleOf(c) === 'drink') {
-      const offset = drinkBase + (di - (nDrinks - 1) * DRINK_SHIFT) * DRINK_SPREAD;
-      di += 1;
-      return posStyle(offset, DRINK_LIFT, drinkZ);
-    }
-    const { offset, rank } = flank.get(idx);
-    return posStyle(offset, rise(rank), 5 - rank);
-  });
 }
 
 // prevIndex = Status-Index der letzten Runde im vorherigen Render (aus dem Parent).
@@ -406,13 +324,13 @@ export default function StatusScreen({ onNavigate }) {
   const heroBowl = latest?.items?.find((i) => i.type === 'bowl')?.config ?? null;
   const companions = [];
   for (const item of latest?.items ?? []) {
-    if (companions.length >= HERO_COMPANION_LIMIT) break;
+    if (companions.length >= HERO_LAYOUT.companionLimit) break;
     if (item.type === 'bowl' && item.config !== heroBowl) {
       companions.push({ kind: 'bowl', key: `bowl-${companions.length}`, config: item.config });
     }
   }
   for (const item of latest?.items ?? []) {
-    if (companions.length >= HERO_COMPANION_LIMIT) break;
+    if (companions.length >= HERO_LAYOUT.companionLimit) break;
     if (item.type === 'bowl') continue;
     if (!companions.some((c) => c.kind === 'item' && c.item.name === item.name)) {
       companions.push({ kind: 'item', key: `item-${item.name}`, item });
@@ -601,7 +519,7 @@ export default function StatusScreen({ onNavigate }) {
                         style={companionStyles[i]}
                       >
                         {c.kind === 'bowl' ? (
-                          <span className="block" style={{ width: `${BOWL_COMPANION_W}px` }}>
+                          <span className="block" style={{ width: `${HERO_LAYOUT.bowlW}px` }}>
                             <BowlThumbnail config={c.config} className="w-full" />
                           </span>
                         ) : (
@@ -622,8 +540,8 @@ export default function StatusScreen({ onNavigate }) {
                     {visibleCompanions.map((c, idx) => {
                       const n = visibleCompanions.length;
                       const spacing = visibleCompanions.every((x) => x.item.type === 'drink')
-                        ? DRINK_SPREAD
-                        : NOHERO_SPREAD;
+                        ? HERO_LAYOUT.drinkSpread
+                        : HERO_LAYOUT.noheroSpread;
                       const offset = (idx - (n - 1) / 2) * spacing;
                       return (
                         <span
