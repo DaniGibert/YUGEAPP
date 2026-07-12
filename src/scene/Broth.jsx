@@ -59,16 +59,15 @@ const fragmentShader = /* glsl */ `
   uniform vec4 uRipples[MAXR]; // xy = Zentrum, z = Startzeit, w = Stärke (0..1)
   varying vec2 vUv;
 
-  // Eine Brühen-Ebene: PNG-Textur ODER prozeduraler Farb-Verlauf (Fallback).
-  // Alpha statt discard, damit sich PNG<->Fallback-Mischfälle (uHasMap 0<->1) beim
-  // Crossfade sauber ineinander blenden; das finale discard steht in main().
+  // Eine Brühen-Ebene: PNG-Textur ODER transparent (kein Fallback). Ohne Map wird
+  // NICHTS gemalt (alpha 0) -> während das PNG kurz lädt, blitzt kein Farb-Platzhalter
+  // rein; die Brühe erscheint erst mit dem Bild. col/edge bleiben nur als Signatur.
   vec4 layerCol(sampler2D map, float hasMap, vec3 col, vec2 uvDisp, float ring, float edge) {
     if (hasMap > 0.5) {
       vec4 t = texture2D(map, vUv + uvDisp);
       return vec4(t.rgb * (1.0 + ring * 0.25), t.a);
     }
-    vec3 c = col * (0.92 + ring * 0.35);
-    return vec4(c, 0.9 * edge);
+    return vec4(0.0);
   }
 
   void main() {
