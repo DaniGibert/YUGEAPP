@@ -545,12 +545,15 @@ export default function StatusScreen({ onNavigate }) {
       <div className="flex h-full min-h-0">
         {/* Aktuelle Runde: Status-Hero und Nachbestell-Weiche. Bezahlen sitzt bewusst
             rechts unter der Rechnungssumme (keine Dopplung mit der Gesamtsumme). */}
-        <section className="flex min-w-0 flex-1 flex-col items-center justify-center gap-10 p-6 pb-16">
+        {/* Scroll-Container: zentriert den Hero mittig, wenn Platz da ist (iPad/Tablet),
+            und scrollt bei kurzer Hoehe (Handy quer) von oben, statt unter den Header
+            zu laufen. min-h-full am Inneren haelt das Zentrieren, kappt den Kopf aber nie. */}
+        <section className="min-w-0 flex-1 overflow-y-auto">
           {/* Zone 1: Status-Hero, guarded weil latest beim Laden undefined ist.
               Feste Hero-Breite (max-w-xl): sonst schrumpft der Container auf die
               jeweilige Headline und der Tracker (w-full) springt beim Wechsel mit. */}
           {latest && (
-            <div className="flex w-full max-w-xl flex-col items-center gap-3 text-center">
+            <div className="mx-auto flex min-h-full w-full max-w-xl flex-col items-center justify-center gap-3 p-6 pb-12 text-center">
               <p className="text-body font-semibold text-ink-400">
                 {t('status.round', { n: orders.length })}
               </p>
