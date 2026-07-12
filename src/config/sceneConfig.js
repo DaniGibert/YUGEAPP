@@ -27,11 +27,12 @@ export const GROUND_SHADOW_H = 96; // Gesamthöhe (flach)
 export const GROUND_SHADOW_OPACITY = 0.3;
 
 // Brühe-Oberfläche (füllt die Schüssel-Öffnung). Nutzt das Brühe-PNG als Textur.
-export const BROTH_CY = 2;
-export const BROTH_RX = 180;
+// Werte im Scene-Lab (?ansicht=lab) an der echten Szene eingestellt.
+export const BROTH_CY = 20;
+export const BROTH_RX = 247;
 // RY an das Seitenverhältnis der Brühen-PNGs angepasst (frame ~1.83:1): sonst
 // staucht die Ebene das Oval flach und die Brühe wirkt kleiner als im Thumbnail.
-export const BROTH_RY = 90;
+export const BROTH_RY = 118;
 
 // Referenz-Band für die frontness-Ableitung (aus y): 1 = vorne (unten, kleines y),
 // 0 = hinten (oben). Ein Wert steuert Position, renderOrder und Perspektiv-Scale
