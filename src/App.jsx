@@ -12,6 +12,7 @@ import CartScreen from './screens/CartScreen';
 import StatusScreen from './screens/StatusScreen';
 import PayScreen from './screens/PayScreen';
 import KitchenScreen from './screens/KitchenScreen';
+import SceneLabScreen from './screens/SceneLabScreen';
 
 // Einfacher State-Router: Screen-Id -> Komponente. Der Gast-Flow navigiert
 // sich selbst (Start -> Builder -> Übersicht -> Warenkorb -> Status -> Bezahlen);
@@ -30,6 +31,10 @@ const SCREENS = {
 // dann gibt es nur die Küche, ohne Gast-Navigation.
 const KITCHEN_MODE = new URLSearchParams(window.location.search).get('ansicht') === 'kueche';
 
+// Dev-Tool: ?ansicht=lab öffnet das Scene-Lab (Brühen-Geometrie live tunen),
+// ohne Gast-Navigation. Konstante pro Seitenaufruf -> Early-Return ist hook-sicher.
+const LAB_MODE = new URLSearchParams(window.location.search).get('ansicht') === 'lab';
+
 // Übergabe Start -> Builder (Shared-Element-Flug): Sicherheitsnetz, falls
 // transitionend oder das Szene-Ready-Signal je ausbleiben (z. B. fehlendes
 // Asset, Tab im Hintergrund). Räumt Overlay UND Veil auf, der Builder darf
@@ -40,6 +45,16 @@ const HANDOFF_FAILSAFE_MS = 2500;
 const HANDOFF_HOLD_MS = 150;
 
 export default function App() {
+  // Scene-Lab: eigenständige Dev-Ansicht, vor allen Gast-Hooks (LAB_MODE ist
+  // eine Konstante pro Seitenaufruf, daher hook-sicher).
+  if (LAB_MODE) {
+    return (
+      <Stage>
+        <SceneLabScreen />
+      </Stage>
+    );
+  }
+
   // `from` = vorheriger Screen, damit "Zurück" im Builder dorthin führt,
   // wo der Gast wirklich herkam (Start, Status, Warenkorb oder Übersicht).
   const [nav, setNav] = useState({ screen: KITCHEN_MODE ? 'kitchen' : 'start', from: null });

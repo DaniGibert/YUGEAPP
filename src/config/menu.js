@@ -21,10 +21,10 @@
 
 // ---- 1. Brühe (Einfach-Auswahl) ----
 export const BROTHS = [
-  { id: 'tonkotsu', name: 'Tonkotsu', sceneColor: '#e8ddc8', desc: 'Cremige Brühe aus Schweineknochen, die stundenlang köchelt. Kräftig und macht richtig satt.' },
-  { id: 'shoyu',    name: 'Shoyu',    sceneColor: '#8a5a3b', desc: 'Klare Brühe auf Basis von Sojasoße. Etwas leichter als Tonkotsu und ein Klassiker aus Tokyo.' },
-  { id: 'miso',     name: 'Miso',     sceneColor: '#f0a868', desc: 'Herzhafte Brühe mit Miso-Paste. Kräftig im Geschmack, mit einer leicht süßlichen Note.' },
-  { id: 'shio',     name: 'Shio',     sceneColor: '#f5e6c5', desc: 'Unsere leichteste und feinste Brühe, klar und mild gesalzen.' },
+  { id: 'tonkotsu', name: 'Tonkotsu', sceneColor: '#e3c9ac', desc: 'Cremige Brühe aus Schweineknochen, die stundenlang köchelt. Kräftig und macht richtig satt.' },
+  { id: 'shoyu',    name: 'Shoyu',    sceneColor: '#c69160', desc: 'Klare Brühe auf Basis von Sojasoße. Etwas leichter als Tonkotsu und ein Klassiker aus Tokyo.' },
+  { id: 'miso',     name: 'Miso',     sceneColor: '#c68d62', desc: 'Herzhafte Brühe mit Miso-Paste. Kräftig im Geschmack, mit einer leicht süßlichen Note.' },
+  { id: 'shio',     name: 'Shio',     sceneColor: '#e4d2b8', desc: 'Unsere leichteste und feinste Brühe, klar und mild gesalzen.' },
 ];
 
 // ---- 2. Nudeln (Einfach-Auswahl) + Härte-Modifier ----

@@ -130,7 +130,7 @@ function SceneReadySignal({ onReady }) {
   return null;
 }
 
-export default function BowlScene({ broth = null, ingredients = [], onReady }) {
+export default function BowlScene({ broth = null, ingredients = [], onReady, brothGeom }) {
   const brothRef = useRef();
   const handleImpact = useCallback((x, y) => {
     brothRef.current?.ripple(x, y);
@@ -193,7 +193,7 @@ export default function BowlScene({ broth = null, ingredients = [], onReady }) {
         {onReady && <SceneReadySignal onReady={onReady} />}
         <GroundShadow />
         <Bowl />
-        <Broth ref={brothRef} broth={brothData} visible={!!brothData} />
+        <Broth ref={brothRef} broth={brothData} visible={!!brothData} geom={brothGeom} />
         {transitions((style, item) => {
           const live = itemsByKey.get(item.key) ?? item;
           return (

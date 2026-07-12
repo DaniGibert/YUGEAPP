@@ -106,9 +106,18 @@ const fragmentShader = /* glsl */ `
   }
 `;
 
-const Broth = forwardRef(function Broth({ broth, visible = true }, ref) {
+const Broth = forwardRef(function Broth({ broth, visible = true, geom }, ref) {
   const color = broth?.color || "#e8ddc8";
   const src = broth?.src;
+
+  // Geometrie normal aus sceneConfig; das Scene-Lab kann sie per geom-Prop live
+  // überschreiben (ohne Prop identisch zum Normalbetrieb). geomRef hält die
+  // aktuellen Werte für useFrame/Ripple/Fill (Closure-sicher).
+  const CY = geom?.cy ?? BROTH_CY;
+  const RX = geom?.rx ?? BROTH_RX;
+  const RY = geom?.ry ?? BROTH_RY;
+  const geomRef = useRef({ CY, RX, RY });
+  geomRef.current = { CY, RX, RY };
 
   const meshRef = useRef();
   const matRef = useRef();
@@ -150,7 +159,7 @@ const Broth = forwardRef(function Broth({ broth, visible = true }, ref) {
   // und die internen Füll-/Wechsel-Ripples). timeRef ist die Szenen-Uhr.
   const fireRipple = (worldX, worldY, strength = 1) => {
     const slot = uniforms.uRipples.value[idxRef.current % MAXR];
-    slot.set(worldX, worldY - BROTH_CY, timeRef.current, strength);
+    slot.set(worldX, worldY - geomRef.current.CY, timeRef.current, strength);
     idxRef.current += 1;
   };
 
@@ -205,6 +214,11 @@ const Broth = forwardRef(function Broth({ broth, visible = true }, ref) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src, color]);
 
+  // uHalf (Ripple-/Verzerrungs-Skala) an live geänderte RX/RY nachziehen (Lab).
+  useEffect(() => {
+    if (matRef.current) matRef.current.uniforms.uHalf.value.set(RX, RY);
+  }, [RX, RY]);
+
   useFrame((state) => {
     const t = state.clock.elapsedTime;
     timeRef.current = t;
@@ -238,7 +252,7 @@ const Broth = forwardRef(function Broth({ broth, visible = true }, ref) {
     if (fillStartRef.current >= 0 && meshRef.current) {
       const ft = Math.min(1, Math.max(0, (t - fillStartRef.current) / FILL_DURATION));
       const p = 1 - Math.pow(1 - ft, 3); // easeOutCubic
-      meshRef.current.position.y = BROTH_CY - (1 - p) * FILL_RISE;
+      meshRef.current.position.y = geomRef.current.CY - (1 - p) * FILL_RISE;
       const s = FILL_START_SCALE + (1 - FILL_START_SCALE) * p;
       meshRef.current.scale.set(s, s, 1);
       while (
@@ -251,7 +265,7 @@ const Broth = forwardRef(function Broth({ broth, visible = true }, ref) {
       }
       if (ft >= 1) {
         // Endlage exakt herstellen (außerhalb des Fills: BROTH_CY, Skala 1).
-        meshRef.current.position.y = BROTH_CY;
+        meshRef.current.position.y = geomRef.current.CY;
         meshRef.current.scale.set(1, 1, 1);
         fillStartRef.current = -1;
       }
@@ -271,7 +285,7 @@ const Broth = forwardRef(function Broth({ broth, visible = true }, ref) {
         fillStartRef.current = -1;
         firedRipplesRef.current = FILL_RIPPLES.length;
         if (mesh) {
-          mesh.position.y = BROTH_CY;
+          mesh.position.y = geomRef.current.CY;
           mesh.scale.set(1, 1, 1);
         }
         return;
@@ -280,15 +294,15 @@ const Broth = forwardRef(function Broth({ broth, visible = true }, ref) {
       firedRipplesRef.current = 0;
       // Startlage sofort setzen (tief + klein), damit kein voller Frame aufblitzt.
       if (mesh) {
-        mesh.position.y = BROTH_CY - FILL_RISE;
+        mesh.position.y = geomRef.current.CY - FILL_RISE;
         mesh.scale.set(FILL_START_SCALE, FILL_START_SCALE, 1);
       }
     },
   }));
 
   return (
-    <mesh ref={meshRef} position={[0, BROTH_CY, 0]} renderOrder={RO.broth} visible={visible}>
-      <planeGeometry args={[BROTH_RX * 2, BROTH_RY * 2]} />
+    <mesh ref={meshRef} position={[0, CY, 0]} renderOrder={RO.broth} visible={visible}>
+      <planeGeometry args={[RX * 2, RY * 2]} />
       <shaderMaterial
         ref={matRef}
         vertexShader={vertexShader}
