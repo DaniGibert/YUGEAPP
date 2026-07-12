@@ -17,12 +17,26 @@ import ItemThumbnail from '../components/ItemThumbnail';
 // ============================================================================
 
 // --- Brühen-Modus ---
-function Slider({ label, value, min, max, step = 1, onChange }) {
+function Slider({ label, value, min, max, step = 1, defaultValue, onChange }) {
+  const changed = defaultValue !== undefined && value !== defaultValue;
   return (
-    <label className="flex flex-col gap-1">
-      <span className="flex items-baseline justify-between text-small font-semibold text-ink-900">
-        {label}
-        <span className="font-display text-body tabular-nums text-primary">{value}</span>
+    <div className="flex flex-col gap-1">
+      <span className="flex items-baseline justify-between gap-2 text-small font-semibold text-ink-900">
+        <span>{label}</span>
+        <span className="flex items-center gap-1.5">
+          {changed && (
+            <button
+              type="button"
+              onClick={() => onChange(defaultValue)}
+              title={`Zurück auf ${defaultValue}`}
+              aria-label={`${label} zurücksetzen`}
+              className="text-body leading-none text-ink-400 hover:text-primary"
+            >
+              ↺
+            </button>
+          )}
+          <span className="font-display text-body tabular-nums text-primary">{value}</span>
+        </span>
       </span>
       <input
         type="range"
@@ -33,7 +47,7 @@ function Slider({ label, value, min, max, step = 1, onChange }) {
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full accent-primary"
       />
-    </label>
+    </div>
   );
 }
 
@@ -133,9 +147,9 @@ function BrothMode() {
           ))}
         </div>
         <div className="flex flex-col gap-4">
-          <Slider label="Höhe (BROTH_CY)" value={cy} min={-80} max={80} onChange={setCy} />
-          <Slider label="Breite (BROTH_RX)" value={rx} min={100} max={280} onChange={setRx} />
-          <Slider label="Form / Flachheit (BROTH_RY)" value={ry} min={30} max={140} onChange={setRy} />
+          <Slider label="Höhe (BROTH_CY)" value={cy} min={-80} max={80} defaultValue={BROTH_CY} onChange={setCy} />
+          <Slider label="Breite (BROTH_RX)" value={rx} min={100} max={280} defaultValue={BROTH_RX} onChange={setRx} />
+          <Slider label="Form / Flachheit (BROTH_RY)" value={ry} min={30} max={140} defaultValue={BROTH_RY} onChange={setRy} />
         </div>
         <div className="flex flex-col gap-2">
           <span className="text-small font-semibold text-ink-900">Zutaten testen</span>
@@ -244,7 +258,16 @@ function HeroMode() {
         {/* Regler */}
         <div className="flex flex-col gap-3">
           {HERO_FIELDS.map(([key, label, min, max, step]) => (
-            <Slider key={key} label={label} value={cfg[key]} min={min} max={max} step={step} onChange={(v) => set(key, v)} />
+            <Slider
+              key={key}
+              label={label}
+              value={cfg[key]}
+              min={min}
+              max={max}
+              step={step}
+              defaultValue={HERO_LAYOUT[key]}
+              onChange={(v) => set(key, v)}
+            />
           ))}
         </div>
 
