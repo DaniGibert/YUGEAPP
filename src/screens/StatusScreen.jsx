@@ -471,7 +471,7 @@ export default function StatusScreen({ onNavigate }) {
               Feste Hero-Breite (max-w-xl): sonst schrumpft der Container auf die
               jeweilige Headline und der Tracker (w-full) springt beim Wechsel mit. */}
           {latest && (
-            <div className="mx-auto flex min-h-full w-full max-w-xl flex-col items-center justify-center gap-3 p-6 pb-12 text-center">
+            <div className="status-hero mx-auto flex min-h-full w-full max-w-xl flex-col items-center justify-center gap-3 p-6 pb-12 text-center">
               <p className="text-body font-semibold text-ink-400">
                 {t('status.round', { n: orders.length })}
               </p>
@@ -509,7 +509,7 @@ export default function StatusScreen({ onNavigate }) {
                   hat feste Höhe, damit beim Kochen nichts im Layout springt. */}
               {(heroBowl || companions.length > 0) &&
                 (heroBowl ? (
-                  <div className="relative flex h-52 w-full items-end justify-center">
+                  <div className="status-hero-scene relative flex h-52 w-full items-end justify-center">
                     {/* Begleiter absolut um die Bowl gefächert, HINTER dem Canvas
                         (Menü-Tiefe), ploppen beim Kochen einzeln ein. */}
                     {visibleCompanions.map((c, i) => (
@@ -536,7 +536,7 @@ export default function StatusScreen({ onNavigate }) {
                 ) : (
                   // Runde ohne Bowl: nur die Begleiter, eng zentrierte Reihe.
                   // Getränke stehen näher zusammen (DRINK_SPREAD) als Beilagen.
-                  <div className="relative flex h-52 w-full items-end justify-center overflow-hidden">
+                  <div className="status-hero-scene relative flex h-52 w-full items-end justify-center overflow-hidden">
                     {visibleCompanions.map((c, idx) => {
                       const n = visibleCompanions.length;
                       const spacing = visibleCompanions.every((x) => x.item.type === 'drink')
