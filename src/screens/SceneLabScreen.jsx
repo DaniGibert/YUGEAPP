@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { BROTHS } from '../config/menu';
-import { BROTH_CY, BROTH_RX, BROTH_RY } from '../config/sceneConfig';
+import { BROTHS, NOODLES } from '../config/menu';
+import { ANCHOR_DEFAULT, BROTH_CY, BROTH_RX, BROTH_RY } from '../config/sceneConfig';
 import { HERO_LAYOUT, companionWidth, layoutCompanions } from '../scene/heroCompanions';
 import BowlScene from '../scene/BowlScene';
 import BowlThumbnail from '../components/BowlThumbnail';
@@ -277,6 +277,99 @@ function HeroMode() {
   );
 }
 
+function NoodleMode() {
+  const [noodleId, setNoodleId] = useState('mittel');
+  const [broth, setBroth] = useState('tonkotsu');
+  const [brothOn, setBrothOn] = useState(true);
+  const def = ANCHOR_DEFAULT.noodle;
+  const [ax, setAx] = useState(def.x);
+  const [ay, setAy] = useState(def.y);
+  const [ascale, setAscale] = useState(def.scale ?? 1);
+  const [sizes, setSizes] = useState(() =>
+    Object.fromEntries(NOODLES.map((n) => [n.id, n.size])),
+  );
+
+  const size = sizes[noodleId];
+  const ingredients = [{ key: 'noodle', id: noodleId, category: 'noodle', qty: 1 }];
+  const anchorOverrides = { [noodleId]: { x: ax, y: ay, scale: ascale, size } };
+
+  const scalePart = ascale !== 1 ? ` scale: ${ascale},` : '';
+  const snippet =
+    '// sceneConfig.js -> ANCHOR_DEFAULT.noodle (x/y/scale, gilt für alle Nudeln)\n' +
+    `noodle: { x: ${ax}, y: ${ay},${scalePart} satellites: [...] },\n\n` +
+    '// config/menu.js -> NOODLES size (pro Nudel-Sorte)\n' +
+    NOODLES.map((n) => `${n.id}: size ${sizes[n.id]}`).join('\n');
+
+  return (
+    <>
+      <div className="relative flex min-h-[45vh] flex-1 items-center justify-center p-4">
+        <div className="aspect-[700/640] h-full max-h-full w-full max-w-[560px]">
+          <BowlScene
+            broth={brothOn ? broth : null}
+            ingredients={ingredients}
+            anchorOverrides={anchorOverrides}
+          />
+        </div>
+      </div>
+      <div className="flex w-full flex-col gap-5 overflow-y-auto border-t border-line bg-surface p-5 lg:w-96 lg:border-l lg:border-t-0">
+        {/* Nudel-Sorte */}
+        <div className="flex flex-col gap-2">
+          <span className="text-small font-semibold text-ink-900">Nudel-Sorte</span>
+          <div className="flex flex-wrap gap-2">
+            {NOODLES.map((n) => (
+              <Toggle key={n.id} on={noodleId === n.id} onClick={() => setNoodleId(n.id)} color="primary">
+                {n.name}
+              </Toggle>
+            ))}
+          </div>
+        </div>
+
+        {/* Brühe-Kontext (Wasserlinie sichtbar machen) */}
+        <div className="flex flex-col gap-2">
+          <span className="text-small font-semibold text-ink-900">Brühe-Kontext</span>
+          <div className="flex flex-wrap gap-2">
+            <Toggle on={brothOn} onClick={() => setBrothOn((v) => !v)} color="primary">
+              Brühe an
+            </Toggle>
+            {brothOn &&
+              BROTHS.map((b) => (
+                <Toggle key={b.id} on={broth === b.id} onClick={() => setBroth(b.id)} color="gold">
+                  {b.name}
+                </Toggle>
+              ))}
+          </div>
+        </div>
+
+        {/* Regler */}
+        <div className="flex flex-col gap-4">
+          <Slider label="Position x (Anker)" value={ax} min={-120} max={120} defaultValue={def.x} onChange={setAx} />
+          <Slider label="Position y (Höhe/Tiefe)" value={ay} min={-60} max={80} defaultValue={def.y} onChange={setAy} />
+          <Slider label="Skala (Anker)" value={ascale} min={0.5} max={1.8} step={0.05} defaultValue={def.scale ?? 1} onChange={setAscale} />
+          <Slider
+            label={`Größe (${noodleId})`}
+            value={size}
+            min={180}
+            max={460}
+            step={5}
+            defaultValue={NOODLES.find((n) => n.id === noodleId)?.size}
+            onChange={(v) => setSizes((s) => ({ ...s, [noodleId]: v }))}
+          />
+        </div>
+
+        <ValueBox
+          snippet={snippet}
+          onReset={() => {
+            setAx(def.x);
+            setAy(def.y);
+            setAscale(def.scale ?? 1);
+            setSizes(Object.fromEntries(NOODLES.map((n) => [n.id, n.size])));
+          }}
+        />
+      </div>
+    </>
+  );
+}
+
 function ValueBox({ snippet, onReset }) {
   return (
     <div className="flex flex-col gap-2">
@@ -308,9 +401,12 @@ export default function SceneLabScreen() {
     <div className="flex h-full min-h-0 flex-col bg-bg">
       <div className="flex items-center gap-3 border-b border-line bg-surface px-5 py-3">
         <h1 className="font-display text-h2 text-ink-900">Scene-Lab</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Toggle on={mode === 'broth'} onClick={() => setMode('broth')} color="primary">
             Brühe
+          </Toggle>
+          <Toggle on={mode === 'noodle'} onClick={() => setMode('noodle')} color="primary">
+            Nudeln
           </Toggle>
           <Toggle on={mode === 'hero'} onClick={() => setMode('hero')} color="primary">
             Status-Komposition
@@ -318,7 +414,9 @@ export default function SceneLabScreen() {
         </div>
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row">
-        {mode === 'broth' ? <BrothMode /> : <HeroMode />}
+        {mode === 'broth' && <BrothMode />}
+        {mode === 'noodle' && <NoodleMode />}
+        {mode === 'hero' && <HeroMode />}
       </div>
     </div>
   );

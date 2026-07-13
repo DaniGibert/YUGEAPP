@@ -130,7 +130,7 @@ function SceneReadySignal({ onReady }) {
   return null;
 }
 
-export default function BowlScene({ broth = null, ingredients = [], onReady, brothGeom }) {
+export default function BowlScene({ broth = null, ingredients = [], onReady, brothGeom, anchorOverrides }) {
   const brothRef = useRef();
   const handleImpact = useCallback((x, y) => {
     brothRef.current?.ripple(x, y);
@@ -153,7 +153,7 @@ export default function BowlScene({ broth = null, ingredients = [], onReady, bro
   }, [broth]);
 
   // Semantische Liste -> platzierte Instanzen (gemeinsame Logik mit BowlThumbnail).
-  const items = useMemo(() => composeBowlItems(ingredients), [ingredients]);
+  const items = useMemo(() => composeBowlItems(ingredients, anchorOverrides), [ingredients, anchorOverrides]);
 
   // Exit-Choreografie: useTransition besitzt den Lebenszyklus (Leave-Ende = Unmount,
   // Re-Add mit gleichem key kehrt den Spring um statt zu remounten). t: 1 (lebt) -> 0

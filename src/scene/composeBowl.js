@@ -24,19 +24,23 @@ function pickVariant(variants, qty) {
   return best;
 }
 
-export function composeBowlItems(ingredients) {
+// overrides (optional, nur fürs Scene-Lab): { [id]: { x?, y?, scale?, size? } } —
+// überschreibt Anker/Größe einer Zutat live; ohne overrides identisch zum Normalbetrieb.
+export function composeBowlItems(ingredients, overrides = null) {
   const items = [];
   for (const ing of ingredients) {
     const option = OPTIONS_BY_CATEGORY[ing.category]?.find((o) => o.id === ing.id);
     if (!option) continue;
     const qty = ing.qty ?? 1;
+    const ov = overrides?.[ing.id] ?? null;
+    const size = ov?.size ?? option.size;
 
     const baseSrc = `/assets/${ing.category}/${ing.id}.png`;
     const variant = pickVariant(option.sceneVariants ?? [1], qty);
     const mainSrc = variant > 1 ? `/assets/${ing.category}/${ing.id}-x${variant}.png` : baseSrc;
 
     // Haupt-Item am Anker (stabiler key -> ermöglicht den Mini-Plop bei Mengenwechsel).
-    const main = placeIngredient(ing.id, ing.category);
+    const main = placeIngredient(ing.id, ing.category, null, ov);
     items.push({
       key: ing.key,
       layer: layerFor(ing.category, main.layer),
@@ -45,7 +49,7 @@ export function composeBowlItems(ingredients) {
         // Fallback-Leiter: fehlende Variante -> Basis-Asset -> Farb-Blob (sceneColor).
         fallbackSrc: variant > 1 ? baseSrc : null,
         color: option.sceneColor,
-        size: option.size,
+        size,
       },
       x: main.x,
       y: main.y,
@@ -57,11 +61,11 @@ export function composeBowlItems(ingredients) {
     // Satelliten für die restliche Menge (immer Basis-Asset; eigener key -> fällt neu,
     // Reduktion unmountet nur den höchsten, ohne Bestands-Satelliten zu bewegen).
     for (let n = 0; n < qty - variant; n++) {
-      const p = placeIngredient(ing.id, ing.category, n);
+      const p = placeIngredient(ing.id, ing.category, n, ov);
       items.push({
         key: `${ing.key}-sat-${n}`,
         layer: layerFor(ing.category, p.layer),
-        option: { src: baseSrc, fallbackSrc: null, color: option.sceneColor, size: option.size },
+        option: { src: baseSrc, fallbackSrc: null, color: option.sceneColor, size },
         x: p.x,
         y: p.y,
         scale: p.scale,

@@ -14,13 +14,16 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
  * @param {string} id         Zutaten-id (Anker-Schlüssel)
  * @param {string} category   "noodle" | "protein" | "topping" (Fallback-Anker)
  * @param {number|null} satellite  Satelliten-Index (null = Haupt-Item am Anker)
+ * @param {{x?:number,y?:number,scale?:number}|null} override  Anker live überschreiben
+ *        (nur fürs Scene-Lab; ohne Override identisch zum Normalbetrieb). Wirkt auf
+ *        die Anker-Basis, Satelliten-Offsets kommen wie gehabt oben drauf.
  * @returns {{x,y,frontness,scale,layer,float}}
  */
-export function placeIngredient(id, category, satellite = null) {
+export function placeIngredient(id, category, satellite = null, override = null) {
   const anchor = ANCHORS[id] ?? ANCHOR_DEFAULT[category] ?? ANCHOR_DEFAULT.topping;
-  let x = anchor.x;
-  let y = anchor.y;
-  let s = anchor.scale ?? 1;
+  let x = override?.x ?? anchor.x;
+  let y = override?.y ?? anchor.y;
+  let s = override?.scale ?? anchor.scale ?? 1;
 
   if (satellite != null) {
     const sats = anchor.satellites ?? ANCHOR_DEFAULT.topping.satellites;
