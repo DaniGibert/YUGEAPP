@@ -49,7 +49,7 @@ export const TOPPINGS = [
   { id: 'ajitama',           name: 'Ajitama',           sceneColor: '#f5d76e', size: 365, sceneVariants: [1], desc: 'Weich gekochtes Ei, das in einer süßlich-salzigen Marinade zieht. Innen noch schön weich.', pairsWith: 'alle' },
   { id: 'naruto',            name: 'Naruto',            sceneColor: '#e8a0a8', size: 245, sceneVariants: [1], desc: 'Fischkuchen mit der typisch rosa Spirale. Vor allem was fürs Auge.' },
   { id: 'nori',              name: 'Nori',              sceneColor: '#2f4f3a', size: 415, sceneVariants: [1], desc: 'Ein Blatt getrocknete Alge mit leicht rauchigem Geschmack.' },
-  { id: 'mais',              name: 'Mais',              sceneColor: '#f2c14e', size: 355, sceneVariants: [1], desc: 'Süße, knackige Maiskörner.', pairsWith: ['miso'] },
+  { id: 'mais',              name: 'Mais',              sceneColor: '#f2c14e', size: 340, sceneVariants: [1], desc: 'Süße, knackige Maiskörner.', pairsWith: ['miso'] },
   { id: 'bambussprossen',    name: 'Bambussprossen',    sceneColor: '#d9b96a', size: 345, sceneVariants: [1], desc: 'Knackige Bambussprossen mit einer leicht säuerlichen Note.' },
   { id: 'fruehlingszwiebeln', name: 'Frühlingszwiebeln', sceneColor: '#6aa84f', size: 295, sceneVariants: [1], desc: 'Frische Frühlingszwiebeln mit einer leicht scharfen Note.' },
 ];

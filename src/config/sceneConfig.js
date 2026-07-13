@@ -64,12 +64,12 @@ export const ANCHORS = {
   tofu:               { x: -82, y: 59 },
   // Toppings: x/y/scale/stretch im Scene-Lab getunt; satellites (Mengen 2-4)
   // und Nori-Ebene ('back') bleiben kuratiert.
-  ajitama:            { x: 94,  y: -7, satellites: [{ dx: -30, dy: 8, scale: 0.9 }, { dx: 30, dy: 12, scale: 0.85 }, { dx: 0, dy: -14, scale: 0.8 }] },
+  ajitama:            { x: 104, y: 40,  satellites: [{ dx: -30, dy: 8, scale: 0.9 }, { dx: 30, dy: 12, scale: 0.85 }, { dx: 0, dy: -14, scale: 0.8 }] },
   naruto:             { x: 35,  y: -25, satellites: [{ dx: -26, dy: 6, scale: 0.85 }, { dx: 26, dy: 10, scale: 0.82 }, { dx: 2, dy: -14, scale: 0.78 }] },
   nori:               { x: -15, y: 92,  layer: 'back', float: 0.35, satellites: [{ dx: 24, dy: -4, scale: 0.92 }, { dx: -24, dy: -2, scale: 0.9 }, { dx: 0, dy: 6, scale: 0.88 }] },
-  mais:               { x: 92,  y: 23,  scale: 1.05, stretch: 0.75, satellites: [{ dx: -24, dy: 6, scale: 0.82 }, { dx: 22, dy: 14, scale: 0.78 }, { dx: -4, dy: -16, scale: 0.72 }] },
-  bambussprossen:     { x: -92, y: 26,  stretch: 0.85, satellites: [{ dx: 22, dy: 8, scale: 0.85 }, { dx: -20, dy: 12, scale: 0.8 }, { dx: 4, dy: -12, scale: 0.75 }] },
-  fruehlingszwiebeln: { x: 8,   y: 29,  satellites: [{ dx: -34, dy: 8, scale: 0.85 }, { dx: 30, dy: 6, scale: 0.8 }, { dx: 0, dy: -12, scale: 0.75 }] },
+  mais:               { x: 80,  y: -3,  scale: 1.05, stretch: 0.75, satellites: [{ dx: -24, dy: 6, scale: 0.82 }, { dx: 22, dy: 14, scale: 0.78 }, { dx: -4, dy: -16, scale: 0.72 }] },
+  bambussprossen:     { x: -92, y: 2,   stretch: 0.85, satellites: [{ dx: 22, dy: 8, scale: 0.85 }, { dx: -20, dy: 12, scale: 0.8 }, { dx: 4, dy: -12, scale: 0.75 }] },
+  fruehlingszwiebeln: { x: 8,   y: 29,  stretch: 0.9, satellites: [{ dx: -34, dy: 8, scale: 0.85 }, { dx: 30, dy: 6, scale: 0.8 }, { dx: 0, dy: -12, scale: 0.75 }] },
 };
 
 // Fallback-Anker je Kategorie (neue Zutat ohne eigenen ANCHORS-Eintrag). Nudeln
