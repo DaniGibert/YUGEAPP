@@ -59,9 +59,9 @@ export const ANCHORS = {
   mittel:             { x: -8,  y: 14, scale: 1.4,  rot: -4, stretch: 0.75 },
   dick:               { x: -11, y: 14, scale: 1.3,           stretch: 0.85 },
   // Protein: eigener Anker pro Sorte (im Scene-Lab getunt). Menge immer 1.
-  'chashu-schwein':   { x: -72, y: -9 },
-  'chashu-haehnchen': { x: -72, y: -9 },
-  tofu:               { x: -75, y: -8 },
+  'chashu-schwein':   { x: -89, y: 62 },
+  'chashu-haehnchen': { x: -72, y: 61 },
+  tofu:               { x: -82, y: 59 },
   // Toppings: x/y/scale/stretch im Scene-Lab getunt; satellites (Mengen 2-4)
   // und Nori-Ebene ('back') bleiben kuratiert.
   ajitama:            { x: 94,  y: -7, satellites: [{ dx: -30, dy: 8, scale: 0.9 }, { dx: 30, dy: 12, scale: 0.85 }, { dx: 0, dy: -14, scale: 0.8 }] },
