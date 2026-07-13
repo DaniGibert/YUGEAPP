@@ -38,9 +38,9 @@ export const NOODLE_FIRMNESS = { label: 'Nudelhärte', options: ['Weich', 'Norma
 
 // ---- 3. Protein (Einfach-Auswahl, Aufpreis auf die Bowl) ----
 export const PROTEINS = [
-  { id: 'chashu-schwein',  name: 'Chashu Schwein',  sceneColor: '#b5651d', size: 245, desc: 'Schweinebauch, der so lange gegart wird, bis er ganz zart ist.', price: 3, pairsWith: ['tonkotsu'] },
-  { id: 'chashu-haehnchen', name: 'Chashu Hähnchen', sceneColor: '#d9a066', size: 245, desc: 'Die leichtere Wahl statt Schwein. Saftiges Hähnchen, mild im Geschmack.',           price: 3, pairsWith: ['shio', 'shoyu'] },
-  { id: 'tofu',            name: 'Tofu',            sceneColor: '#f0ead0', size: 300, desc: 'Gebratener Tofu, der den Geschmack der Brühe aufnimmt. Die vegetarische Wahl.',           price: 2, pairsWith: ['miso'] },
+  { id: 'chashu-schwein',  name: 'Chashu Schwein',  sceneColor: '#b5651d', size: 285, desc: 'Schweinebauch, der so lange gegart wird, bis er ganz zart ist.', price: 3, pairsWith: ['tonkotsu'] },
+  { id: 'chashu-haehnchen', name: 'Chashu Hähnchen', sceneColor: '#d9a066', size: 285, desc: 'Die leichtere Wahl statt Schwein. Saftiges Hähnchen, mild im Geschmack.',           price: 3, pairsWith: ['shio', 'shoyu'] },
+  { id: 'tofu',            name: 'Tofu',            sceneColor: '#f0ead0', size: 290, desc: 'Gebratener Tofu, der den Geschmack der Brühe aufnimmt. Die vegetarische Wahl.',           price: 2, pairsWith: ['miso'] },
   { id: 'ohne',            name: 'Ohne Protein',    desc: 'Nur Brühe, Nudeln und Toppings, für alle die es leichter mögen.',       price: 0 },
 ];
 
