@@ -17,9 +17,9 @@ Bezug: CLAUDE.md §4 (Ordner/Naming), §7 (Bowl-Szene), `config/sceneConfig.js`
 - **Licht:** weich, von **oben/links**. Sanfter Verlauf, keine harten Spitzlichter.
 - **Freisteller:** transparenter Hintergrund (Alpha), sauber ausgeschnitten, keine
   weißen Kanten/Halos.
-- **Kein eingebackener Schlagschatten.** Der Kontaktschatten kommt aus der Szene
-  (`Ingredient3D`, nur Surface-Zutaten). Ein zusätzlicher gemalter Schatten würde
-  doppelt wirken.
+- **Kein Schatten.** Zutaten sind sauber freigestellt, ohne eingebackenen
+  Schlagschatten. Die Szene wirft **keinen** Kontaktschatten mehr auf Zutaten
+  (bewusst entfernt); nur der Boden-Schatten unter der ganzen Schüssel bleibt.
 - **Kein eingebackener Boden/Teller.** Nur die Zutat selbst.
 
 ## 2. Technik
@@ -52,7 +52,7 @@ Bezug: CLAUDE.md §4 (Ordner/Naming), §7 (Bowl-Szene), `config/sceneConfig.js`
 - **Gerade Unterkante** (dort „taucht" es in Nudeln/Brühe ein). Oberkante ragt über
   den Rand. Nori liegt auf der Ebene `back` (hinter Nudeln/Toppings) und wippt kaum
   (`float` niedrig) — beides in `ANCHORS.nori` (`sceneConfig.js`) gesetzt, nicht im Asset.
-- **Kein** Kontaktschatten (die Szene wirft ihn nur für Surface-Zutaten).
+- **Kein** Kontaktschatten (die Szene wirft ohnehin keinen mehr).
 
 ## 5. Bedarfsliste (Stand: aktueller Umbau)
 

@@ -6,11 +6,11 @@
  *    als steckte sie in der Suppe. Das Eintauchen passiert beim Fallen automatisch.
  *  - Surface-Zutaten werfen zusätzlich einen weichen Kontaktschatten auf die Brühe.
  * ===========================================================================*/
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useSpring, animated } from "@react-spring/three";
 import * as THREE from "three";
-import { useTextureOrColor, softCircleTexture } from "./sceneTextures.js";
+import { useTextureOrColor } from "./sceneTextures.js";
 import {
   DROP_FROM,
   LAYER_RO,
@@ -61,7 +61,6 @@ const fragmentShader = /* glsl */ `
 export default function Ingredient3D({ item, exitT, onImpact, waterY = -9999, brothColor }) {
   const { option, x, y, scale, frontness, layer, float = 1, rot = 0, stretch = 1 } = item;
   const map = useTextureOrColor(option.src, option.color, option.fallbackSrc);
-  const shadowTex = useRef(softCircleTexture());
   const rotZ = (rot * Math.PI) / 180; // Grad -> Rad (Drehung in der Bildebene)
 
   // Steckt die Zutat in einer Brühe? Steuert, ob "Entfernen" versinkt (in Brühe)
@@ -76,7 +75,6 @@ export default function Ingredient3D({ item, exitT, onImpact, waterY = -9999, br
   const innerRef = useRef();
   const matRef = useRef();
   const landedRef = useRef(false);
-  const [landed, setLanded] = useState(false);
   const phase = useRef(Math.random() * Math.PI * 2);
   const prevExitRef = useRef(1); // Flanken-Erkennung für den einmaligen Versink-Ripple
 
@@ -147,7 +145,6 @@ export default function Ingredient3D({ item, exitT, onImpact, waterY = -9999, br
     // Aufprall: sobald die Zutat zum ersten Mal die Oberfläche (y) erreicht -> Ripple + Floaten an.
     if (!landedRef.current && spring.posY.get() <= y) {
       landedRef.current = true;
-      setLanded(true);
       onImpact?.(x, y);
     }
     // Float nur solange die Zutat lebt (tv == 1); beim Versinken einfrieren.
@@ -171,24 +168,7 @@ export default function Ingredient3D({ item, exitT, onImpact, waterY = -9999, br
         position-y={exitT.to((v) => (v - 1) * SINK_DEPTH * (inBroth ? 1 : 0))}
         scale={exitT.to((v) => (inBroth ? 1 : 0.6 + 0.4 * v))}
       >
-        {/* Kontaktschatten auf der Brühe (nur Surface-Zutaten, erst nach dem Landen);
-            verblasst mit dem Versinken. */}
-        {layer === "surface" && landed && (
-          <mesh position={[0, -h * 0.36, 0]} renderOrder={RO.shadow + frontness * 0.5}>
-            <planeGeometry args={[w * 0.95, h * 0.42]} />
-            <animated.meshBasicMaterial
-              map={shadowTex.current}
-              color="#000000"
-              transparent
-              opacity={exitT.to((v) => 0.24 * v)}
-              depthTest={false}
-              depthWrite={false}
-              toneMapped={false}
-            />
-          </mesh>
-        )}
-
-        {/* Drehung in der Bildebene (nur das Sprite; Fall/Versinken/Schatten bleiben
+        {/* Drehung in der Bildebene (nur das Sprite; Fall/Versinken bleiben
             welt-ausgerichtet). Die Float-Wippe auf innerRef legt sich nested oben drauf. */}
         <group rotation-z={rotZ}>
           <mesh ref={innerRef} renderOrder={renderOrder}>
