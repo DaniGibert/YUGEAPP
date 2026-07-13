@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BROTHS, NOODLES } from '../config/menu';
+import { BROTHS, NOODLES, PROTEINS } from '../config/menu';
 import { ANCHORS, ANCHOR_DEFAULT, BROTH_CY, BROTH_RX, BROTH_RY } from '../config/sceneConfig';
 import { HERO_LAYOUT, companionWidth, layoutCompanions } from '../scene/heroCompanions';
 import BowlScene from '../scene/BowlScene';
@@ -277,81 +277,72 @@ function HeroMode() {
   );
 }
 
-function NoodleMode() {
-  const [noodleId, setNoodleId] = useState('mittel');
+// Generischer Platzierungs-Modus (Nudeln, Protein, später Toppings): eine Zutat
+// live in der echten Szene positionieren. Startwerte pro Sorte aus dem GESPEICHERTEN
+// Anker (ANCHORS) laden, sonst defaultAnchor. Kontext = Brühe + andere Zutaten,
+// damit realistisch platziert wird (nicht "allein", sonst sitzt es falsch).
+function PlacementMode({ category, options, defaultAnchor, context, sortLabel, sizeListName }) {
+  const [id, setId] = useState(options[0].id);
   const [broth, setBroth] = useState('tonkotsu');
   const [brothOn, setBrothOn] = useState(true);
-  const def = ANCHOR_DEFAULT.noodle;
-  const [withToppings, setWithToppings] = useState(true);
-  // Startwerte pro Sorte aus dem GESPEICHERTEN Anker (ANCHORS) laden, sonst
-  // Default. So zeigt das Lab beim Öffnen den echten aktuellen Stand.
-  const base = (n) => {
-    const a = ANCHORS[n.id] ?? def;
-    return { x: a.x, y: a.y, scale: a.scale ?? 1, rot: a.rot ?? 0, stretch: a.stretch ?? 1, size: n.size };
+  const [withContext, setWithContext] = useState(true);
+  const base = (o) => {
+    const a = ANCHORS[o.id] ?? defaultAnchor;
+    return { x: a.x, y: a.y, scale: a.scale ?? 1, rot: a.rot ?? 0, stretch: a.stretch ?? 1, size: o.size };
   };
-  const [cfgs, setCfgs] = useState(() => Object.fromEntries(NOODLES.map((n) => [n.id, base(n)])));
-  const cur = cfgs[noodleId];
-  const dflt = base(NOODLES.find((n) => n.id === noodleId));
-  const setCur = (key, value) => setCfgs((c) => ({ ...c, [noodleId]: { ...c[noodleId], [key]: value } }));
+  const [cfgs, setCfgs] = useState(() => Object.fromEntries(options.map((o) => [o.id, base(o)])));
+  const cur = cfgs[id];
+  const dflt = base(options.find((o) => o.id === id));
+  const setCur = (key, value) => setCfgs((c) => ({ ...c, [id]: { ...c[id], [key]: value } }));
 
-  // Toppings/Protein als Kontext -> realistische Platzierung (Nudel liegt drunter).
-  const ctx = withToppings
-    ? [
-        { key: 'ctx-protein', id: 'chashu-schwein', category: 'protein', qty: 1 },
-        { key: 'ctx-ajitama', id: 'ajitama', category: 'topping', qty: 1 },
-        { key: 'ctx-nori', id: 'nori', category: 'topping', qty: 1 },
-        { key: 'ctx-frueh', id: 'fruehlingszwiebeln', category: 'topping', qty: 1 },
-      ]
+  const ctx = withContext
+    ? context.map((c, i) => ({ key: `ctx-${i}`, id: c.id, category: c.category, qty: 1 }))
     : [];
-  const ingredients = [{ key: 'noodle', id: noodleId, category: 'noodle', qty: 1 }, ...ctx];
-  const anchorOverrides = { [noodleId]: cur };
+  const ingredients = [{ key: 'main', id, category, qty: 1 }, ...ctx];
+  const anchorOverrides = { [id]: cur };
 
-  const anchorLine = (id, c) => {
+  const keyOut = (oid) => (/^[a-zA-Z_$][\w$]*$/.test(oid) ? oid : `'${oid}'`);
+  const anchorLine = (oid, c) => {
     const p =
       (c.scale !== 1 ? ` scale: ${c.scale},` : '') +
       (c.rot !== 0 ? ` rot: ${c.rot},` : '') +
       (c.stretch !== 1 ? ` stretch: ${c.stretch},` : '');
-    return `  ${id}: { x: ${c.x}, y: ${c.y},${p} satellites: ANCHOR_DEFAULT.noodle.satellites },`;
+    return `  ${keyOut(oid)}: { x: ${c.x}, y: ${c.y},${p} satellites: ANCHOR_DEFAULT.${category}.satellites },`;
   };
   const snippet =
-    '// sceneConfig.js -> ANCHORS (eigener Eintrag pro Nudel-Sorte, unabhängig)\n' +
-    NOODLES.map((n) => anchorLine(n.id, cfgs[n.id])).join('\n') +
-    '\n\n// config/menu.js -> NOODLES size (pro Nudel-Sorte)\n' +
-    NOODLES.map((n) => `${n.id}: size ${cfgs[n.id].size}`).join('\n');
+    '// sceneConfig.js -> ANCHORS (eigener Eintrag pro Sorte, unabhängig)\n' +
+    options.map((o) => anchorLine(o.id, cfgs[o.id])).join('\n') +
+    `\n\n// config/menu.js -> ${sizeListName} size (pro Sorte)\n` +
+    options.map((o) => `${o.id}: size ${cfgs[o.id].size}`).join('\n');
 
   return (
     <>
       <div className="relative flex min-h-[45vh] flex-1 items-center justify-center p-4">
         <div className="aspect-[700/640] h-full max-h-full w-full max-w-[560px]">
-          <BowlScene
-            broth={brothOn ? broth : null}
-            ingredients={ingredients}
-            anchorOverrides={anchorOverrides}
-          />
+          <BowlScene broth={brothOn ? broth : null} ingredients={ingredients} anchorOverrides={anchorOverrides} />
         </div>
       </div>
       <div className="flex w-full flex-col gap-5 overflow-y-auto border-t border-line bg-surface p-5 lg:w-96 lg:border-l lg:border-t-0">
-        {/* Nudel-Sorte */}
         <div className="flex flex-col gap-2">
-          <span className="text-small font-semibold text-ink-900">Nudel-Sorte</span>
+          <span className="text-small font-semibold text-ink-900">{sortLabel}</span>
           <div className="flex flex-wrap gap-2">
-            {NOODLES.map((n) => (
-              <Toggle key={n.id} on={noodleId === n.id} onClick={() => setNoodleId(n.id)} color="primary">
-                {n.name}
+            {options.map((o) => (
+              <Toggle key={o.id} on={id === o.id} onClick={() => setId(o.id)} color="primary">
+                {o.name}
               </Toggle>
             ))}
           </div>
         </div>
 
-        {/* Kontext: Brühe (Wasserlinie) + Toppings (realistische Platzierung) */}
+        {/* Kontext: Brühe (Wasserlinie) + andere Zutaten (realistische Platzierung) */}
         <div className="flex flex-col gap-2">
           <span className="text-small font-semibold text-ink-900">Kontext</span>
           <div className="flex flex-wrap gap-2">
             <Toggle on={brothOn} onClick={() => setBrothOn((v) => !v)} color="primary">
               Brühe an
             </Toggle>
-            <Toggle on={withToppings} onClick={() => setWithToppings((v) => !v)} color="gold">
-              Toppings drauf
+            <Toggle on={withContext} onClick={() => setWithContext((v) => !v)} color="gold">
+              Andere Zutaten
             </Toggle>
             {brothOn &&
               BROTHS.map((b) => (
@@ -369,23 +360,56 @@ function NoodleMode() {
           <Slider label="Skala (Anker)" value={cur.scale} min={0.5} max={1.8} step={0.05} defaultValue={dflt.scale} onChange={(v) => setCur('scale', v)} />
           <Slider label="Drehung (Grad)" value={cur.rot} min={-180} max={180} step={1} defaultValue={dflt.rot} onChange={(v) => setCur('rot', v)} />
           <Slider label="Höhe / Streckung" value={cur.stretch} min={0.4} max={2} step={0.05} defaultValue={dflt.stretch} onChange={(v) => setCur('stretch', v)} />
-          <Slider
-            label={`Größe (${noodleId})`}
-            value={cur.size}
-            min={180}
-            max={460}
-            step={5}
-            defaultValue={dflt.size}
-            onChange={(v) => setCur('size', v)}
-          />
+          <Slider label={`Größe (${id})`} value={cur.size} min={100} max={460} step={5} defaultValue={dflt.size} onChange={(v) => setCur('size', v)} />
         </div>
 
         <ValueBox
           snippet={snippet}
-          onReset={() => setCfgs((c) => ({ ...c, [noodleId]: base(NOODLES.find((n) => n.id === noodleId)) }))}
+          onReset={() => setCfgs((c) => ({ ...c, [id]: base(options.find((o) => o.id === id)) }))}
         />
       </div>
     </>
+  );
+}
+
+// Kontext-Zutaten (andere Zutaten drumherum) je Modus, damit die getunte Zutat
+// realistisch im Verbund sitzt statt allein.
+const NOODLE_CONTEXT = [
+  { id: 'chashu-schwein', category: 'protein' },
+  { id: 'ajitama', category: 'topping' },
+  { id: 'nori', category: 'topping' },
+  { id: 'fruehlingszwiebeln', category: 'topping' },
+];
+const PROTEIN_CONTEXT = [
+  { id: 'mittel', category: 'noodle' },
+  { id: 'ajitama', category: 'topping' },
+  { id: 'nori', category: 'topping' },
+  { id: 'fruehlingszwiebeln', category: 'topping' },
+];
+
+function NoodleMode() {
+  return (
+    <PlacementMode
+      category="noodle"
+      options={NOODLES}
+      defaultAnchor={ANCHOR_DEFAULT.noodle}
+      context={NOODLE_CONTEXT}
+      sortLabel="Nudel-Sorte"
+      sizeListName="NOODLES"
+    />
+  );
+}
+
+function ProteinMode() {
+  return (
+    <PlacementMode
+      category="protein"
+      options={PROTEINS.filter((p) => p.size)}
+      defaultAnchor={ANCHOR_DEFAULT.protein}
+      context={PROTEIN_CONTEXT}
+      sortLabel="Protein"
+      sizeListName="PROTEINS"
+    />
   );
 }
 
@@ -427,6 +451,9 @@ export default function SceneLabScreen() {
           <Toggle on={mode === 'noodle'} onClick={() => setMode('noodle')} color="primary">
             Nudeln
           </Toggle>
+          <Toggle on={mode === 'protein'} onClick={() => setMode('protein')} color="primary">
+            Protein
+          </Toggle>
           <Toggle on={mode === 'hero'} onClick={() => setMode('hero')} color="primary">
             Status-Komposition
           </Toggle>
@@ -435,6 +462,7 @@ export default function SceneLabScreen() {
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row">
         {mode === 'broth' && <BrothMode />}
         {mode === 'noodle' && <NoodleMode />}
+        {mode === 'protein' && <ProteinMode />}
         {mode === 'hero' && <HeroMode />}
       </div>
     </div>
