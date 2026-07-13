@@ -70,6 +70,9 @@ function StepContent({ step }) {
                   name={option.name}
                   desc={option.desc}
                   image={`/assets/${step.id}/${option.id}.png`}
+                  // Topping-PNGs haben viel transparenten Rand -> groesserer Bildbereich,
+                  // damit das Objekt die Kartenbreite fuellt.
+                  imageClassName="h-40"
                   selected={qty > 0}
                   accent={step.accent}
                   badge={pairsWithBroth(option, bowl.broth) ? t('builder.recommended') : null}
