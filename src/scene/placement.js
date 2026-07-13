@@ -14,10 +14,11 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
  * @param {string} id         Zutaten-id (Anker-Schlüssel)
  * @param {string} category   "noodle" | "protein" | "topping" (Fallback-Anker)
  * @param {number|null} satellite  Satelliten-Index (null = Haupt-Item am Anker)
- * @param {{x?:number,y?:number,scale?:number}|null} override  Anker live überschreiben
- *        (nur fürs Scene-Lab; ohne Override identisch zum Normalbetrieb). Wirkt auf
- *        die Anker-Basis, Satelliten-Offsets kommen wie gehabt oben drauf.
- * @returns {{x,y,frontness,scale,layer,float}}
+ * @param {{x?:number,y?:number,scale?:number,rot?:number,stretch?:number}|null} override
+ *        Anker live überschreiben (nur fürs Scene-Lab; ohne Override identisch zum
+ *        Normalbetrieb). Wirkt auf die Anker-Basis, Satelliten-Offsets kommen oben drauf.
+ * @returns {{x,y,frontness,scale,layer,float,rot,stretch}}
+ *   rot = Drehung in Grad (Bildebene), stretch = Höhen-Streckung (1 = unverändert).
  */
 export function placeIngredient(id, category, satellite = null, override = null) {
   const anchor = ANCHORS[id] ?? ANCHOR_DEFAULT[category] ?? ANCHOR_DEFAULT.topping;
@@ -38,5 +39,14 @@ export function placeIngredient(id, category, satellite = null, override = null)
   const frontness = clamp((SCAT_CY + SCAT_RY - y) / (2 * SCAT_RY), 0, 1);
   const scale = (1 + frontness * 0.16) * s; // vorne etwas größer (Perspektive)
 
-  return { x, y, frontness, scale, layer: anchor.layer ?? null, float: anchor.float ?? 1 };
+  return {
+    x,
+    y,
+    frontness,
+    scale,
+    layer: anchor.layer ?? null,
+    float: anchor.float ?? 1,
+    rot: override?.rot ?? anchor.rot ?? 0,
+    stretch: override?.stretch ?? anchor.stretch ?? 1,
+  };
 }

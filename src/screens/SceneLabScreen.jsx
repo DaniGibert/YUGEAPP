@@ -285,18 +285,23 @@ function NoodleMode() {
   const [ax, setAx] = useState(def.x);
   const [ay, setAy] = useState(def.y);
   const [ascale, setAscale] = useState(def.scale ?? 1);
+  const [rot, setRot] = useState(def.rot ?? 0);
+  const [stretch, setStretch] = useState(def.stretch ?? 1);
   const [sizes, setSizes] = useState(() =>
     Object.fromEntries(NOODLES.map((n) => [n.id, n.size])),
   );
 
   const size = sizes[noodleId];
   const ingredients = [{ key: 'noodle', id: noodleId, category: 'noodle', qty: 1 }];
-  const anchorOverrides = { [noodleId]: { x: ax, y: ay, scale: ascale, size } };
+  const anchorOverrides = { [noodleId]: { x: ax, y: ay, scale: ascale, size, rot, stretch } };
 
-  const scalePart = ascale !== 1 ? ` scale: ${ascale},` : '';
+  const parts =
+    (ascale !== 1 ? ` scale: ${ascale},` : '') +
+    (rot !== 0 ? ` rot: ${rot},` : '') +
+    (stretch !== 1 ? ` stretch: ${stretch},` : '');
   const snippet =
-    '// sceneConfig.js -> ANCHOR_DEFAULT.noodle (x/y/scale, gilt für alle Nudeln)\n' +
-    `noodle: { x: ${ax}, y: ${ay},${scalePart} satellites: [...] },\n\n` +
+    '// sceneConfig.js -> ANCHOR_DEFAULT.noodle (gilt für alle Nudeln)\n' +
+    `noodle: { x: ${ax}, y: ${ay},${parts} satellites: [...] },\n\n` +
     '// config/menu.js -> NOODLES size (pro Nudel-Sorte)\n' +
     NOODLES.map((n) => `${n.id}: size ${sizes[n.id]}`).join('\n');
 
@@ -345,6 +350,8 @@ function NoodleMode() {
           <Slider label="Position x (Anker)" value={ax} min={-120} max={120} defaultValue={def.x} onChange={setAx} />
           <Slider label="Position y (Höhe/Tiefe)" value={ay} min={-60} max={80} defaultValue={def.y} onChange={setAy} />
           <Slider label="Skala (Anker)" value={ascale} min={0.5} max={1.8} step={0.05} defaultValue={def.scale ?? 1} onChange={setAscale} />
+          <Slider label="Drehung (Grad)" value={rot} min={-180} max={180} step={1} defaultValue={def.rot ?? 0} onChange={setRot} />
+          <Slider label="Höhe / Streckung" value={stretch} min={0.4} max={2} step={0.05} defaultValue={def.stretch ?? 1} onChange={setStretch} />
           <Slider
             label={`Größe (${noodleId})`}
             value={size}
@@ -362,6 +369,8 @@ function NoodleMode() {
             setAx(def.x);
             setAy(def.y);
             setAscale(def.scale ?? 1);
+            setRot(def.rot ?? 0);
+            setStretch(def.stretch ?? 1);
             setSizes(Object.fromEntries(NOODLES.map((n) => [n.id, n.size])));
           }}
         />

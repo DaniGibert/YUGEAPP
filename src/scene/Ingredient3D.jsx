@@ -59,9 +59,10 @@ const fragmentShader = /* glsl */ `
 `;
 
 export default function Ingredient3D({ item, exitT, onImpact, waterY = -9999, brothColor }) {
-  const { option, x, y, scale, frontness, layer, float = 1 } = item;
+  const { option, x, y, scale, frontness, layer, float = 1, rot = 0, stretch = 1 } = item;
   const map = useTextureOrColor(option.src, option.color, option.fallbackSrc);
   const shadowTex = useRef(softCircleTexture());
+  const rotZ = (rot * Math.PI) / 180; // Grad -> Rad (Drehung in der Bildebene)
 
   // Steckt die Zutat in einer Brühe? Steuert, ob "Entfernen" versinkt (in Brühe)
   // oder als Fallback schrumpft + ausblendet (leere Schüssel).
@@ -70,7 +71,7 @@ export default function Ingredient3D({ item, exitT, onImpact, waterY = -9999, br
   // option.size = Breite in Welt-px; Höhe folgt dem Seitenverhältnis des PNG.
   const w = option.size ?? 80;
   const ratio = map && map.image && map.image.width ? map.image.height / map.image.width : 1;
-  const h = w * ratio;
+  const h = w * ratio * stretch; // stretch = Höhen-Streckung (zweite Achse, 1 = unverändert)
 
   const innerRef = useRef();
   const matRef = useRef();
@@ -187,18 +188,22 @@ export default function Ingredient3D({ item, exitT, onImpact, waterY = -9999, br
           </mesh>
         )}
 
-        <mesh ref={innerRef} renderOrder={renderOrder}>
-          <planeGeometry args={[w, h]} />
-          <shaderMaterial
-            ref={matRef}
-            vertexShader={vertexShader}
-            fragmentShader={fragmentShader}
-            uniforms={uniforms}
-            transparent
-            depthTest={false}
-            depthWrite={false}
-          />
-        </mesh>
+        {/* Drehung in der Bildebene (nur das Sprite; Fall/Versinken/Schatten bleiben
+            welt-ausgerichtet). Die Float-Wippe auf innerRef legt sich nested oben drauf. */}
+        <group rotation-z={rotZ}>
+          <mesh ref={innerRef} renderOrder={renderOrder}>
+            <planeGeometry args={[w, h]} />
+            <shaderMaterial
+              ref={matRef}
+              vertexShader={vertexShader}
+              fragmentShader={fragmentShader}
+              uniforms={uniforms}
+              transparent
+              depthTest={false}
+              depthWrite={false}
+            />
+          </mesh>
+        </group>
       </animated.group>
     </animated.group>
   );

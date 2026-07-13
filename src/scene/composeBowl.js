@@ -56,6 +56,8 @@ export function composeBowlItems(ingredients, overrides = null) {
       scale: main.scale,
       frontness: main.frontness,
       float: main.float,
+      rot: main.rot,
+      stretch: main.stretch,
     });
 
     // Satelliten für die restliche Menge (immer Basis-Asset; eigener key -> fällt neu,
@@ -71,6 +73,8 @@ export function composeBowlItems(ingredients, overrides = null) {
         scale: p.scale,
         frontness: p.frontness,
         float: p.float,
+        rot: p.rot,
+        stretch: p.stretch,
       });
     }
   }
