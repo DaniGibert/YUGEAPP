@@ -92,7 +92,7 @@ export const DROP_FROM = 340;
 export const WATERLINE_Y = 6; // Welt-y der Brühen-Oberfläche
 export const WATER_BAND = 18; // weiche Übergangsbreite (halb)
 export const SUBMERGE_TINT = 0.5; // wie stark der Unterteil zur Brühenfarbe tönt (0..1)
-export const SUBMERGE_FADE = 0.22; // wie stark der Unterteil ausblendet (0..1, klein = bleibt sichtbar)
+export const SUBMERGE_FADE = 0.08; // wie stark der Unterteil ausblendet (0..1, klein = bleibt sichtbar)
 
 // ---- Szenen-Animationen (Brühe füllen/blenden, Zutaten versinken, Dampf) ----
 // A) Erste Brühe in leerer Bowl "füllt sich von unten": die Oberflächen-Ellipse
