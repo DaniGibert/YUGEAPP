@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BROTHS, NOODLES, PROTEINS } from '../config/menu';
+import { BROTHS, NOODLES, PROTEINS, TOPPINGS } from '../config/menu';
 import { ANCHORS, ANCHOR_DEFAULT, BROTH_CY, BROTH_RX, BROTH_RY } from '../config/sceneConfig';
 import { HERO_LAYOUT, companionWidth, layoutCompanions } from '../scene/heroCompanions';
 import BowlScene from '../scene/BowlScene';
@@ -360,7 +360,7 @@ function PlacementMode({ category, options, defaultAnchor, context, sortLabel, s
           <Slider label="Skala (Anker)" value={cur.scale} min={0.5} max={1.8} step={0.05} defaultValue={dflt.scale} onChange={(v) => setCur('scale', v)} />
           <Slider label="Drehung (Grad)" value={cur.rot} min={-180} max={180} step={1} defaultValue={dflt.rot} onChange={(v) => setCur('rot', v)} />
           <Slider label="Höhe / Streckung" value={cur.stretch} min={0.4} max={2} step={0.05} defaultValue={dflt.stretch} onChange={(v) => setCur('stretch', v)} />
-          <Slider label={`Größe (${id})`} value={cur.size} min={100} max={460} step={5} defaultValue={dflt.size} onChange={(v) => setCur('size', v)} />
+          <Slider label={`Größe (${id})`} value={cur.size} min={60} max={460} step={5} defaultValue={dflt.size} onChange={(v) => setCur('size', v)} />
         </div>
 
         <ValueBox
@@ -386,6 +386,12 @@ const PROTEIN_CONTEXT = [
   { id: 'nori', category: 'topping' },
   { id: 'fruehlingszwiebeln', category: 'topping' },
 ];
+// Toppings tunt man auf der Basis Nudel + Protein (die anderen Toppings lässt man
+// weg, sonst überlagern sie sich gegenseitig beim Einzel-Tunen).
+const TOPPING_CONTEXT = [
+  { id: 'mittel', category: 'noodle' },
+  { id: 'chashu-schwein', category: 'protein' },
+];
 
 function NoodleMode() {
   return (
@@ -409,6 +415,19 @@ function ProteinMode() {
       context={PROTEIN_CONTEXT}
       sortLabel="Protein"
       sizeListName="PROTEINS"
+    />
+  );
+}
+
+function ToppingMode() {
+  return (
+    <PlacementMode
+      category="topping"
+      options={TOPPINGS}
+      defaultAnchor={ANCHOR_DEFAULT.topping}
+      context={TOPPING_CONTEXT}
+      sortLabel="Topping"
+      sizeListName="TOPPINGS"
     />
   );
 }
@@ -454,6 +473,9 @@ export default function SceneLabScreen() {
           <Toggle on={mode === 'protein'} onClick={() => setMode('protein')} color="primary">
             Protein
           </Toggle>
+          <Toggle on={mode === 'topping'} onClick={() => setMode('topping')} color="primary">
+            Toppings
+          </Toggle>
           <Toggle on={mode === 'hero'} onClick={() => setMode('hero')} color="primary">
             Status-Komposition
           </Toggle>
@@ -463,6 +485,7 @@ export default function SceneLabScreen() {
         {mode === 'broth' && <BrothMode />}
         {mode === 'noodle' && <NoodleMode />}
         {mode === 'protein' && <ProteinMode />}
+        {mode === 'topping' && <ToppingMode />}
         {mode === 'hero' && <HeroMode />}
       </div>
     </div>
