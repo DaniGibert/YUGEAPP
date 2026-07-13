@@ -104,7 +104,7 @@ src/
     useFullscreen.js       # Vollbild an/aus (Fullscreen-API), für den Header-Button
     useDisablePullToRefresh.js  # unterbindet die native Refresh-Geste (Kiosk)
   scene/
-    BowlScene.jsx          # R3F-Canvas, nur Props (broth-Geometrie via optionaler brothGeom-Prop überschreibbar, fürs Lab)
+    BowlScene.jsx          # R3F-Canvas, nur Props (fürs Lab überschreibbar: brothGeom = Brühen-Geometrie, anchorOverrides = Zutaten-Anker)
     heroCompanions.js      # Platzierung der Status-Begleiter (HERO_LAYOUT + layoutCompanions/companionWidth); geteilt Status ↔ Scene-Lab
   components/
     Stage.jsx              # App-Rahmen: füllt das Fenster (fluid, Querformat-optimiert)
@@ -127,7 +127,7 @@ src/
     StatusScreen.jsx
     PayScreen.jsx
     KitchenScreen.jsx      # Küchen-Ansicht: Status ändern (löst Live-Update aus)
-    SceneLabScreen.jsx     # Dev-Tool (?ansicht=lab): Brühen-Geometrie + Status-Komposition live per Regler tunen
+    SceneLabScreen.jsx     # Dev-Tool (?ansicht=lab): Brühe, Nudeln, Protein, Toppings + Status-Komposition live per Regler tunen
 public/
   manifest.json / icon.svg      # PWA (display fullscreen, orientation landscape) + App-Icon
   assets/<kategorie>/<id>.png   # Dateiname == Options-id; Varianten: <id>-<variante>.png;
@@ -258,7 +258,14 @@ Bleibt bewusst bei `@react-spring/three` (nicht `motion`, siehe §5-Grenze).
 einen **festen Anker** pro `id` in `sceneConfig.js` (`ANCHORS`, Fallback pro Kategorie
 `ANCHOR_DEFAULT`) — komponiert wie vom Koch angerichtet, und jeder Anker sieht auch
 allein gut aus. Position = f(id): Bestands-Zutaten bewegen sich **nie**, wenn etwas
-dazukommt. Mengen jenseits des Bild-Assets werden über deterministische
+dazukommt. Ein Anker trägt neben `x/y/scale` optional `rot` (Drehung in der Bildebene)
+und `stretch` (Höhen-Streckung); Nudeln, Protein und alle Toppings haben eigene
+kuratierte Einträge. Getunt wird das **im Scene-Lab** (`?ansicht=lab`, je Sorte, mit
+Kontext-Zutaten), das die Werte über die optionale `anchorOverrides`-Prop von
+`BowlScene` an `composeBowlItems`/`placeIngredient` durchreicht (ohne Prop identisch
+zum Normalbetrieb). Zutaten sind **schattenlos** (kein Kontaktschatten mehr in der
+Szene; nur der Boden-Schatten unter der ganzen Schüssel bleibt).
+Mengen jenseits des Bild-Assets werden über deterministische
 **Satelliten-Offsets** (im Anker) zu einem volleren Haufen gestapelt. Ein Topping
 kann ein **Mengen-Varianten-Asset** `-x2.png` deklarieren (`sceneVariants` in
 `menu.js`, deklarativ, kein Laufzeit-Probing); die Leiter wählt das höchste
@@ -388,10 +395,14 @@ Getränke &amp; Beilagen teilen sich einen Screen, aber über einen **Umschalter
 - Bei Unklarheit im Menü/Flow: nachfragen, nicht raten.
 - **Szenen-Werte tunt der Mensch im Scene-Lab** (`?ansicht=lab`, `SceneLabScreen`),
   statt dass Claude blind über Preview-Screenshots iteriert (langsam, teuer): Regler
-  für Brühen-Geometrie (`BROTH_CY/RX/RY`) und die Status-Komposition (`HERO_LAYOUT`)
-  an der **echten** Szene, Werte-Snippet zum Übernehmen. Der Mensch schiebt live auf
-  dem Zielgerät und gibt die Zahlen durch; Claude trägt sie in `sceneConfig.js` bzw.
-  `scene/heroCompanions.js` ein. Für Platzierungen also erst das Lab anbieten.
+  an der **echten** Szene für Brühen-Geometrie (`BROTH_CY/RX/RY`), Zutaten-Anker
+  (Nudeln/Protein/Toppings: `x/y/scale/rot/stretch` + Größe, je Sorte, mit Kontext)
+  und die Status-Komposition (`HERO_LAYOUT`), jeweils mit Werte-Snippet. Das Lab lädt
+  die aktuellen Code-Werte, der Mensch schiebt live auf dem Zielgerät und gibt die
+  Zahlen durch; Claude trägt sie in `sceneConfig.js` (`ANCHORS`), `menu.js` (Größen)
+  bzw. `scene/heroCompanions.js` ein. Beim Übernehmen die **kuratierten `satellites`
+  behalten** (Snippet zeigt `ANCHOR_DEFAULT...satellites`, das nur als Platzhalter —
+  echte satellites/Nori-Ebene nicht überschreiben). Für Platzierungen also erst das Lab anbieten.
 - **Dev-Ansichten über URL-Param** (ohne Gast-Navigation): `?ansicht=kueche` = Küche,
   `?ansicht=lab` = Scene-Lab. Beide früh in `App.jsx` verzweigt.
 - **Assets komprimieren:** neue PNGs vor dem Commit auf max. 1100 px lange Kante +

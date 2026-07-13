@@ -56,22 +56,16 @@ Bezug: CLAUDE.md §4 (Ordner/Naming), §7 (Bowl-Szene), `config/sceneConfig.js`
 
 ## 5. Bedarfsliste (Stand: aktueller Umbau)
 
-Vorhanden: `broth/miso`, `noodle/mittel`, `protein/tofu`, `topping/ajitama`,
-`topping/mais`, alle Getränke/Beilagen, Schüssel (`bowl_back`/`bowl_front`).
+**Alle Basis-Assets (1x) vorhanden:** alle Brühen, Nudeln, Protein, Toppings,
+Getränke/Beilagen, Schüssel (`bowl_back`/`bowl_front`). Positionen/Größen sind
+im Scene-Lab getunt (`ANCHORS` in `sceneConfig.js`, Größen in `menu.js`).
 
-**Noch zu erstellen (Basis-Assets):**
+**Optional, noch offen (Mengen-Varianten `-x2`, vollerer Haufen ab Menge 2):**
 
-- Brühen: `broth/tonkotsu.png`, `broth/shoyu.png`, `broth/shio.png`
-- Nudeln: `noodle/duenn.png`, `noodle/dick.png`
-- Protein: `protein/chashu-schwein.png`, `protein/chashu-haehnchen.png`
-- Toppings: `topping/naruto.png`, `topping/nori.png`,
-  `topping/bambussprossen.png`, `topping/fruehlingszwiebeln.png`
+- `topping/<id>-x2.png` für die 6 Toppings. Bewusst noch nicht gebaut: der
+  Satelliten-Haufen (Basis-Asset dupliziert) sieht bei mehreren gleichen Toppings
+  bereits gut aus. `-x2` nur nachrüsten, wenn ein bestimmtes Topping gestapelt
+  künstlich wirkt (dann `sceneVariants: [1]` → `[1, 2]`).
 
-**Optional (Mengen-Varianten `-x2`) für alle 6 Toppings:**
-
-- `topping/ajitama-x2.png`, `topping/naruto-x2.png`, `topping/nori-x2.png`,
-  `topping/mais-x2.png`, `topping/bambussprossen-x2.png`,
-  `topping/fruehlingszwiebeln-x2.png`
-
-Bis die Assets da sind, rendert die Szene an jedem Anker still einen Farb-Blob
-(`sceneColor`) — die Komposition (Anrichte-Karte) ist bereits korrekt.
+Fehlt zur Laufzeit ein Asset, rendert die Szene an jedem Anker still einen Farb-Blob
+(`sceneColor`) — die Komposition (Anrichte-Karte) bleibt korrekt.
