@@ -53,6 +53,11 @@ export const SCAT_RY = 42;
 //  - satellites: 3 Offsets für die Mengen jenseits der Bild-Variante (voller Haufen).
 // Anker verschieben = ein Wert hier ändern (CLAUDE.md §3.5).
 export const ANCHORS = {
+  // Nudeln: pro Sorte eigener Anker (im Scene-Lab getunt). rot = Drehung (Grad),
+  // stretch = Höhen-Streckung. Keine satellites nötig (Nudeln immer Menge 1).
+  duenn:              { x: -1,  y: -87,  scale: 1.35, rot: -2, stretch: 0.85 },
+  mittel:             { x: -8,  y: -52,  scale: 1.3,  rot: -3, stretch: 0.85 },
+  dick:               { x: -11, y: -117, scale: 1.3,           stretch: 0.9 },
   ajitama:            { x: 82,  y: -10, satellites: [{ dx: -30, dy: 8, scale: 0.9 }, { dx: 30, dy: 12, scale: 0.85 }, { dx: 0, dy: -14, scale: 0.8 }] },
   naruto:             { x: 6,   y: -26, satellites: [{ dx: -26, dy: 6, scale: 0.85 }, { dx: 26, dy: 10, scale: 0.82 }, { dx: 2, dy: -14, scale: 0.78 }] },
   nori:               { x: -70, y: 92,  layer: 'back', float: 0.35, satellites: [{ dx: 24, dy: -4, scale: 0.92 }, { dx: -24, dy: -2, scale: 0.9 }, { dx: 0, dy: 6, scale: 0.88 }] },

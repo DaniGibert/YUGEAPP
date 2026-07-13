@@ -29,8 +29,8 @@ export const BROTHS = [
 
 // ---- 2. Nudeln (Einfach-Auswahl) + Härte-Modifier ----
 export const NOODLES = [
-  { id: 'duenn',  name: 'Dünn',   sceneColor: '#e8d8a0', size: 300, desc: 'Dünne, glatte Nudeln mit Biss. Passen besonders gut zu cremigen Brühen.',        pairsWith: ['tonkotsu'] },
-  { id: 'mittel', name: 'Mittel', sceneColor: '#e8d8a0', size: 310, desc: 'Der Allrounder, der zu jeder Brühe passt. Wenn du unsicher bist, nimm diese.', pairsWith: ['shoyu', 'shio'] },
+  { id: 'duenn',  name: 'Dünn',   sceneColor: '#e8d8a0', size: 310, desc: 'Dünne, glatte Nudeln mit Biss. Passen besonders gut zu cremigen Brühen.',        pairsWith: ['tonkotsu'] },
+  { id: 'mittel', name: 'Mittel', sceneColor: '#e8d8a0', size: 320, desc: 'Der Allrounder, der zu jeder Brühe passt. Wenn du unsicher bist, nimm diese.', pairsWith: ['shoyu', 'shio'] },
   { id: 'dick',   name: 'Dick',   sceneColor: '#e8d8a0', size: 320, desc: 'Dicke Nudeln mit ordentlich Biss. Machen satt und halten kräftigen Brühen stand.', pairsWith: ['miso'] },
 ];
 // Modifier: ändert keine sichtbare Zutat in der Bowl
