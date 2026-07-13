@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { BROTHS, NOODLES } from '../config/menu';
-import { ANCHOR_DEFAULT, BROTH_CY, BROTH_RX, BROTH_RY } from '../config/sceneConfig';
+import { ANCHORS, ANCHOR_DEFAULT, BROTH_CY, BROTH_RX, BROTH_RY } from '../config/sceneConfig';
 import { HERO_LAYOUT, companionWidth, layoutCompanions } from '../scene/heroCompanions';
 import BowlScene from '../scene/BowlScene';
 import BowlThumbnail from '../components/BowlThumbnail';
@@ -282,14 +282,28 @@ function NoodleMode() {
   const [broth, setBroth] = useState('tonkotsu');
   const [brothOn, setBrothOn] = useState(true);
   const def = ANCHOR_DEFAULT.noodle;
-  // Pro Sorte eigener Satz Werte -> unabhängig positionierbar (jede Nudel bekommt
-  // dann einen eigenen ANCHORS-Eintrag statt des geteilten ANCHOR_DEFAULT.noodle).
-  const mk = (n) => ({ x: def.x, y: def.y, scale: def.scale ?? 1, rot: def.rot ?? 0, stretch: def.stretch ?? 1, size: n.size });
-  const [cfgs, setCfgs] = useState(() => Object.fromEntries(NOODLES.map((n) => [n.id, mk(n)])));
+  const [withToppings, setWithToppings] = useState(true);
+  // Startwerte pro Sorte aus dem GESPEICHERTEN Anker (ANCHORS) laden, sonst
+  // Default. So zeigt das Lab beim Öffnen den echten aktuellen Stand.
+  const base = (n) => {
+    const a = ANCHORS[n.id] ?? def;
+    return { x: a.x, y: a.y, scale: a.scale ?? 1, rot: a.rot ?? 0, stretch: a.stretch ?? 1, size: n.size };
+  };
+  const [cfgs, setCfgs] = useState(() => Object.fromEntries(NOODLES.map((n) => [n.id, base(n)])));
   const cur = cfgs[noodleId];
+  const dflt = base(NOODLES.find((n) => n.id === noodleId));
   const setCur = (key, value) => setCfgs((c) => ({ ...c, [noodleId]: { ...c[noodleId], [key]: value } }));
 
-  const ingredients = [{ key: 'noodle', id: noodleId, category: 'noodle', qty: 1 }];
+  // Toppings/Protein als Kontext -> realistische Platzierung (Nudel liegt drunter).
+  const ctx = withToppings
+    ? [
+        { key: 'ctx-protein', id: 'chashu-schwein', category: 'protein', qty: 1 },
+        { key: 'ctx-ajitama', id: 'ajitama', category: 'topping', qty: 1 },
+        { key: 'ctx-nori', id: 'nori', category: 'topping', qty: 1 },
+        { key: 'ctx-frueh', id: 'fruehlingszwiebeln', category: 'topping', qty: 1 },
+      ]
+    : [];
+  const ingredients = [{ key: 'noodle', id: noodleId, category: 'noodle', qty: 1 }, ...ctx];
   const anchorOverrides = { [noodleId]: cur };
 
   const anchorLine = (id, c) => {
@@ -329,12 +343,15 @@ function NoodleMode() {
           </div>
         </div>
 
-        {/* Brühe-Kontext (Wasserlinie sichtbar machen) */}
+        {/* Kontext: Brühe (Wasserlinie) + Toppings (realistische Platzierung) */}
         <div className="flex flex-col gap-2">
-          <span className="text-small font-semibold text-ink-900">Brühe-Kontext</span>
+          <span className="text-small font-semibold text-ink-900">Kontext</span>
           <div className="flex flex-wrap gap-2">
             <Toggle on={brothOn} onClick={() => setBrothOn((v) => !v)} color="primary">
               Brühe an
+            </Toggle>
+            <Toggle on={withToppings} onClick={() => setWithToppings((v) => !v)} color="gold">
+              Toppings drauf
             </Toggle>
             {brothOn &&
               BROTHS.map((b) => (
@@ -347,25 +364,25 @@ function NoodleMode() {
 
         {/* Regler */}
         <div className="flex flex-col gap-4">
-          <Slider label="Position x (Anker)" value={cur.x} min={-260} max={260} defaultValue={def.x} onChange={(v) => setCur('x', v)} />
-          <Slider label="Position y (Höhe/Tiefe)" value={cur.y} min={-260} max={200} defaultValue={def.y} onChange={(v) => setCur('y', v)} />
-          <Slider label="Skala (Anker)" value={cur.scale} min={0.5} max={1.8} step={0.05} defaultValue={def.scale ?? 1} onChange={(v) => setCur('scale', v)} />
-          <Slider label="Drehung (Grad)" value={cur.rot} min={-180} max={180} step={1} defaultValue={def.rot ?? 0} onChange={(v) => setCur('rot', v)} />
-          <Slider label="Höhe / Streckung" value={cur.stretch} min={0.4} max={2} step={0.05} defaultValue={def.stretch ?? 1} onChange={(v) => setCur('stretch', v)} />
+          <Slider label="Position x (Anker)" value={cur.x} min={-260} max={260} defaultValue={dflt.x} onChange={(v) => setCur('x', v)} />
+          <Slider label="Position y (Höhe/Tiefe)" value={cur.y} min={-260} max={200} defaultValue={dflt.y} onChange={(v) => setCur('y', v)} />
+          <Slider label="Skala (Anker)" value={cur.scale} min={0.5} max={1.8} step={0.05} defaultValue={dflt.scale} onChange={(v) => setCur('scale', v)} />
+          <Slider label="Drehung (Grad)" value={cur.rot} min={-180} max={180} step={1} defaultValue={dflt.rot} onChange={(v) => setCur('rot', v)} />
+          <Slider label="Höhe / Streckung" value={cur.stretch} min={0.4} max={2} step={0.05} defaultValue={dflt.stretch} onChange={(v) => setCur('stretch', v)} />
           <Slider
             label={`Größe (${noodleId})`}
             value={cur.size}
             min={180}
             max={460}
             step={5}
-            defaultValue={NOODLES.find((n) => n.id === noodleId)?.size}
+            defaultValue={dflt.size}
             onChange={(v) => setCur('size', v)}
           />
         </div>
 
         <ValueBox
           snippet={snippet}
-          onReset={() => setCfgs((c) => ({ ...c, [noodleId]: mk(NOODLES.find((n) => n.id === noodleId)) }))}
+          onReset={() => setCfgs((c) => ({ ...c, [noodleId]: base(NOODLES.find((n) => n.id === noodleId)) }))}
         />
       </div>
     </>
