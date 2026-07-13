@@ -347,8 +347,8 @@ function NoodleMode() {
 
         {/* Regler */}
         <div className="flex flex-col gap-4">
-          <Slider label="Position x (Anker)" value={cur.x} min={-120} max={120} defaultValue={def.x} onChange={(v) => setCur('x', v)} />
-          <Slider label="Position y (Höhe/Tiefe)" value={cur.y} min={-60} max={80} defaultValue={def.y} onChange={(v) => setCur('y', v)} />
+          <Slider label="Position x (Anker)" value={cur.x} min={-260} max={260} defaultValue={def.x} onChange={(v) => setCur('x', v)} />
+          <Slider label="Position y (Höhe/Tiefe)" value={cur.y} min={-260} max={200} defaultValue={def.y} onChange={(v) => setCur('y', v)} />
           <Slider label="Skala (Anker)" value={cur.scale} min={0.5} max={1.8} step={0.05} defaultValue={def.scale ?? 1} onChange={(v) => setCur('scale', v)} />
           <Slider label="Drehung (Grad)" value={cur.rot} min={-180} max={180} step={1} defaultValue={def.rot ?? 0} onChange={(v) => setCur('rot', v)} />
           <Slider label="Höhe / Streckung" value={cur.stretch} min={0.4} max={2} step={0.05} defaultValue={def.stretch ?? 1} onChange={(v) => setCur('stretch', v)} />
