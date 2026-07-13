@@ -1,27 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, Plus } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import BowlGraphic from '../components/BowlGraphic';
-import BowlThumbnail from '../components/BowlThumbnail';
 import Button from '../components/Button';
+import RecommendationCard from '../components/RecommendationCard';
 import SteamPuffs from '../components/SteamPuffs';
-import { BROTHS, PROTEINS, RECOMMENDED_BOWLS, TOPPINGS } from '../config/menu';
-import { bowlPrice, useOrderStore } from '../state/orderStore';
+import { RECOMMENDED_BOWLS } from '../config/menu';
+import { useOrderStore } from '../state/orderStore';
 import { t } from '../i18n';
-
-// Kurze Zutaten-Zeile einer Empfehlung: Brühe, Protein und Toppings aus den
-// Menü-Namen zusammensetzen (keine doppelten Texte, alles aus config/menu).
-function ingredientsLine(config) {
-  const names = [];
-  const broth = BROTHS.find((b) => b.id === config.broth);
-  if (broth) names.push(broth.name);
-  const protein = PROTEINS.find((p) => p.id === config.protein);
-  if (protein && protein.id !== 'ohne') names.push(protein.name);
-  for (const id of Object.keys(config.toppings)) {
-    const topping = TOPPINGS.find((tp) => tp.id === id);
-    if (topping) names.push(topping.name);
-  }
-  return names.join(', ');
-}
 
 // Szene-Modul (three/R3F) schon im Leerlauf des Start-Screens laden, damit es
 // beim Wechsel bereitsteht. Gleicher Modulpfad wie der React.lazy-Import im
@@ -144,30 +129,14 @@ export default function StartScreen({ onNavigate }) {
         <div className="flex w-full flex-col gap-3" onClick={(event) => event.stopPropagation()}>
           <p className="text-small font-semibold text-ink-400">{t('start.recommendedTitle')}</p>
           {RECOMMENDED_BOWLS.map((bowl) => (
-            <button
+            <RecommendationCard
               key={bowl.id}
-              type="button"
-              onClick={() => {
+              bowl={bowl}
+              onSelect={() => {
                 loadBowl(bowl.config);
                 onNavigate?.('overview');
               }}
-              className="group flex cursor-pointer items-center gap-3 rounded-lg border-2 border-line bg-surface p-3 text-left transition-colors hover:border-ink-400 active:scale-[0.98]"
-            >
-              <BowlThumbnail config={bowl.config} className="w-16 shrink-0" />
-              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="text-body font-semibold text-ink-900">{bowl.name}</span>
-                <span className="truncate text-small text-ink-400">
-                  {ingredientsLine(bowl.config)}
-                </span>
-              </div>
-              <span className="font-display text-h2 text-ink-900">{bowlPrice(bowl.config)} €</span>
-              <span
-                aria-hidden="true"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line text-ink-400 transition-colors group-hover:border-primary group-hover:text-primary"
-              >
-                <Plus size={18} />
-              </span>
-            </button>
+            />
           ))}
         </div>
       </div>
