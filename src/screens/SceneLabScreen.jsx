@@ -282,28 +282,28 @@ function NoodleMode() {
   const [broth, setBroth] = useState('tonkotsu');
   const [brothOn, setBrothOn] = useState(true);
   const def = ANCHOR_DEFAULT.noodle;
-  const [ax, setAx] = useState(def.x);
-  const [ay, setAy] = useState(def.y);
-  const [ascale, setAscale] = useState(def.scale ?? 1);
-  const [rot, setRot] = useState(def.rot ?? 0);
-  const [stretch, setStretch] = useState(def.stretch ?? 1);
-  const [sizes, setSizes] = useState(() =>
-    Object.fromEntries(NOODLES.map((n) => [n.id, n.size])),
-  );
+  // Pro Sorte eigener Satz Werte -> unabhängig positionierbar (jede Nudel bekommt
+  // dann einen eigenen ANCHORS-Eintrag statt des geteilten ANCHOR_DEFAULT.noodle).
+  const mk = (n) => ({ x: def.x, y: def.y, scale: def.scale ?? 1, rot: def.rot ?? 0, stretch: def.stretch ?? 1, size: n.size });
+  const [cfgs, setCfgs] = useState(() => Object.fromEntries(NOODLES.map((n) => [n.id, mk(n)])));
+  const cur = cfgs[noodleId];
+  const setCur = (key, value) => setCfgs((c) => ({ ...c, [noodleId]: { ...c[noodleId], [key]: value } }));
 
-  const size = sizes[noodleId];
   const ingredients = [{ key: 'noodle', id: noodleId, category: 'noodle', qty: 1 }];
-  const anchorOverrides = { [noodleId]: { x: ax, y: ay, scale: ascale, size, rot, stretch } };
+  const anchorOverrides = { [noodleId]: cur };
 
-  const parts =
-    (ascale !== 1 ? ` scale: ${ascale},` : '') +
-    (rot !== 0 ? ` rot: ${rot},` : '') +
-    (stretch !== 1 ? ` stretch: ${stretch},` : '');
+  const anchorLine = (id, c) => {
+    const p =
+      (c.scale !== 1 ? ` scale: ${c.scale},` : '') +
+      (c.rot !== 0 ? ` rot: ${c.rot},` : '') +
+      (c.stretch !== 1 ? ` stretch: ${c.stretch},` : '');
+    return `  ${id}: { x: ${c.x}, y: ${c.y},${p} satellites: ANCHOR_DEFAULT.noodle.satellites },`;
+  };
   const snippet =
-    '// sceneConfig.js -> ANCHOR_DEFAULT.noodle (gilt für alle Nudeln)\n' +
-    `noodle: { x: ${ax}, y: ${ay},${parts} satellites: [...] },\n\n` +
-    '// config/menu.js -> NOODLES size (pro Nudel-Sorte)\n' +
-    NOODLES.map((n) => `${n.id}: size ${sizes[n.id]}`).join('\n');
+    '// sceneConfig.js -> ANCHORS (eigener Eintrag pro Nudel-Sorte, unabhängig)\n' +
+    NOODLES.map((n) => anchorLine(n.id, cfgs[n.id])).join('\n') +
+    '\n\n// config/menu.js -> NOODLES size (pro Nudel-Sorte)\n' +
+    NOODLES.map((n) => `${n.id}: size ${cfgs[n.id].size}`).join('\n');
 
   return (
     <>
@@ -347,32 +347,25 @@ function NoodleMode() {
 
         {/* Regler */}
         <div className="flex flex-col gap-4">
-          <Slider label="Position x (Anker)" value={ax} min={-120} max={120} defaultValue={def.x} onChange={setAx} />
-          <Slider label="Position y (Höhe/Tiefe)" value={ay} min={-60} max={80} defaultValue={def.y} onChange={setAy} />
-          <Slider label="Skala (Anker)" value={ascale} min={0.5} max={1.8} step={0.05} defaultValue={def.scale ?? 1} onChange={setAscale} />
-          <Slider label="Drehung (Grad)" value={rot} min={-180} max={180} step={1} defaultValue={def.rot ?? 0} onChange={setRot} />
-          <Slider label="Höhe / Streckung" value={stretch} min={0.4} max={2} step={0.05} defaultValue={def.stretch ?? 1} onChange={setStretch} />
+          <Slider label="Position x (Anker)" value={cur.x} min={-120} max={120} defaultValue={def.x} onChange={(v) => setCur('x', v)} />
+          <Slider label="Position y (Höhe/Tiefe)" value={cur.y} min={-60} max={80} defaultValue={def.y} onChange={(v) => setCur('y', v)} />
+          <Slider label="Skala (Anker)" value={cur.scale} min={0.5} max={1.8} step={0.05} defaultValue={def.scale ?? 1} onChange={(v) => setCur('scale', v)} />
+          <Slider label="Drehung (Grad)" value={cur.rot} min={-180} max={180} step={1} defaultValue={def.rot ?? 0} onChange={(v) => setCur('rot', v)} />
+          <Slider label="Höhe / Streckung" value={cur.stretch} min={0.4} max={2} step={0.05} defaultValue={def.stretch ?? 1} onChange={(v) => setCur('stretch', v)} />
           <Slider
             label={`Größe (${noodleId})`}
-            value={size}
+            value={cur.size}
             min={180}
             max={460}
             step={5}
             defaultValue={NOODLES.find((n) => n.id === noodleId)?.size}
-            onChange={(v) => setSizes((s) => ({ ...s, [noodleId]: v }))}
+            onChange={(v) => setCur('size', v)}
           />
         </div>
 
         <ValueBox
           snippet={snippet}
-          onReset={() => {
-            setAx(def.x);
-            setAy(def.y);
-            setAscale(def.scale ?? 1);
-            setRot(def.rot ?? 0);
-            setStretch(def.stretch ?? 1);
-            setSizes(Object.fromEntries(NOODLES.map((n) => [n.id, n.size])));
-          }}
+          onReset={() => setCfgs((c) => ({ ...c, [noodleId]: mk(NOODLES.find((n) => n.id === noodleId)) }))}
         />
       </div>
     </>
