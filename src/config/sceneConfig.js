@@ -58,6 +58,10 @@ export const ANCHORS = {
   duenn:              { x: -1,  y: 14, scale: 1.45, rot: -2, stretch: 0.85 },
   mittel:             { x: -8,  y: 14, scale: 1.4,  rot: -4, stretch: 0.75 },
   dick:               { x: -11, y: 14, scale: 1.3,           stretch: 0.85 },
+  // Protein: eigener Anker pro Sorte (im Scene-Lab getunt). Menge immer 1.
+  'chashu-schwein':   { x: -72, y: -9 },
+  'chashu-haehnchen': { x: -72, y: -9 },
+  tofu:               { x: -75, y: -8 },
   ajitama:            { x: 82,  y: -10, satellites: [{ dx: -30, dy: 8, scale: 0.9 }, { dx: 30, dy: 12, scale: 0.85 }, { dx: 0, dy: -14, scale: 0.8 }] },
   naruto:             { x: 6,   y: -26, satellites: [{ dx: -26, dy: 6, scale: 0.85 }, { dx: 26, dy: 10, scale: 0.82 }, { dx: 2, dy: -14, scale: 0.78 }] },
   nori:               { x: -70, y: 92,  layer: 'back', float: 0.35, satellites: [{ dx: 24, dy: -4, scale: 0.92 }, { dx: -24, dy: -2, scale: 0.9 }, { dx: 0, dy: 6, scale: 0.88 }] },
