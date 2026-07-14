@@ -4,6 +4,7 @@ import { DRINKS, SIDES } from '../config/menu';
 import { useOrderStore, cartTotal, bowlIngredients } from '../state/orderStore';
 import { submitOrder } from '../services/dataService';
 import AddCard from '../components/AddCard';
+import AnimatedNumber from '../components/AnimatedNumber';
 import Button from '../components/Button';
 import BowlThumbnail from '../components/BowlThumbnail';
 import ItemThumbnail, { menuImagePaths } from '../components/ItemThumbnail';
@@ -130,7 +131,9 @@ export default function CartScreen({ onNavigate }) {
                         .join(', ')}
                     </p>
                   )}
-                  <p className="text-small text-ink-600">{item.price * item.qty} €</p>
+                  <p className="text-small text-ink-600">
+                    <AnimatedNumber value={item.price * item.qty} /> €
+                  </p>
                   {/* Getränke/Beilagen: Menge direkt hier ändern, statt nur alles löschen */}
                   {item.type !== 'bowl' && (
                     <QuantityStepper
@@ -158,7 +161,12 @@ export default function CartScreen({ onNavigate }) {
 
         <div className="flex items-baseline justify-between border-t border-line pt-3">
           <span className="text-small text-ink-400">{t('cart.total')}</span>
-          <span className="font-display text-h2 text-ink-900">{cartTotal(cart)} €</span>
+          {/* from={0}: die Summe zählt beim Betreten des Warenkorbs von 0 hoch
+              (typischer Weg: Bowl bauen -> "In den Warenkorb" -> hier landen).
+              Danach animiert jede Mengen-/Lösch-Änderung vom alten Wert aus. */}
+          <span className="font-display text-h2 text-ink-900">
+            <AnimatedNumber value={cartTotal(cart)} from={0} /> €
+          </span>
         </div>
         {error && <p className="text-small text-error">{t('cart.error')}</p>}
         <Button

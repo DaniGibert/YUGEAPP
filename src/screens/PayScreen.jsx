@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { PartyPopper, Plus, Check, X, Banknote, CreditCard } from 'lucide-react';
 import { fetchSessionOrders, markSessionPaid, resetSession } from '../services/dataService';
+import AnimatedNumber from '../components/AnimatedNumber';
 import Button from '../components/Button';
 import BowlThumbnail from '../components/BowlThumbnail';
 import ItemThumbnail from '../components/ItemThumbnail';
@@ -425,7 +426,13 @@ export default function PayScreen({ onNavigate, payMode }) {
         </ul>
         <div className="flex items-baseline justify-between border-t border-line pt-3">
           <span className="text-small text-ink-400">{t('pay.open')}</span>
-          <span className="font-display text-h2 text-ink-900">{sumOf(poolItems)} €</span>
+          {/* from={0} + ready: die offene Rechnung zählt beim Öffnen des
+              Getrennt-Screens von 0 hoch, aber erst wenn die Positionen geladen
+              sind (sonst liefe die Animation gegen 0 ins Leere). Danach zählt
+              jede Zuweisung von dort aus runter. */}
+          <span className="font-display text-h2 text-ink-900">
+            <AnimatedNumber value={sumOf(poolItems)} from={0} ready={!!items} /> €
+          </span>
         </div>
         {error && <p className="text-small text-error">{t('pay.error')}</p>}
       </aside>
@@ -547,7 +554,9 @@ export default function PayScreen({ onNavigate, payMode }) {
                   </ul>
                   <div className="flex items-baseline justify-between border-t border-line pt-2">
                     <span className="text-small text-ink-400">{t('cart.total')}</span>
-                    <span className="text-body font-semibold text-ink-900">{sumOf(list)} €</span>
+                    <span className="text-body font-semibold text-ink-900">
+                      <AnimatedNumber value={sumOf(list)} /> €
+                    </span>
                   </div>
                 </section>
               );

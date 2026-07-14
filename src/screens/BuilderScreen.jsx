@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { STEPS } from '../config/steps';
 import { useOrderStore, bowlPrice, bowlSceneIngredients, toppingCount } from '../state/orderStore';
+import AnimatedNumber from '../components/AnimatedNumber';
 import BowlGraphic from '../components/BowlGraphic';
 import BowlThumbnail from '../components/BowlThumbnail';
 import Breadcrumb from '../components/Breadcrumb';
@@ -380,7 +381,9 @@ export default function BuilderScreen({ onNavigate, cameFrom, onSceneReady }) {
           <div className="flex items-center gap-5">
             <div className="flex items-baseline gap-2">
               <span className="text-small text-ink-400">{t('builder.price')}</span>
-              <span className="font-display text-h2 text-ink-900">{bowlPrice(bowl)} €</span>
+              <span className="font-display text-h2 text-ink-900">
+                <AnimatedNumber value={bowlPrice(bowl)} /> €
+              </span>
             </div>
             <Button
               disabled={!canProceed}

@@ -1,18 +1,11 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import {
-  motion,
-  AnimatePresence,
-  MotionConfig,
-  useMotionValue,
-  useTransform,
-  useReducedMotion,
-  animate,
-} from 'motion/react';
+import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 import { ClipboardList, ChefHat, BellRing, Soup, CupSoda, Clock } from 'lucide-react';
 import { STATUS_FLOW, STATUS_COLORS } from '../config/orderStatus';
 import { fetchSessionOrders, subscribeToOrders } from '../services/dataService';
 import { useOrderStore, bowlSceneIngredients } from '../state/orderStore';
 import AddCard from '../components/AddCard';
+import AnimatedNumber from '../components/AnimatedNumber';
 import Button from '../components/Button';
 import BowlThumbnail from '../components/BowlThumbnail';
 import ItemThumbnail from '../components/ItemThumbnail';
@@ -296,7 +289,6 @@ export default function StatusScreen({ onNavigate }) {
   // Set der bereits gesehenen Runden-ids (null = noch keine Daten). Die erste
   // Datenlieferung markiert alles ohne Animation; erst danach slidet Neues rein.
   const seenIdsRef = useRef(null);
-  const reduceMotion = useReducedMotion();
   // Grobe Uhr für den ETA-Hinweis: tickt minütlich, solange nicht "fertig".
   const [nowMs, setNowMs] = useState(() => Date.now());
   // Frisch bestellte Runde: nach "Bestellen" remountet dieser Screen, die erste
@@ -418,36 +410,14 @@ export default function StatusScreen({ onNavigate }) {
 
   const grandTotal = (orders ?? []).reduce((sum, o) => sum + o.total, 0);
 
-  // Summen-Ticker: zählt die Gesamtsumme sichtbar hoch, wenn eine Runde
-  // dazukommt. Erst-Load und reduced-motion springen hart (jump), sonst animiert
-  // ein Standalone-animate() den MotionValue (kein React-Re-Render pro Frame).
-  // Ausnahme beim Erst-Load: enthält die erste Lieferung die frisch bestellte
-  // Runde (Remount nach "Bestellen"), startet der Ticker bei der Summe OHNE
-  // diese Runde und tickt sie sichtbar hoch. lastPlacedOrderId fehlt bewusst in
-  // den Deps: One-Shot-Lesung beim Erst-Load, der Konsum im Effect oben darf
-  // die laufende Animation nicht stoppen.
-  const totalMv = useMotionValue(grandTotal);
-  const totalRounded = useTransform(totalMv, (v) => Math.round(v));
-  const tickerReadyRef = useRef(false);
-  useEffect(() => {
-    if (!tickerReadyRef.current) {
-      if (orders) tickerReadyRef.current = true; // erst nach echten Daten "scharf"
-      const placed =
-        !reduceMotion && lastPlacedOrderId !== null
-          ? (orders ?? []).find((o) => o.id === lastPlacedOrderId)
-          : undefined;
-      if (!placed) {
-        totalMv.jump(grandTotal);
-        return;
-      }
-      totalMv.jump(grandTotal - placed.total);
-    } else if (reduceMotion) {
-      totalMv.jump(grandTotal);
-      return;
-    }
-    const controls = animate(totalMv, grandTotal, { duration: 0.8, ease: 'easeOut' });
-    return () => controls.stop();
-  }, [grandTotal, orders, reduceMotion, totalMv]);
+  // Summen-Ticker (AnimatedNumber): scharf erst, sobald echte Daten da sind
+  // (ready), sonst würde die erste Lieferung von 0 hochzählen. Sonderfall beim
+  // Eintritt: enthält die erste Lieferung die frisch bestellte Runde (Remount
+  // nach "Bestellen"), startet der Ticker bei der Summe OHNE diese Runde und
+  // tickt sie sichtbar hoch -> from. Sonst kein Hochzählen beim Eintritt (null).
+  const placedInOrders =
+    lastPlacedOrderId !== null ? (orders ?? []).find((o) => o.id === lastPlacedOrderId) : undefined;
+  const tickerFrom = placedInOrders ? grandTotal - placedInOrders.total : null;
 
   if (orders && !latest) {
     return (
@@ -684,9 +654,7 @@ export default function StatusScreen({ onNavigate }) {
           <div className="flex items-baseline justify-between border-t border-line pt-3">
             <span className="text-small text-ink-400">{t('status.tabTotal')}</span>
             <span className="font-display text-h2 text-ink-900">
-              {/* MotionValue als Text: der Ticker aktualisiert die Zahl pro Frame
-                  ohne React-Re-Render. */}
-              <motion.span>{totalRounded}</motion.span> €
+              <AnimatedNumber value={grandTotal} from={tickerFrom} ready={!!orders} /> €
             </span>
           </div>
           {/* Bezahlen sitzt direkt unter der Gesamtsumme der Rechnung: Summe und
