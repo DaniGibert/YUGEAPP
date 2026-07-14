@@ -164,17 +164,29 @@
   :root { font-size: 13px; }
 }
 
+/* ---- Status-Hero: Koch-Szene + Begleiter sind EINE Komposition ----
+   --hero-scale ist der gemeinsame Faktor: daran haengen die Szenen-Hoehe (also
+   die Hero-Bowl) UND alle Begleiter-Werte aus scene/heroCompanions.js
+   (Breiten, Versaetze, Standlinien laufen dort durch scaledPx/scaledLen).
+   Darum bleibt das Groessenverhaeltnis Bowl <-> Getraenk/Beilage/weitere Bowl
+   auf jedem Geraet gleich: schrumpft die Szene, schrumpfen die Begleiter mit.
+   Faktor aendern = NUR hier. Basis 13rem = die auf dem iPad abgestimmte Groesse. */
+.status-hero-scene {
+  --hero-scale: 1;
+  height: calc(13rem * var(--hero-scale));
+}
+
 /* ---- Status-Hero auf flachen Landscape-Tablets kompakter ----
    Die linke Status-Spalte (Tracker + gelbe "Noch Hunger?"-Weiche) ist auf
    iPad Pro 11" (~834px hoch, Hauptziel) und Desktop genau richtig, laeuft aber
    auf kuerzeren Tablets wie dem Galaxy Tab S7 (Querformat, mit Browser-Leiste
    ~720-800px) knapp ueber -> ein bisschen Scroll, die gelbe Weiche rutscht zu
-   tief. Hier die Koch-Szene und die vertikalen Abstaende der Spalte etwas
-   straffen, damit alles ohne Scrollen sitzt und die Weiche hoeher steht. iPad
-   Pro 11" (834) und groesser bleiben unberuehrt. */
+   tief. Hier die ganze Komposition (ueber --hero-scale) und die vertikalen
+   Abstaende der Spalte etwas straffen, damit alles ohne Scrollen sitzt und die
+   Weiche hoeher steht. iPad Pro 11" (834) und groesser bleiben unberuehrt. */
 @media (max-height: 820px) {
   .status-hero { gap: 0.5rem; padding-bottom: 1.5rem; }
-  .status-hero-scene { height: 10rem; }
+  .status-hero-scene { --hero-scale: 0.77; }
 }
 
 /* ---- Startbild: Schuessel im rechten Drittel (Idle) ----

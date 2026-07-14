@@ -37,18 +37,39 @@ export const HERO_LAYOUT = {
   noheroSpread: 130, // px, Abstand der Begleiter
 };
 
+// Gemeinsamer Skalierungs-Faktor der ganzen Hero-Komposition. --hero-scale sitzt
+// am .status-hero-scene (theme.css) und gilt für die Szenen-Höhe (also die
+// Hero-Bowl) UND für alle Begleiter-Werte hier. Nur so bleibt das
+// Größenverhältnis Bowl <-> Getränk/Beilage auf jedem Gerät gleich: schrumpft
+// die Szene auf flachen Tablets, schrumpfen die Begleiter im selben Maß mit.
+// Fallback 1 = unskaliert (Scene-Lab tunt bewusst im 1:1-Maßstab).
+const SCALE = 'var(--hero-scale, 1)';
+
+// px-Zahl aus HERO_LAYOUT -> skalierte CSS-Länge.
+export const scaledPx = (px) => `calc(${px}px * ${SCALE})`;
+
+// Beliebiger CSS-Längen-Ausdruck (z. B. "3rem + 16px") -> skalierte CSS-Länge.
+export const scaledLen = (len) => `calc((${len}) * ${SCALE})`;
+
 // Rolle eines Begleiters.
 export const companionRole = (c) =>
   c.kind === 'bowl' ? 'bowl' : c.item.type === 'drink' ? 'drink' : 'side';
 
-// Box-Breite eines Begleiters (Getränk/Beilage) in px.
+// Box-Breite eines Begleiters (Getränk/Beilage) in px (unskalierte Roh-Zahl:
+// so liest das Scene-Lab sie ab). Fürs Rendern durch scaledPx schicken.
 export function companionWidth(item, cfg = HERO_LAYOUT) {
   return cfg.itemWOverride[item.name] ?? (item.type === 'drink' ? cfg.drinkW : cfg.sideW);
 }
 
 // Position als Style: horizontaler Versatz von der Mitte, Standlinie, z-Ebene.
+// `bottom` kommt bereits skaliert rein, der Versatz wird hier skaliert.
 export function posStyle(offset, bottom, zIndex) {
-  return { left: '50%', bottom, transform: `translateX(calc(-50% + ${offset}px))`, zIndex };
+  return {
+    left: '50%',
+    bottom,
+    transform: `translateX(calc(-50% + (${offset}px * ${SCALE})))`,
+    zIndex,
+  };
 }
 
 // Flanker-Slot je Reihenfolge: erst L0, dann R0, danach nach RECHTS-außen
@@ -66,7 +87,7 @@ export function flankSlot(i) {
 //  - Beilagen/weitere Bowls: flankieren VOR den Getränken; äußere sitzen höher.
 //  - Steht rechts eine weitere Bowl, kommen die Getränke davor (sichtbar).
 export function layoutCompanions(list, cfg = HERO_LAYOUT) {
-  const rise = (rank) => `calc(${cfg.flankBottomRem}rem + ${rank * cfg.flankRise}px)`;
+  const rise = (rank) => scaledLen(`${cfg.flankBottomRem}rem + ${rank * cfg.flankRise}px`);
   const flank = new Map();
   let fi = 0;
   let hasRightBowl = false;
@@ -86,7 +107,7 @@ export function layoutCompanions(list, cfg = HERO_LAYOUT) {
     if (companionRole(c) === 'drink') {
       const offset = drinkBase + (di - (nDrinks - 1) * cfg.drinkShift) * cfg.drinkSpread;
       di += 1;
-      return posStyle(offset, `${cfg.drinkLiftRem}rem`, drinkZ);
+      return posStyle(offset, scaledLen(`${cfg.drinkLiftRem}rem`), drinkZ);
     }
     const { offset, rank } = flank.get(idx);
     return posStyle(offset, rise(rank), 5 - rank);

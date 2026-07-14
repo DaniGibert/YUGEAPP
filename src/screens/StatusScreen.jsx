@@ -16,7 +16,14 @@ import AddCard from '../components/AddCard';
 import Button from '../components/Button';
 import BowlThumbnail from '../components/BowlThumbnail';
 import ItemThumbnail from '../components/ItemThumbnail';
-import { HERO_LAYOUT, companionWidth, layoutCompanions } from '../scene/heroCompanions';
+import {
+  HERO_LAYOUT,
+  companionWidth,
+  layoutCompanions,
+  posStyle,
+  scaledLen,
+  scaledPx,
+} from '../scene/heroCompanions';
 import { t } from '../i18n';
 
 // Die echte Bowl-Szene kocht im Hero die Runde nach; wie im Builder lazy,
@@ -136,11 +143,13 @@ function ReorderCard({ icon: Icon, label, onClick }) {
 }
 
 // Ein Begleiter der Menü-Komposition (Getränk/Beilage): das große Produktbild.
-// Breite kommt aus heroCompanions (geteilt mit dem Scene-Lab); die PNGs bringen
-// ihren eigenen Schatten mit, der beim Bottom-Ausrichten die Standlinie bildet.
+// Breite kommt aus heroCompanions (geteilt mit dem Scene-Lab) und läuft über
+// scaledPx, damit sie am gemeinsamen --hero-scale hängt wie die Hero-Bowl; die
+// PNGs bringen ihren eigenen Schatten mit, der beim Bottom-Ausrichten die
+// Standlinie bildet.
 function HeroSideItem({ item }) {
   return (
-    <span className="block" style={{ width: `${companionWidth(item)}px` }}>
+    <span className="block" style={{ width: scaledPx(companionWidth(item)) }}>
       <ItemThumbnail item={item} className="w-full" />
     </span>
   );
@@ -509,7 +518,7 @@ export default function StatusScreen({ onNavigate }) {
                   hat feste Höhe, damit beim Kochen nichts im Layout springt. */}
               {(heroBowl || companions.length > 0) &&
                 (heroBowl ? (
-                  <div className="status-hero-scene relative flex h-52 w-full items-end justify-center">
+                  <div className="status-hero-scene relative flex w-full items-end justify-center">
                     {/* Begleiter absolut um die Bowl gefächert, HINTER dem Canvas
                         (Menü-Tiefe), ploppen beim Kochen einzeln ein. */}
                     {visibleCompanions.map((c, i) => (
@@ -519,7 +528,7 @@ export default function StatusScreen({ onNavigate }) {
                         style={companionStyles[i]}
                       >
                         {c.kind === 'bowl' ? (
-                          <span className="block" style={{ width: `${HERO_LAYOUT.bowlW}px` }}>
+                          <span className="block" style={{ width: scaledPx(HERO_LAYOUT.bowlW) }}>
                             <BowlThumbnail config={c.config} className="w-full" />
                           </span>
                         ) : (
@@ -536,7 +545,7 @@ export default function StatusScreen({ onNavigate }) {
                 ) : (
                   // Runde ohne Bowl: nur die Begleiter, eng zentrierte Reihe.
                   // Getränke stehen näher zusammen (DRINK_SPREAD) als Beilagen.
-                  <div className="status-hero-scene relative flex h-52 w-full items-end justify-center overflow-hidden">
+                  <div className="status-hero-scene relative flex w-full items-end justify-center overflow-hidden">
                     {visibleCompanions.map((c, idx) => {
                       const n = visibleCompanions.length;
                       const spacing = visibleCompanions.every((x) => x.item.type === 'drink')
@@ -547,12 +556,7 @@ export default function StatusScreen({ onNavigate }) {
                         <span
                           key={c.key}
                           className="absolute animate-cascade-in motion-reduce:animate-none"
-                          style={{
-                            left: '50%',
-                            bottom: '2rem',
-                            transform: `translateX(calc(-50% + ${offset}px))`,
-                            zIndex: 10 - idx,
-                          }}
+                          style={posStyle(offset, scaledLen('2rem'), 10 - idx)}
                         >
                           <HeroSideItem item={c.item} />
                         </span>
