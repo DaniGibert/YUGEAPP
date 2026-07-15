@@ -101,14 +101,14 @@ src/
   state/
     orderStore.js          # Bau-Zustand (broth, noodle, protein, toppings, finish) + Warenkorb
   hooks/
-    useFullscreen.js       # Vollbild an/aus (Fullscreen-API), für den Header-Button
+    useFullscreen.js       # Vollbild an/aus + isSupported (fehlt auf Apple); Logo-Langdruck
     useDisablePullToRefresh.js  # unterbindet die native Refresh-Geste (Kiosk)
   scene/
     BowlScene.jsx          # R3F-Canvas, nur Props (fürs Lab überschreibbar: brothGeom = Brühen-Geometrie, anchorOverrides = Zutaten-Anker)
     heroCompanions.js      # Platzierung der Status-Begleiter (HERO_LAYOUT + layoutCompanions/companionWidth); geteilt Status ↔ Scene-Lab
   components/
     Stage.jsx              # App-Rahmen: füllt das Fenster (fluid, Querformat-optimiert)
-    Header.jsx             # Logo (→ Start), Vollbild, Kellner rufen, Sprache, Bestellstatus (Live-Punkt), Warenkorb
+    Header.jsx             # Logo (Tipp → Start, 3s Langdruck → Vollbild), Kellner rufen, Sprache, Bestellstatus (Live-Punkt), Warenkorb
     Breadcrumb.jsx         # Brühe > Nudeln > ... (Haken auf erledigten Schritten, hohler Punkt auf offenen Pflichtschritten)
     Button.jsx             # Größen: sm | md | lg, Varianten: primary | ghost | dark
     AddCard.jsx            # gestrichelte "Hinzufügen"-Karte (Warenkorb: Noch ein Ramen; Status: Nächste Runde)
@@ -434,10 +434,18 @@ Wenn **Fable** das Hauptmodell ist, arbeitet es als **Orchestrator**, nicht als 
 
 Für den Betrieb als Bestell-Kiosk auf einem Chrome-Tablet:
 
-- **Vollbild:** Hook `hooks/useFullscreen.js` (Fullscreen-API mit webkit-Fallback),
-  umgeschaltet über den Vollbild-Button im Header. Echtes Vollbild im Browser-Tab gibt
-  es nur über diesen Button; `display: fullscreen` aus dem Manifest greift erst bei
-  installierter PWA (auf iPhone-Safari fehlt die Fullscreen-API ganz).
+- **Vollbild ist eine Personal-Geste, kein Gast-Knopf.** Hook `hooks/useFullscreen.js`
+  (`isFullscreen`, `isSupported`, `toggle`), ausgelöst per **3-Sekunden-Langdruck aufs
+  Yuge-Logo** im Header (`LOGO_HOLD_MS`); ein kurzer Tipp führt weiterhin zum Start.
+  Bewusst versteckt: Vollbild braucht nur das Personal beim Einrichten, der Gast nie —
+  darum kein Knopf im Gast-Header (und kein Ein-Punkt-Menü). Kein Hinweistext, der
+  Vollbild-Wechsel ist das Feedback.
+  **Apple:** Auf iPhone/iPad gibt es die Fullscreen-API für normale Elemente **nicht**
+  (nur `<video>`); da Apple jeden Browser auf iOS/iPadOS auf WebKit zwingt, fehlt sie
+  dort auch in Chrome — `webkitRequestFullscreen` gibt es nur auf macOS-Safari. Darum
+  `isSupported`: fehlt die API, wird die Geste gar nicht erst scharf gemacht (nichts
+  Totes anbieten). Auf Apple führt **nur** „Zum Home-Bildschirm hinzufügen" (PWA,
+  `display: fullscreen` + `apple-mobile-web-app-capable`) zu echtem Vollbild.
 - **Manifest:** `public/manifest.json` (`display: fullscreen`, `orientation: landscape`
   — bewusst Querformat, passend zu Regel §3.6), App-Icon `public/icon.svg`. In `index.html`
   verlinkt inkl. Kiosk-Viewport (`user-scalable=no`) und `theme-color`.

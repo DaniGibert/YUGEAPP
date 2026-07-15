@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ConciergeBell, Globe, Maximize, Minimize, ReceiptText, ShoppingBag } from 'lucide-react';
+import { ConciergeBell, Globe, ReceiptText, ShoppingBag } from 'lucide-react';
 import { STATUS_COLORS } from '../config/orderStatus';
 import { fetchSessionOrders, subscribeToOrders } from '../services/dataService';
 import { useOrderStore, cartTotal } from '../state/orderStore';
@@ -8,7 +8,12 @@ import BowlThumbnail from './BowlThumbnail';
 import Button from './Button';
 import { getLanguage, setLanguage, t } from '../i18n';
 
-// Globale Kopfzeile: Logo links (führt zum Start), rechts die globalen Aktionen
+// Wie lange das Logo gehalten werden muss, bis Vollbild schaltet (Personal-Geste).
+// Lang genug, dass ein Gast es nicht versehentlich auslöst.
+const LOGO_HOLD_MS = 3000;
+
+// Globale Kopfzeile: Logo links (kurzer Tipp führt zum Start, langer Druck
+// schaltet Vollbild fürs Personal), rechts die globalen Aktionen
 // Kellner rufen / Sprache / Bestellstatus / Warenkorb, auf JEDEM Screen
 // sichtbar (CLAUDE.md §3.7). `minimal` = Küchen-Modus: nur Logo, keine Gast-Aktionen.
 // Der Warenkorb-Button klappt eine kleine Übersicht der aktuellen Runde aus
@@ -77,7 +82,11 @@ function CartDropdown({ cart, onGoToCart }) {
 
 export default function Header({ onNavigate, minimal = false }) {
   const cart = useOrderStore((s) => s.cart);
-  const { isFullscreen, toggle: toggleFullscreen } = useFullscreen();
+  // Vollbild ist KEINE Gast-Aktion, sondern eine einmalige Einricht-Aktion fürs
+  // Personal -> kein Knopf im Gast-Header, sondern ein Langdruck aufs Logo
+  // (siehe LOGO_HOLD_MS unten). isSupported blendet die Geste dort aus, wo die
+  // API fehlt (Apple, siehe hooks/useFullscreen.js).
+  const { isSupported: fullscreenSupported, toggle: toggleFullscreen } = useFullscreen();
   const [waiterCalled, setWaiterCalled] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const cartAreaRef = useRef(null);
@@ -103,6 +112,39 @@ export default function Header({ onNavigate, minimal = false }) {
       unsubscribe();
     };
   }, [minimal]);
+
+  // --- Logo: kurzer Tipp = zum Start, langer Druck = Vollbild (Personal) ---
+  // Der Langdruck ist bewusst versteckt: ein Gast tippt das Logo nur kurz an,
+  // das Personal hält es beim Einrichten. Feedback ist der Vollbild-Wechsel
+  // selbst, darum kein Hinweistext und keine Fortschritts-Anzeige.
+  const holdTimerRef = useRef(null);
+  const didHoldRef = useRef(false);
+
+  function startLogoHold() {
+    if (!fullscreenSupported) return; // Apple: Geste gäbe es nur zum Schein
+    didHoldRef.current = false;
+    holdTimerRef.current = setTimeout(() => {
+      didHoldRef.current = true;
+      toggleFullscreen();
+    }, LOGO_HOLD_MS);
+  }
+
+  function cancelLogoHold() {
+    clearTimeout(holdTimerRef.current);
+  }
+
+  function handleLogoClick() {
+    // Nach einem Langdruck kommt trotzdem noch ein click -> hier schlucken,
+    // sonst würde das Vollbild-Schalten zusätzlich zum Start navigieren.
+    if (didHoldRef.current) {
+      didHoldRef.current = false;
+      return;
+    }
+    onNavigate?.('start');
+  }
+
+  // Timer nie über das Unmount hinaus laufen lassen.
+  useEffect(() => () => clearTimeout(holdTimerRef.current), []);
 
   function callWaiter() {
     setWaiterCalled(true);
@@ -131,20 +173,19 @@ export default function Header({ onNavigate, minimal = false }) {
     <header className="relative flex items-center justify-between border-b border-line bg-surface px-8 py-4">
       <button
         type="button"
-        onClick={() => onNavigate?.('start')}
-        className="cursor-pointer font-display text-h2 text-ink-900"
+        onClick={handleLogoClick}
+        onPointerDown={startLogoHold}
+        onPointerUp={cancelLogoHold}
+        onPointerLeave={cancelLogoHold}
+        onPointerCancel={cancelLogoHold}
+        onContextMenu={(e) => e.preventDefault()} // Langdruck darf kein Kontextmenü öffnen
+        className="cursor-pointer select-none font-display text-h2 text-ink-900"
       >
         Yuge
       </button>
 
       {!minimal && (
         <div className="flex items-center gap-3" ref={cartAreaRef}>
-          <HeaderIconButton
-            label={isFullscreen ? t('header.fullscreenExit') : t('header.fullscreen')}
-            onClick={toggleFullscreen}
-          >
-            {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
-          </HeaderIconButton>
           <HeaderIconButton
             label={t('header.callWaiter')}
             text={t('header.callWaiter')}

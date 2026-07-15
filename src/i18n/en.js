@@ -8,8 +8,6 @@ const en = {
     callWaiter: 'Call waiter',
     waiterComing: 'A waiter is on the way',
     waiterDismiss: 'Got it',
-    fullscreen: 'Fullscreen',
-    fullscreenExit: 'Exit fullscreen',
     language: 'Language',
     status: 'Order status',
     cart: 'Cart',
