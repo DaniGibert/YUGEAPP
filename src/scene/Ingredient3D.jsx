@@ -18,6 +18,7 @@ import {
   RO,
   SINK_DEPTH,
   SINK_FADE_TAIL,
+  SUBMERGE_DEFAULT,
   SUBMERGE_FADE,
   SUBMERGE_TINT,
   WATER_BAND,
@@ -58,7 +59,16 @@ const fragmentShader = /* glsl */ `
   }
 `;
 
-export default function Ingredient3D({ item, exitT, onImpact, waterY = -9999, brothColor }) {
+// submerge = Abtauch-Werte (band/tint/fade). Ohne Prop gelten die Config-Werte;
+// das Scene-Lab reicht hier live getunte Werte durch (waterY kommt von BowlScene).
+export default function Ingredient3D({
+  item,
+  exitT,
+  onImpact,
+  waterY = -9999,
+  brothColor,
+  submerge = SUBMERGE_DEFAULT,
+}) {
   const { option, x, y, scale, frontness, layer, float = 1, rot = 0, stretch = 1 } = item;
   const map = useTextureOrColor(option.src, option.color, option.fallbackSrc);
   const rotZ = (rot * Math.PI) / 180; // Grad -> Rad (Drehung in der Bildebene)
@@ -125,9 +135,16 @@ export default function Ingredient3D({ item, exitT, onImpact, waterY = -9999, br
       m.uniforms.uMap.value = map || DUMMY;
       m.uniforms.uWaterY.value = waterY;
       if (brothColor) m.uniforms.uBrothColor.value.set(brothColor);
+      // Abtauch-Werte pro Frame nachziehen (die Uniforms sind einmalig gememot):
+      // so wirken die Scene-Lab-Regler live, im Normalbetrieb sind es Konstanten.
+      const band = submerge.band ?? WATER_BAND;
+      const tint = submerge.tint ?? SUBMERGE_TINT;
+      const fade = submerge.fade ?? SUBMERGE_FADE;
+      m.uniforms.uBand.value = band;
+      m.uniforms.uTint.value = tint;
       // Versinken: der eingetauchte Teil blendet mit fortschreitendem Absinken
       // komplett weg (Deckel auf uFade), damit die Zutat sauber in der Brühe verschwindet.
-      m.uniforms.uFade.value = SUBMERGE_FADE + (1 - tv) * (1 - SUBMERGE_FADE);
+      m.uniforms.uFade.value = fade + (1 - tv) * (1 - fade);
       const baseOp = map ? 1 : 0;
       // In der Brühe erst spät ausblenden (die letzte SINK_FADE_TAIL-Strecke);
       // ohne Brühe (Fallback) linear mit dem Schrumpfen ausblenden.

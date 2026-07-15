@@ -104,7 +104,7 @@ src/
     useFullscreen.js       # Vollbild an/aus + isSupported (fehlt auf Apple); Logo-Langdruck
     useDisablePullToRefresh.js  # unterbindet die native Refresh-Geste (Kiosk)
   scene/
-    BowlScene.jsx          # R3F-Canvas, nur Props (fürs Lab überschreibbar: brothGeom = Brühen-Geometrie, anchorOverrides = Zutaten-Anker)
+    BowlScene.jsx          # R3F-Canvas, nur Props (fürs Lab überschreibbar: brothGeom = Brühen-Geometrie, anchorOverrides = Zutaten-Anker, submerge = Abtauch-Werte)
     heroCompanions.js      # Platzierung der Status-Begleiter (HERO_LAYOUT + layoutCompanions/companionWidth); geteilt Status ↔ Scene-Lab
   components/
     Stage.jsx              # App-Rahmen: füllt das Fenster (fluid, Querformat-optimiert)
@@ -395,7 +395,9 @@ Getränke &amp; Beilagen teilen sich einen Screen, aber über einen **Umschalter
 - Bei Unklarheit im Menü/Flow: nachfragen, nicht raten.
 - **Szenen-Werte tunt der Mensch im Scene-Lab** (`?ansicht=lab`, `SceneLabScreen`),
   statt dass Claude blind über Preview-Screenshots iteriert (langsam, teuer): Regler
-  an der **echten** Szene für Brühen-Geometrie (`BROTH_CY/RX/RY`), Zutaten-Anker
+  an der **echten** Szene für Brühen-Geometrie (`BROTH_CY/RX/RY`), das **Abtauchen**
+  der Zutaten (`WATERLINE_Y`/`WATER_BAND`/`SUBMERGE_TINT`/`SUBMERGE_FADE`, im
+  Brühen-Modus — wirkt nur auf Zutaten, also eine einschalten), Zutaten-Anker
   (Nudeln/Protein/Toppings: `x/y/scale/rot/stretch` + Größe, je Sorte, mit Kontext)
   und die Status-Komposition (`HERO_LAYOUT`), jeweils mit Werte-Snippet. Das Lab lädt
   die aktuellen Code-Werte, der Mensch schiebt live auf dem Zielgerät und gibt die

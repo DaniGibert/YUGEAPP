@@ -28,6 +28,7 @@ import {
   GROUND_SHADOW_W,
   RO,
   SINK_DURATION,
+  SUBMERGE_DEFAULT,
   WATERLINE_Y,
 } from '../config/sceneConfig';
 import { useBowlTexture, softCircleTexture } from './sceneTextures';
@@ -130,7 +131,14 @@ function SceneReadySignal({ onReady }) {
   return null;
 }
 
-export default function BowlScene({ broth = null, ingredients = [], onReady, brothGeom, anchorOverrides }) {
+export default function BowlScene({
+  broth = null,
+  ingredients = [],
+  onReady,
+  brothGeom,
+  anchorOverrides,
+  submerge,
+}) {
   const brothRef = useRef();
   const handleImpact = useCallback((x, y) => {
     brothRef.current?.ripple(x, y);
@@ -178,8 +186,11 @@ export default function BowlScene({ broth = null, ingredients = [], onReady, bro
     return m;
   }, [items]);
 
+  // Abtauchen: ohne `submerge`-Prop gelten die Config-Werte (Normalbetrieb),
+  // das Scene-Lab schiebt hier live getunte Werte rein.
+  const sub = submerge ?? SUBMERGE_DEFAULT;
   // Wasserlinie nur aktiv, wenn eine Brühe gewählt ist.
-  const waterY = brothData ? WATERLINE_Y : -9999;
+  const waterY = brothData ? (sub.waterlineY ?? WATERLINE_Y) : -9999;
 
   return (
     <div className="h-full w-full">
@@ -203,6 +214,7 @@ export default function BowlScene({ broth = null, ingredients = [], onReady, bro
               onImpact={handleImpact}
               waterY={waterY}
               brothColor={brothData?.color}
+              submerge={sub}
             />
           );
         })}

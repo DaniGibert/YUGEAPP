@@ -88,11 +88,23 @@ export const PLOP_DROP = 56;
 export const DROP_FROM = 340;
 
 // "Wasserlinie": Alles unterhalb dieser Welt-y wird zur Brühenfarbe getönt & leicht
-// ausgeblendet -> Zutaten sehen aus, als steckten sie in der Suppe.
-export const WATERLINE_Y = 6; // Welt-y der Brühen-Oberfläche
-export const WATER_BAND = 18; // weiche Übergangsbreite (halb)
+// ausgeblendet -> Zutaten sehen aus, als steckten sie in der Suppe. Das macht der
+// Shader in scene/Ingredient3D.jsx pro Pixel (nicht pro Zutat), darum taucht eine
+// Zutat beim Fallen weich ein statt hart umzuschalten.
+// Getunt wird das im Scene-Lab (?ansicht=lab, Modus "Brühe").
+export const WATERLINE_Y = 6; // Welt-y der Brühen-Oberfläche (wo der Schnitt sitzt)
+export const WATER_BAND = 18; // weiche Übergangsbreite (halb; größer = weicherer Verlauf)
 export const SUBMERGE_TINT = 0.5; // wie stark der Unterteil zur Brühenfarbe tönt (0..1)
 export const SUBMERGE_FADE = 0.08; // wie stark der Unterteil ausblendet (0..1, klein = bleibt sichtbar)
+
+// Gebündelt als Default fürs Durchreichen: BowlScene/Ingredient3D nehmen ohne
+// `submerge`-Prop genau diese Werte (Normalbetrieb), das Lab überschreibt sie live.
+export const SUBMERGE_DEFAULT = {
+  waterlineY: WATERLINE_Y,
+  band: WATER_BAND,
+  tint: SUBMERGE_TINT,
+  fade: SUBMERGE_FADE,
+};
 
 // ---- Szenen-Animationen (Brühe füllen/blenden, Zutaten versinken, Dampf) ----
 // A) Erste Brühe in leerer Bowl "füllt sich von unten": die Oberflächen-Ellipse

@@ -1,6 +1,16 @@
 import { useState } from 'react';
 import { BROTHS, NOODLES, PROTEINS, TOPPINGS } from '../config/menu';
-import { ANCHORS, ANCHOR_DEFAULT, BROTH_CY, BROTH_RX, BROTH_RY } from '../config/sceneConfig';
+import {
+  ANCHORS,
+  ANCHOR_DEFAULT,
+  BROTH_CY,
+  BROTH_RX,
+  BROTH_RY,
+  SUBMERGE_FADE,
+  SUBMERGE_TINT,
+  WATERLINE_Y,
+  WATER_BAND,
+} from '../config/sceneConfig';
 import { HERO_LAYOUT, companionWidth, layoutCompanions } from '../scene/heroCompanions';
 import BowlScene from '../scene/BowlScene';
 import BowlThumbnail from '../components/BowlThumbnail';
@@ -9,7 +19,10 @@ import ItemThumbnail from '../components/ItemThumbnail';
 // ============================================================================
 // Scene-Lab (Dev-Tool, NICHT im Gast-Flow): ?ansicht=lab.
 // Zwei Modi:
-//  - "Brühe": Geometrie der Brühen-Oberfläche (BROTH_CY/RX/RY) live tunen.
+//  - "Brühe": Geometrie der Brühen-Oberfläche (BROTH_CY/RX/RY) und das Abtauchen
+//    der Zutaten (Wasserlinien-Shader: WATERLINE_Y/WATER_BAND/SUBMERGE_TINT/
+//    SUBMERGE_FADE) live tunen. Abtauchen wirkt nur auf Zutaten -> zum Beurteilen
+//    unten eine Zutat einschalten.
 //  - "Status-Komposition": Anordnung der Begleiter (weitere Bowls, Getränke,
 //    Beilagen) um die Hero-Bowl, exakt mit der echten Logik aus
 //    scene/heroCompanions (HERO_LAYOUT). Werte ablesen -> in heroCompanions.js
@@ -116,6 +129,11 @@ function BrothMode() {
   const [cy, setCy] = useState(BROTH_CY);
   const [rx, setRx] = useState(BROTH_RX);
   const [ry, setRy] = useState(BROTH_RY);
+  // Abtauchen (Wasserlinien-Shader): gehört zur Brühen-Oberfläche, darum hier.
+  const [waterlineY, setWaterlineY] = useState(WATERLINE_Y);
+  const [band, setBand] = useState(WATER_BAND);
+  const [tint, setTint] = useState(SUBMERGE_TINT);
+  const [fade, setFade] = useState(SUBMERGE_FADE);
   const [active, setActive] = useState({});
 
   const items = [
@@ -129,13 +147,21 @@ function BrothMode() {
     .filter((it) => active[it.id])
     .map((it) => ({ key: it.id, id: it.id, category: it.category, qty: 1 }));
 
-  const snippet = `export const BROTH_CY = ${cy};\nexport const BROTH_RX = ${rx};\nexport const BROTH_RY = ${ry};`;
+  const snippet =
+    `export const BROTH_CY = ${cy};\nexport const BROTH_RX = ${rx};\nexport const BROTH_RY = ${ry};\n\n` +
+    `export const WATERLINE_Y = ${waterlineY};\nexport const WATER_BAND = ${band};\n` +
+    `export const SUBMERGE_TINT = ${tint};\nexport const SUBMERGE_FADE = ${fade};`;
 
   return (
     <>
       <div className="relative flex min-h-[45vh] flex-1 items-center justify-center p-4">
         <div className="aspect-[700/640] h-full max-h-full w-full max-w-[560px]">
-          <BowlScene broth={brothId} ingredients={ingredients} brothGeom={{ cy, rx, ry }} />
+          <BowlScene
+            broth={brothId}
+            ingredients={ingredients}
+            brothGeom={{ cy, rx, ry }}
+            submerge={{ waterlineY, band, tint, fade }}
+          />
         </div>
       </div>
       <div className="flex w-full flex-col gap-5 border-t border-line bg-surface p-5 lg:w-96 lg:border-l lg:border-t-0">
@@ -151,6 +177,19 @@ function BrothMode() {
           <Slider label="Breite (BROTH_RX)" value={rx} min={100} max={280} defaultValue={BROTH_RX} onChange={setRx} />
           <Slider label="Form / Flachheit (BROTH_RY)" value={ry} min={30} max={140} defaultValue={BROTH_RY} onChange={setRy} />
         </div>
+        {/* Abtauchen: wirkt nur auf Zutaten -> ohne aktive Zutat sieht man nichts,
+            darum der Hinweis. Die Wasserlinie ist unabhängig von BROTH_CY: sie ist
+            der Shader-Schnitt, BROTH_CY die sichtbare Oberflächen-Ellipse. */}
+        <div className="flex flex-col gap-4 border-t border-line pt-4">
+          <span className="text-small font-semibold text-ink-900">
+            Abtauchen{' '}
+            <span className="font-normal text-ink-400">(Zutat unten einschalten)</span>
+          </span>
+          <Slider label="Wasserlinie (WATERLINE_Y)" value={waterlineY} min={-80} max={80} defaultValue={WATERLINE_Y} onChange={setWaterlineY} />
+          <Slider label="Übergang weich (WATER_BAND)" value={band} min={0} max={60} defaultValue={WATER_BAND} onChange={setBand} />
+          <Slider label="Tönung (SUBMERGE_TINT)" value={tint} min={0} max={1} step={0.01} defaultValue={SUBMERGE_TINT} onChange={setTint} />
+          <Slider label="Ausblenden (SUBMERGE_FADE)" value={fade} min={0} max={1} step={0.01} defaultValue={SUBMERGE_FADE} onChange={setFade} />
+        </div>
         <div className="flex flex-col gap-2">
           <span className="text-small font-semibold text-ink-900">Zutaten testen</span>
           <div className="flex flex-wrap gap-2">
@@ -161,7 +200,18 @@ function BrothMode() {
             ))}
           </div>
         </div>
-        <ValueBox snippet={snippet} onReset={() => { setCy(BROTH_CY); setRx(BROTH_RX); setRy(BROTH_RY); }} />
+        <ValueBox
+          snippet={snippet}
+          onReset={() => {
+            setCy(BROTH_CY);
+            setRx(BROTH_RX);
+            setRy(BROTH_RY);
+            setWaterlineY(WATERLINE_Y);
+            setBand(WATER_BAND);
+            setTint(SUBMERGE_TINT);
+            setFade(SUBMERGE_FADE);
+          }}
+        />
       </div>
     </>
   );
