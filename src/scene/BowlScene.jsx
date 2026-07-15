@@ -29,7 +29,7 @@ import {
   RO,
   SINK_DURATION,
   SUBMERGE_DEFAULT,
-  WATERLINE_Y,
+  waterlineFor,
 } from '../config/sceneConfig';
 import { useBowlTexture, softCircleTexture } from './sceneTextures';
 import { composeBowlItems } from './composeBowl';
@@ -189,8 +189,12 @@ export default function BowlScene({
   // Abtauchen: ohne `submerge`-Prop gelten die Config-Werte (Normalbetrieb),
   // das Scene-Lab schiebt hier live getunte Werte rein.
   const sub = submerge ?? SUBMERGE_DEFAULT;
-  // Wasserlinie nur aktiv, wenn eine Brühe gewählt ist.
-  const waterY = brothData ? (sub.waterlineY ?? WATERLINE_Y) : -9999;
+  // Wasserlinie PRO Zutat: die Brühen-Oberfläche ist eine geneigte Ebene (Ellipse),
+  // keine Waagerechte — eine einzige Linie für alle würde hintere Zutaten zu wenig
+  // und vordere zu stark eintauchen (siehe WATERLINE_TILT in sceneConfig).
+  // Die Regel selbst steht in sceneConfig (waterlineFor). Nur aktiv, wenn eine
+  // Brühe gewählt ist.
+  const waterYFor = (itemY) => (brothData ? waterlineFor(itemY, sub) : -9999);
 
   return (
     <div className="h-full w-full">
@@ -212,7 +216,7 @@ export default function BowlScene({
               item={live}
               exitT={style.t}
               onImpact={handleImpact}
-              waterY={waterY}
+              waterY={waterYFor(live.y)}
               brothColor={brothData?.color}
               submerge={sub}
             />

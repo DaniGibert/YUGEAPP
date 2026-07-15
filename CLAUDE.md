@@ -239,6 +239,12 @@ Platzhalter (Farb-Blob aus `sceneColor`), nichts crasht. **Ausnahme Brühe:** di
 Brühen-Ebene rendert ohne geladenes PNG **transparent** (kein Farb-Blob), damit
 beim kurzen Laden kein Platzhalter „reinblitzt"; `sceneColor` der Brühen tönt nur
 noch untergetauchte Zutaten + DOM-Thumbnails und ist an die PNG-Farbe angeglichen.
+**Die Wasserlinie ist geneigt, nicht waagerecht.** Die Brühen-Oberfläche ist eine
+Ellipse (geneigte Ebene); im 2.5D-Bild heißt „weiter hinten" = „höher". Eine einzige
+waagerechte Linie würde hintere Zutaten zu wenig und vordere zu stark eintauchen.
+Darum bekommt jede Zutat ihre eigene Wasserlinie über `waterlineFor(ankerY)`
+(`sceneConfig.js`, gedreht um `WATERLINE_Y` per `WATERLINE_TILT`: 0 = flach für alle,
+1 = Schnitt auf eigener Ankerhöhe, >1 = hinten zusätzlich tiefer).
 Die Brühen-Oberfläche (`BROTH_CY/RX/RY`) ist ans Seitenverhältnis der Brühen-PNGs
 (~1.83:1) getunt, damit das Oval die Schüssel füllt statt flachgestaucht zu wirken.
 Die Schüssel steht auf einer weichen **Boden-Schatten-Ellipse** (Szene:
@@ -396,8 +402,9 @@ Getränke &amp; Beilagen teilen sich einen Screen, aber über einen **Umschalter
 - **Szenen-Werte tunt der Mensch im Scene-Lab** (`?ansicht=lab`, `SceneLabScreen`),
   statt dass Claude blind über Preview-Screenshots iteriert (langsam, teuer): Regler
   an der **echten** Szene für Brühen-Geometrie (`BROTH_CY/RX/RY`), das **Abtauchen**
-  der Zutaten (`WATERLINE_Y`/`WATER_BAND`/`SUBMERGE_TINT`/`SUBMERGE_FADE`, im
-  Brühen-Modus — wirkt nur auf Zutaten, also eine einschalten), Zutaten-Anker
+  der Zutaten (`WATERLINE_Y`/`WATERLINE_TILT`/`WATER_BAND`/`SUBMERGE_TINT`/
+  `SUBMERGE_FADE`, im Brühen-Modus — wirkt nur auf Zutaten, also eine einschalten),
+  Zutaten-Anker
   (Nudeln/Protein/Toppings: `x/y/scale/rot/stretch` + Größe, je Sorte, mit Kontext)
   und die Status-Komposition (`HERO_LAYOUT`), jeweils mit Werte-Snippet. Das Lab lädt
   die aktuellen Code-Werte, der Mensch schiebt live auf dem Zielgerät und gibt die

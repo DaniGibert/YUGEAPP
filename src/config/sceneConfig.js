@@ -97,14 +97,37 @@ export const WATER_BAND = 18; // weiche Übergangsbreite (halb; größer = weich
 export const SUBMERGE_TINT = 0.5; // wie stark der Unterteil zur Brühenfarbe tönt (0..1)
 export const SUBMERGE_FADE = 0.08; // wie stark der Unterteil ausblendet (0..1, klein = bleibt sichtbar)
 
+// Neigung der Wasserlinie. Die Brühen-Oberfläche ist eine ELLIPSE, also eine
+// geneigte Ebene — im 2.5D-Bild heißt "weiter hinten" schlicht "höher". Eine
+// einzige waagerechte Linie taucht darum hintere Zutaten (hoch) zu WENIG und
+// vordere (tief) zu VIEL ein; das lässt sich mit WATERLINE_Y allein nicht
+// beheben. Deshalb bekommt jede Zutat ihre eigene Wasserlinie, gedreht um
+// WATERLINE_Y als Angelpunkt:
+//   waterY(zutat) = WATERLINE_Y + WATERLINE_TILT * (ankerY - WATERLINE_Y)
+//   0   = eine flache Linie für alle (Verhalten vor der Neigung)
+//   1   = jede Zutat wird auf ihrer eigenen Anker-Höhe geschnitten, die Linie
+//         folgt also dem Winkel der Brühen-Ebene (alle gleich tief drin)
+//   >1  = hintere Zutaten tauchen zusätzlich tiefer ein, vordere ragen mehr raus
+export const WATERLINE_TILT = 0;
+
 // Gebündelt als Default fürs Durchreichen: BowlScene/Ingredient3D nehmen ohne
 // `submerge`-Prop genau diese Werte (Normalbetrieb), das Lab überschreibt sie live.
 export const SUBMERGE_DEFAULT = {
   waterlineY: WATERLINE_Y,
+  tilt: WATERLINE_TILT,
   band: WATER_BAND,
   tint: SUBMERGE_TINT,
   fade: SUBMERGE_FADE,
 };
+
+// Wasserlinie EINER Zutat (die Regel lebt nur hier). itemY = Anker-Höhe.
+// Gedreht um waterlineY als Angelpunkt: tilt=0 -> flache Linie für alle,
+// tilt=1 -> Schnitt auf der eigenen Anker-Höhe, tilt>1 -> hinten tiefer rein.
+export function waterlineFor(itemY, cfg = SUBMERGE_DEFAULT) {
+  const base = cfg.waterlineY ?? WATERLINE_Y;
+  const tilt = cfg.tilt ?? WATERLINE_TILT;
+  return base + tilt * (itemY - base);
+}
 
 // ---- Szenen-Animationen (Brühe füllen/blenden, Zutaten versinken, Dampf) ----
 // A) Erste Brühe in leerer Bowl "füllt sich von unten": die Oberflächen-Ellipse

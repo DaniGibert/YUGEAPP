@@ -8,6 +8,7 @@ import {
   BROTH_RY,
   SUBMERGE_FADE,
   SUBMERGE_TINT,
+  WATERLINE_TILT,
   WATERLINE_Y,
   WATER_BAND,
 } from '../config/sceneConfig';
@@ -131,6 +132,7 @@ function BrothMode() {
   const [ry, setRy] = useState(BROTH_RY);
   // Abtauchen (Wasserlinien-Shader): gehört zur Brühen-Oberfläche, darum hier.
   const [waterlineY, setWaterlineY] = useState(WATERLINE_Y);
+  const [tilt, setTilt] = useState(WATERLINE_TILT);
   const [band, setBand] = useState(WATER_BAND);
   const [tint, setTint] = useState(SUBMERGE_TINT);
   const [fade, setFade] = useState(SUBMERGE_FADE);
@@ -149,7 +151,8 @@ function BrothMode() {
 
   const snippet =
     `export const BROTH_CY = ${cy};\nexport const BROTH_RX = ${rx};\nexport const BROTH_RY = ${ry};\n\n` +
-    `export const WATERLINE_Y = ${waterlineY};\nexport const WATER_BAND = ${band};\n` +
+    `export const WATERLINE_Y = ${waterlineY};\nexport const WATERLINE_TILT = ${tilt};\n` +
+    `export const WATER_BAND = ${band};\n` +
     `export const SUBMERGE_TINT = ${tint};\nexport const SUBMERGE_FADE = ${fade};`;
 
   return (
@@ -160,7 +163,7 @@ function BrothMode() {
             broth={brothId}
             ingredients={ingredients}
             brothGeom={{ cy, rx, ry }}
-            submerge={{ waterlineY, band, tint, fade }}
+            submerge={{ waterlineY, tilt, band, tint, fade }}
           />
         </div>
       </div>
@@ -186,6 +189,9 @@ function BrothMode() {
             <span className="font-normal text-ink-400">(Zutat unten einschalten)</span>
           </span>
           <Slider label="Wasserlinie (WATERLINE_Y)" value={waterlineY} min={-80} max={80} defaultValue={WATERLINE_Y} onChange={setWaterlineY} />
+          {/* 0 = flache Linie für alle; 1 = Linie folgt dem Winkel (jede Zutat auf
+              ihrer Anker-Höhe); >1 = hinten taucht extra tief, vorne ragt raus. */}
+          <Slider label="Neigung (WATERLINE_TILT)" value={tilt} min={0} max={2} step={0.05} defaultValue={WATERLINE_TILT} onChange={setTilt} />
           <Slider label="Übergang weich (WATER_BAND)" value={band} min={0} max={60} defaultValue={WATER_BAND} onChange={setBand} />
           <Slider label="Tönung (SUBMERGE_TINT)" value={tint} min={0} max={1} step={0.01} defaultValue={SUBMERGE_TINT} onChange={setTint} />
           <Slider label="Ausblenden (SUBMERGE_FADE)" value={fade} min={0} max={1} step={0.01} defaultValue={SUBMERGE_FADE} onChange={setFade} />
@@ -207,6 +213,7 @@ function BrothMode() {
             setRx(BROTH_RX);
             setRy(BROTH_RY);
             setWaterlineY(WATERLINE_Y);
+            setTilt(WATERLINE_TILT);
             setBand(WATER_BAND);
             setTint(SUBMERGE_TINT);
             setFade(SUBMERGE_FADE);
