@@ -92,8 +92,8 @@ export const DROP_FROM = 340;
 // Shader in scene/Ingredient3D.jsx pro Pixel (nicht pro Zutat), darum taucht eine
 // Zutat beim Fallen weich ein statt hart umzuschalten.
 // Getunt wird das im Scene-Lab (?ansicht=lab, Modus "Brühe").
-export const WATERLINE_Y = 6; // Welt-y der Brühen-Oberfläche (wo der Schnitt sitzt)
-export const WATER_BAND = 18; // weiche Übergangsbreite (halb; größer = weicherer Verlauf)
+export const WATERLINE_Y = 8; // Welt-y der Brühen-Oberfläche (wo der Schnitt sitzt)
+export const WATER_BAND = 23; // weiche Übergangsbreite (halb; größer = weicherer Verlauf)
 export const SUBMERGE_TINT = 0.5; // wie stark der Unterteil zur Brühenfarbe tönt (0..1)
 export const SUBMERGE_FADE = 0.08; // wie stark der Unterteil ausblendet (0..1, klein = bleibt sichtbar)
 
@@ -108,7 +108,9 @@ export const SUBMERGE_FADE = 0.08; // wie stark der Unterteil ausblendet (0..1, 
 //   1   = jede Zutat wird auf ihrer eigenen Anker-Höhe geschnitten, die Linie
 //         folgt also dem Winkel der Brühen-Ebene (alle gleich tief drin)
 //   >1  = hintere Zutaten tauchen zusätzlich tiefer ein, vordere ragen mehr raus
-export const WATERLINE_TILT = 0;
+// 0.4 = im Scene-Lab abgestimmt: die Linie kippt spürbar mit, ohne dass hintere
+// Zutaten absaufen (voll mitgekippt wirkte zu stark).
+export const WATERLINE_TILT = 0.4;
 
 // Gebündelt als Default fürs Durchreichen: BowlScene/Ingredient3D nehmen ohne
 // `submerge`-Prop genau diese Werte (Normalbetrieb), das Lab überschreibt sie live.
