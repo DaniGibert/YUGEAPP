@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 import { ClipboardList, ChefHat, BellRing, Soup, CupSoda, Clock } from 'lucide-react';
 import { STATUS_FLOW, STATUS_COLORS } from '../config/orderStatus';
@@ -18,7 +18,7 @@ import {
   scaledLen,
   scaledPx,
 } from '../scene/heroCompanions';
-import { t } from '../i18n';
+import { t, useLanguage } from '../i18n';
 
 // Die echte Bowl-Szene kocht im Hero die Runde nach; wie im Builder lazy,
 // damit der Status-Screen ohne Bestellung three.js nicht lädt.
@@ -71,6 +71,20 @@ const STEP_STAGGER_S = 0.6; // Versatz je übersprungenem Schritt (Küche schalt
 const POP_SPRING = { type: 'spring', stiffness: 500, damping: 20 }; // Icon-Pop
 const HEADLINE_SPRING = { type: 'spring', stiffness: 320, damping: 14 }; // Headline-Wechsel
 const HEADLINE_SPRING_FERTIG = { type: 'spring', stiffness: 550, damping: 12 }; // Fertig kräftiger
+
+// Headline-Wechsel als Varianten-Labels (wie ICON_VARIANTS/LINE_VARIANTS), nicht
+// als Inline-Keyframes: der Status-Hero rendert im Sekundentakt neu (cookNowMs) und
+// bei jedem Realtime-Refetch. Inline-Objekte bekämen dabei jedes Mal neue Identität
+// und würden die laufende Enter/Exit-Animation der AnimatePresence neu antriggern,
+// bis deren Presence-Buchhaltung kippt (Exit feuert nie safeToRemove, Geister bleiben,
+// Enter startet nicht mehr). Stabile Labels + stabiles custom = Re-Render mit gleichem
+// Status ist ein No-Op, motion triggert nur beim echten Statuswechsel. Spring und Delay
+// kommen je Status über custom rein (fertig kräftiger, Delay nach dem Segment-Fill).
+const HEADLINE_VARIANTS = {
+  initial: { opacity: 0, scale: 0.75 },
+  animate: ({ spring, delay }) => ({ opacity: 1, scale: 1, transition: { ...spring, delay } }),
+  exit: { opacity: 0, scale: 0.9, transition: { duration: 0.15, ease: 'easeIn' } },
+};
 
 // Halblinie: absolute Füll-Schicht, wächst per scaleX von links (originX am Element).
 const LINE_VARIANTS = { empty: { scaleX: 0 }, filled: { scaleX: 1 } };
@@ -283,6 +297,52 @@ function StatusTracker({ status, prevIndex }) {
   );
 }
 
+// Status-Headline im Hero: eigener, memoisierter Baustein. Kern des Fixes gegen
+// die haengenden Exit-Geister ist, dass die AnimatePresence NUR beim echten
+// Statuswechsel neu rendert, nie im 0,15s-Exit-Fenster danach. Der Status-Hero
+// rendert sonst staendig neu (cookNowMs im Sekundentakt, jeder Realtime-Refetch,
+// und der headlineDelay kippt direkt nach jedem Wechsel von 0,5 auf 0, sobald
+// prevIndex nachzieht). Jeder dieser Re-Render mitten im Exit unterbricht die
+// laufende Exit-Animation, safeToRemove feuert nie, das alte h2 bleibt als
+// Snapshot montiert (bei Sprachwechsel mit falschsprachigem, eingefrorenem Text).
+// Der eigene Vergleich (nur status/color) haelt genau diese Churn-Renders draussen:
+// neu gerendert wird nur beim Statuswechsel; der Sprachwechsel laeuft ueber
+// useLanguage (interner Re-Render, umgeht den Vergleich) und aktualisiert den
+// t()-Text der EINEN montierten Headline in der Zelle (gleicher key -> kein
+// Exit/Enter, sofortiger Sprachwechsel, kein Snapshot). Weil kein Churn-Render
+// mehr durchkommt, bleibt auch der Enter-Delay (0,5s, beim Mount gesetzt)
+// erhalten, statt vom nachziehenden 0-Delay ueberschrieben zu werden. Grid-Stack
+// + [grid-area:1/1] bleiben der Crossfade-Platz, initial={false} unterdrueckt den
+// Ersteintritt, reducedMotion="user" wirkt weiter ueber den MotionConfig-Kontext.
+const StatusHeadline = memo(
+  function StatusHeadline({ status, color, delay, spring }) {
+    useLanguage(); // Re-Render bei Sprachwechsel, damit t() der Headline live nachzieht
+    const custom = useMemo(() => ({ spring, delay }), [spring, delay]);
+    return (
+      <div className="grid place-items-center">
+        <AnimatePresence initial={false}>
+          <motion.h2
+            key={status}
+            className="font-display text-h1 [grid-area:1/1]"
+            style={{ color: `var(--color-${color})` }}
+            variants={HEADLINE_VARIANTS}
+            custom={custom}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            {t(`status.headlines.${status}`)}
+          </motion.h2>
+        </AnimatePresence>
+      </div>
+    );
+  },
+  // Nur der echte Statuswechsel darf neu rendern (color haengt am Status). delay/
+  // spring sind reine Mount-Werte des Eintritts, ihr Nachziehen (0,5 -> 0) ist ein
+  // Churn-Render, der den Exit stoeren wuerde und hier bewusst ignoriert wird.
+  (prev, next) => prev.status === next.status && prev.color === next.color,
+);
+
 export default function StatusScreen({ onNavigate }) {
   const [orders, setOrders] = useState(null); // null = lädt noch
   // Vorheriger Render-Stand der letzten Runde (id + Status-Index). Trennt echten
@@ -458,25 +518,15 @@ export default function StatusScreen({ onNavigate }) {
                 {t('status.round', { n: orders.length })}
               </p>
               {/* Grid-Stack: ein- und ausblendende Headline liegen in derselben
-                  Zelle -> Wechsel ohne Layout-Sprung (kein popLayout). */}
-              <div className="grid place-items-center">
-                <AnimatePresence initial={false}>
-                  <motion.h2
-                    key={latest.status}
-                    className="font-display text-h1 [grid-area:1/1]"
-                    style={{ color: `var(--color-${STATUS_COLORS[latest.status]})` }}
-                    initial={{ opacity: 0, scale: 0.75 }}
-                    animate={{
-                      opacity: 1,
-                      scale: 1,
-                      transition: { ...headlineSpring, delay: headlineDelay },
-                    }}
-                    exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15, ease: 'easeIn' } }}
-                  >
-                    {t(`status.headlines.${latest.status}`)}
-                  </motion.h2>
-                </AnimatePresence>
-              </div>
+                  Zelle -> Wechsel ohne Layout-Sprung (kein popLayout). Ausgelagert
+                  in StatusHeadline (memoisiert), damit die Sekunden-Ticks des Hero
+                  die AnimatePresence nicht mitten im Exit neu rendern. */}
+              <StatusHeadline
+                status={latest.status}
+                color={STATUS_COLORS[latest.status]}
+                delay={headlineDelay}
+                spring={headlineSpring}
+              />
               {/* Ruhige ETA-Zeile unter der Headline (jede Tracking-Referenz führt
                   mit Zeit): geschätzte Restzeit bzw. Gruß, wenn fertig. */}
               <p className="text-body font-medium text-ink-400">
