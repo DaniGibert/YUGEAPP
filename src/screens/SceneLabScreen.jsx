@@ -17,6 +17,9 @@ import { HERO_LAYOUT, companionWidth, layoutCompanions } from '../scene/heroComp
 import BowlScene from '../scene/BowlScene';
 import BowlThumbnail from '../components/BowlThumbnail';
 import ItemThumbnail from '../components/ItemThumbnail';
+// Wiederkehrende Dev-Bausteine leben einmal (CLAUDE.md 3.2), geteilt mit dem
+// Design-Lab.
+import { Slider, Toggle, ValueBox } from './labControls';
 
 // ============================================================================
 // Scene-Lab (Dev-Tool, NICHT im Gast-Flow): ?ansicht=lab.
@@ -30,41 +33,6 @@ import ItemThumbnail from '../components/ItemThumbnail';
 //    scene/heroCompanions (HERO_LAYOUT). Werte ablesen -> in heroCompanions.js
 //    (bzw. sceneConfig.js) eintragen oder mir durchgeben.
 // ============================================================================
-
-// --- Brühen-Modus ---
-function Slider({ label, value, min, max, step = 1, defaultValue, onChange }) {
-  const changed = defaultValue !== undefined && value !== defaultValue;
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="flex items-baseline justify-between gap-2 text-small font-semibold text-ink-900">
-        <span>{label}</span>
-        <span className="flex items-center gap-1.5">
-          {changed && (
-            <button
-              type="button"
-              onClick={() => onChange(defaultValue)}
-              title={`Zurück auf ${defaultValue}`}
-              aria-label={`${label} zurücksetzen`}
-              className="text-body leading-none text-ink-400 hover:text-primary"
-            >
-              ↺
-            </button>
-          )}
-          <span className="font-display text-body tabular-nums text-primary">{value}</span>
-        </span>
-      </span>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full accent-primary"
-      />
-    </div>
-  );
-}
 
 // --- Status-Modus: Test-Begleiter & Beispiel-Bowl ---
 const SAMPLE_BOWL = {
@@ -107,26 +75,6 @@ const HERO_FIELDS = [
   ['drinkBowlShift', 'Getränk Versatz bei Bowl', 0, 160, 5],
   ['noheroSpread', 'Ohne Bowl: Abstand', 40, 220, 5],
 ];
-
-function Toggle({ on, onClick, children, color = 'nori' }) {
-  // Aktive Farbe über Token-CSS-Variablen inline (dynamische Tailwind-Klassen
-  // wie bg-${color} würde der Scanner nicht erzeugen).
-  const style = on
-    ? { backgroundColor: `var(--color-${color})`, borderColor: `var(--color-${color})`, color: 'var(--color-surface)' }
-    : undefined;
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={style}
-      className={`rounded-md border px-3 py-1 text-small transition-colors ${
-        on ? '' : 'border-line text-ink-600 hover:border-ink-400'
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
 
 function BrothMode() {
   const [brothId, setBrothId] = useState('miso');
@@ -489,31 +437,6 @@ function ToppingMode() {
       sortLabel="Topping"
       sizeListName="TOPPINGS"
     />
-  );
-}
-
-function ValueBox({ snippet, onReset }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <span className="text-small font-semibold text-ink-900">Werte</span>
-      <pre className="max-h-40 overflow-auto rounded-md bg-bg p-3 text-caption text-ink-600">{snippet}</pre>
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => navigator.clipboard?.writeText(snippet)}
-          className="rounded-md bg-ink-900 px-3 py-1.5 text-small font-semibold text-surface"
-        >
-          Kopieren
-        </button>
-        <button
-          type="button"
-          onClick={onReset}
-          className="rounded-md border border-line px-3 py-1.5 text-small font-semibold text-ink-600 hover:border-ink-400"
-        >
-          Zurücksetzen
-        </button>
-      </div>
-    </div>
   );
 }
 

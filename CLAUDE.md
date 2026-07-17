@@ -131,6 +131,8 @@ src/
     PayScreen.jsx
     KitchenScreen.jsx      # Küchen-Ansicht: Status ändern (löst Live-Update aus)
     SceneLabScreen.jsx     # Dev-Tool (?ansicht=lab): Brühe, Nudeln, Protein, Toppings + Status-Komposition live per Regler tunen
+    DesignLabPanel.jsx     # Dev-Tool (?ansicht=design): schwebendes Panel über der echten App, überschreibt live die Token-CSS-Variablen (Fonts, Radien, Farben)
+    labControls.jsx        # geteilte Dev-Bausteine (Slider, Toggle, ValueBox) für Scene-Lab und Design-Lab
 public/
   manifest.json / icon.svg      # PWA (display fullscreen, orientation landscape) + App-Icon
   assets/<kategorie>/<id>.png   # Dateiname == Options-id; Varianten: <id>-<varianten-id>.png (Varianten-id aus menu.js);
@@ -451,6 +453,9 @@ Getränke &amp; Beilagen teilen sich einen Screen, aber über einen **Umschalter
   echte satellites/Nori-Ebene nicht überschreiben). Für Platzierungen also erst das Lab anbieten.
 - **Dev-Ansichten über URL-Param** (ohne Gast-Navigation): `?ansicht=kueche` = Küche,
   `?ansicht=lab` = Scene-Lab. Beide früh in `App.jsx` verzweigt.
+  `?ansicht=design` = Design-Lab: legt ein schwebendes Panel über die normal
+  laufende Gast-App und überschreibt live die Token-CSS-Variablen (Fonts, Radien,
+  Farben), mit Werte-Snippet für `theme.css` (kein Early-Return, die App bleibt bedienbar).
 - **Assets komprimieren:** neue PNGs vor dem Commit auf max. 1100 px lange Kante +
   optimiertes PNG bringen (Asset-Spec). Kein Tool im Repo — bei Bedarf `sharp`
   temporär mit `npm install sharp --no-save` nutzen (package.json unberührt lassen).

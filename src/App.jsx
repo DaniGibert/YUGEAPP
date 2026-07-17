@@ -13,6 +13,7 @@ import StatusScreen from './screens/StatusScreen';
 import PayScreen from './screens/PayScreen';
 import KitchenScreen from './screens/KitchenScreen';
 import SceneLabScreen from './screens/SceneLabScreen';
+import DesignLabPanel from './screens/DesignLabPanel';
 
 // Einfacher State-Router: Screen-Id -> Komponente. Der Gast-Flow navigiert
 // sich selbst (Start -> Builder -> Übersicht -> Warenkorb -> Status -> Bezahlen);
@@ -34,6 +35,12 @@ const KITCHEN_MODE = new URLSearchParams(window.location.search).get('ansicht') 
 // Dev-Tool: ?ansicht=lab öffnet das Scene-Lab (Brühen-Geometrie live tunen),
 // ohne Gast-Navigation. Konstante pro Seitenaufruf -> Early-Return ist hook-sicher.
 const LAB_MODE = new URLSearchParams(window.location.search).get('ansicht') === 'lab';
+
+// Dev-Tool: ?ansicht=design legt das Design-Lab-Panel ueber die ECHTE Gast-App
+// (kein Early-Return): Navigation, Header und Flug laufen normal, das Panel
+// ueberschreibt live die Token-CSS-Variablen. So laesst sich der neue Look durch
+// die ganze App begutachten.
+const DESIGN_MODE = new URLSearchParams(window.location.search).get('ansicht') === 'design';
 
 // Übergabe Start -> Builder (Shared-Element-Flug): Sicherheitsnetz, falls
 // transitionend oder das Szene-Ready-Signal je ausbleiben (z. B. fehlendes
@@ -197,6 +204,9 @@ export default function App() {
       {/* Vercel Web Analytics: zaehlt Besucher/Seitenaufrufe, nur auf der
           Live-Version aktiv, datenschutzfreundlich (keine Cookies). */}
       <Analytics />
+      {/* Design-Lab: nur bei ?ansicht=design, schwebt ueber der normal
+          laufenden Gast-App und ueberschreibt live die Token-CSS-Variablen. */}
+      {DESIGN_MODE && <DesignLabPanel />}
     </Stage>
   );
 }
