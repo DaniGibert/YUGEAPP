@@ -40,6 +40,11 @@ const en = {
     less: 'Less',
     more: 'More',
   },
+  card: {
+    vegan: 'Vegan',
+    vegetarian: 'Vegetarian',
+    contains: 'Contains: {list}',
+  },
   overview: {
     title: 'Your ramen',
     edit: 'Edit',
@@ -114,8 +119,9 @@ const en = {
     markPaid: 'Pay',
     paid: 'Paid',
     dropHere: 'Drag items here',
-    doneTitle: 'All paid!',
-    doneHint: 'Thanks for your visit, see you next time!',
+    assignedCounter: '{used} of {max} items assigned',
+    doneTitle: 'Thank you, see you soon',
+    doneHint: 'We look forward to your next visit',
     newSession: 'Start a new table',
     emptyTitle: 'Nothing to pay yet',
     emptyHint: 'The bill fills up with your first order.',

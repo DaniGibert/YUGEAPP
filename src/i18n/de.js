@@ -40,6 +40,11 @@ const de = {
     less: 'Weniger',
     more: 'Mehr',
   },
+  card: {
+    vegan: 'Vegan',
+    vegetarian: 'Vegetarisch',
+    contains: 'Enthält: {list}',
+  },
   overview: {
     title: 'Dein Ramen',
     edit: 'Ändern',
@@ -114,8 +119,9 @@ const de = {
     markPaid: 'Bezahlen',
     paid: 'Bezahlt',
     dropHere: 'Positionen hierher ziehen',
-    doneTitle: 'Alles bezahlt!',
-    doneHint: 'Danke für deinen Besuch, bis zum nächsten Mal!',
+    assignedCounter: '{used} von {max} Positionen zugeordnet',
+    doneTitle: 'Danke, bis bald',
+    doneHint: 'Wir freuen uns auf deinen nächsten Besuch',
     newSession: 'Neuen Tisch starten',
     emptyTitle: 'Noch nichts zu bezahlen',
     emptyHint: 'Die Rechnung füllt sich mit deiner ersten Bestellung.',

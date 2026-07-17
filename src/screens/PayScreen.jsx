@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { PartyPopper, Plus, Check, X, Banknote, CreditCard } from 'lucide-react';
+import { Plus, Check, X, Banknote, CreditCard } from 'lucide-react';
 import { fetchSessionOrders, markSessionPaid, resetSession } from '../services/dataService';
+import { itemDisplayName } from '../config/menu';
 import AnimatedNumber from '../components/AnimatedNumber';
 import Button from '../components/Button';
+import BowlGraphic from '../components/BowlGraphic';
 import BowlThumbnail from '../components/BowlThumbnail';
 import ItemThumbnail from '../components/ItemThumbnail';
+import SteamPuffs from '../components/SteamPuffs';
 import { t } from '../i18n';
 
 // Bezahlen (CLAUDE.md §9): zuerst die Wahl „Zusammen | Getrennt".
@@ -22,7 +25,7 @@ function GhostChip({ item, className = '', style, ...props }) {
       style={style}
       {...props}
     >
-      {item.name} · {item.price} €
+      {itemDisplayName(item)} · {item.price} €
     </span>
   );
 }
@@ -107,12 +110,12 @@ function BillChip({ item, locked, selected, onSelect, onDrop }) {
         } ${ghost ? 'opacity-40' : ''}`}
       >
         <span className="flex min-w-0 items-center gap-2">
-          {item.config ? (
+          {item.type === 'bowl' ? (
             <BowlThumbnail config={item.config} className="w-12 shrink-0" />
           ) : (
             <ItemThumbnail item={item} className="h-10 w-10 shrink-0" />
           )}
-          <span className="min-w-0 break-words font-semibold">{item.name}</span>
+          <span className="min-w-0 break-words font-semibold">{itemDisplayName(item)}</span>
         </span>
         <span className="shrink-0">{item.price} €</span>
       </button>
@@ -142,6 +145,7 @@ export default function PayScreen({ onNavigate, payMode }) {
   const [methodTarget, setMethodTarget] = useState(payMode === 'split' ? null : 'all');
   const [payMethods, setPayMethods] = useState({}); // personId -> 'cash' | 'card' (nur UI, nicht in DB)
   const [finished, setFinished] = useState(false);
+  const [bowlMissing, setBowlMissing] = useState(false); // bowl_back fehlt -> Platzhalter
   const [error, setError] = useState(false);
   const [hint, setHint] = useState(null); // aktueller Drag-Hinweis (Demo-Chip) oder null
   const hintStoppedRef = useRef(false); // ab erster Zuweisung dauerhaft aus
@@ -159,9 +163,13 @@ export default function PayScreen({ onNavigate, payMode }) {
           open.flatMap((order, oi) =>
             (order.items ?? []).map((item, ii) => ({
               key: item.id ?? `${order.id ?? oi}-${ii}`,
+              // type + config bleiben erhalten: type steuert das Bild (Bowl vs.
+              // Produkt), config (bowl-config bzw. { refId, variant }) speist den
+              // lokalisierten Namen (itemDisplayName) und ItemThumbnail.
+              type: item.type,
               name: item.name,
               price: item.price,
-              config: item.type === 'bowl' ? item.config : null,
+              config: item.config ?? null,
             })),
           ),
         );
@@ -321,13 +329,32 @@ export default function PayScreen({ onNavigate, payMode }) {
 
   if (finished) {
     return (
-      <section className="flex h-full flex-col items-center justify-center gap-4">
-        <PartyPopper size={56} className="text-gold" aria-hidden="true" />
-        <h2 className="text-h1">{t('pay.doneTitle')}</h2>
-        <p className="text-body text-ink-400">{t('pay.doneHint')}</p>
-        <Button size="lg" onClick={finishSession}>
-          {t('pay.newSession')}
-        </Button>
+      <section className="flex h-full flex-col items-center justify-center gap-8 animate-fade-in motion-reduce:animate-none">
+        {/* Warmer Abschied im Vokabular des Starts: die leere, dampfende Schüssel
+            (bowl_back) mit Boden-Schatten und Dampf, nur kleiner als am Start. */}
+        <span className="relative block w-2/5 max-w-xs">
+          <span aria-hidden="true" className="start-bowl-shadow pointer-events-none" />
+          <SteamPuffs className="absolute inset-x-0 top-6" />
+          <span className="animate-float block">
+            {bowlMissing ? (
+              <BowlGraphic className="relative h-auto w-full" />
+            ) : (
+              <img
+                src="/assets/bowl/bowl_back.png"
+                alt=""
+                onError={() => setBowlMissing(true)}
+                className="relative h-auto w-full object-contain"
+              />
+            )}
+          </span>
+        </span>
+        <div className="flex flex-col items-center gap-4">
+          <h2 className="text-h1">{t('pay.doneTitle')}</h2>
+          <p className="text-body text-ink-400">{t('pay.doneHint')}</p>
+          <Button size="lg" onClick={finishSession}>
+            {t('pay.newSession')}
+          </Button>
+        </div>
       </section>
     );
   }
@@ -412,6 +439,11 @@ export default function PayScreen({ onNavigate, payMode }) {
         </div>
         <h2 className="text-h1">{t('pay.title')}</h2>
         <p className="text-small text-ink-400">{t('pay.hint')}</p>
+        {/* Ruhige Zustands-Zeile (wie der Topping-Zähler im Builder): wie viele
+            Positionen schon einer Person zugeordnet sind. */}
+        <p className="text-small text-ink-400">
+          {t('pay.assignedCounter', { used: items.length - poolItems.length, max: items.length })}
+        </p>
         <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
           {poolItems.map((item, i) => (
             <li key={item.key} ref={i === 0 ? firstPoolChipRef : undefined}>

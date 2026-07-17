@@ -1,7 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Info, X } from 'lucide-react';
-import { t } from '../i18n';
+import { Info, X, Vegan, Leaf } from 'lucide-react';
+import { ALLERGENS } from '../config/menu';
+import { t, tx } from '../i18n';
+
+// Diet-Feld (menu.js) -> ruhiges Icon + i18n-Label. vegan impliziert vegetarisch,
+// darum reicht das eine Feld; kein Diet-Feld = kein Icon (Fleisch/Fisch).
+const DIET_META = {
+  vegan: { Icon: Vegan, labelKey: 'card.vegan' },
+  vegetarian: { Icon: Leaf, labelKey: 'card.vegetarian' },
+};
 
 // DIE Auswahl-Karte der App (CLAUDE.md §4): optionales Produktbild, Name,
 // optionaler Preis-Text (fertig formatiert, z. B. "+3 €" oder "5 €"), „i"-Info
@@ -16,6 +24,8 @@ import { t } from '../i18n';
 export default function OptionCard({
   name,
   desc,
+  diet = null,
+  allergens = null,
   image = null,
   fallbackImage = null,
   visual = null,
@@ -35,6 +45,9 @@ export default function OptionCard({
   const cardRef = useRef(null);
   const [src, setSrc] = useState(image);
   const [imageHidden, setImageHidden] = useState(false);
+  const dietMeta = diet ? DIET_META[diet] : null;
+  const DietIcon = dietMeta?.Icon;
+  const hasAllergens = Array.isArray(allergens) && allergens.length > 0;
 
   // Bild-/Variantenwechsel: Quelle zurücksetzen und wieder versuchen. Ist der
   // Bildbereich gerade ausgeblendet (kein Bild vorhanden), wird das neue Bild
@@ -153,7 +166,19 @@ export default function OptionCard({
       )}
 
       <div className="flex items-start justify-between gap-2">
-        <span className="min-w-0 break-words text-body font-semibold text-ink-900">{name}</span>
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="min-w-0 break-words text-body font-semibold text-ink-900">{name}</span>
+          {dietMeta && (
+            <span
+              role="img"
+              aria-label={t(dietMeta.labelKey)}
+              title={t(dietMeta.labelKey)}
+              className="shrink-0 text-success"
+            >
+              <DietIcon size={15} aria-hidden="true" />
+            </span>
+          )}
+        </span>
         {desc && (
           <button
             type="button"
@@ -225,6 +250,19 @@ export default function OptionCard({
               <p className="min-h-0 flex-1 overflow-y-auto break-words text-body text-ink-600">
                 {desc}
               </p>
+              {dietMeta && (
+                <span className="flex items-center gap-1.5 text-small text-ink-400">
+                  <DietIcon size={14} className="shrink-0 text-success" aria-hidden="true" />
+                  {t(dietMeta.labelKey)}
+                </span>
+              )}
+              {hasAllergens && (
+                <span className="break-words text-caption text-ink-400">
+                  {t('card.contains', {
+                    list: allergens.map((id) => tx(ALLERGENS[id])).join(', '),
+                  })}
+                </span>
+              )}
             </div>
           </div>,
           document.body,
