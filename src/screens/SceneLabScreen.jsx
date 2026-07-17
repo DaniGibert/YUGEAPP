@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { BROTHS, NOODLES, PROTEINS, TOPPINGS } from '../config/menu';
+import { tx } from '../i18n';
 import {
   ANCHORS,
   ANCHOR_DEFAULT,
@@ -69,19 +70,21 @@ function Slider({ label, value, min, max, step = 1, defaultValue, onChange }) {
 const SAMPLE_BOWL = {
   broth: 'tonkotsu',
   noodle: 'mittel',
-  hardness: 'Normal',
+  hardness: 'normal',
   protein: 'chashu-schwein',
   toppings: { ajitama: 1, mais: 1, nori: 1 },
   finish: {},
 };
+// variant ist die Varianten-ID (== Datei-Slug), damit ItemThumbnail das richtige
+// PNG lädt. Der `name` ist nur ein Dev-Label für die Toggles.
 const DRINK_PRESETS = [
   { name: 'Wasser', type: 'drink', refId: 'wasser' },
-  { name: 'Softdrink (Cola)', type: 'drink', refId: 'softdrink', variant: 'Cola' },
-  { name: 'Japanisches Bier (Asahi)', type: 'drink', refId: 'bier', variant: 'Asahi' },
-  { name: 'Matcha Tee (Warm)', type: 'drink', refId: 'matcha', variant: 'Warm' },
+  { name: 'Softdrink (Cola)', type: 'drink', refId: 'softdrink', variant: 'cola' },
+  { name: 'Japanisches Bier (Asahi)', type: 'drink', refId: 'bier', variant: 'asahi' },
+  { name: 'Matcha Tee (Warm)', type: 'drink', refId: 'matcha', variant: 'warm' },
 ];
 const SIDE_PRESETS = [
-  { name: 'Gyoza (Gebraten)', type: 'side', refId: 'gyoza', variant: 'Gebraten' },
+  { name: 'Gyoza (Gebraten)', type: 'side', refId: 'gyoza', variant: 'gebraten' },
   { name: 'Karaage', type: 'side', refId: 'karaage' },
   { name: 'Edamame', type: 'side', refId: 'edamame' },
   { name: 'Reis', type: 'side', refId: 'reis' },
@@ -171,7 +174,7 @@ function BrothMode() {
         <div className="flex flex-wrap gap-2">
           {BROTHS.map((b) => (
             <Toggle key={b.id} on={brothId === b.id} onClick={() => setBrothId(b.id)} color="primary">
-              {b.name}
+              {tx(b.name)}
             </Toggle>
           ))}
         </div>
@@ -385,7 +388,7 @@ function PlacementMode({ category, options, defaultAnchor, context, sortLabel, s
           <div className="flex flex-wrap gap-2">
             {options.map((o) => (
               <Toggle key={o.id} on={id === o.id} onClick={() => setId(o.id)} color="primary">
-                {o.name}
+                {tx(o.name)}
               </Toggle>
             ))}
           </div>
@@ -404,7 +407,7 @@ function PlacementMode({ category, options, defaultAnchor, context, sortLabel, s
             {brothOn &&
               BROTHS.map((b) => (
                 <Toggle key={b.id} on={broth === b.id} onClick={() => setBroth(b.id)} color="gold">
-                  {b.name}
+                  {tx(b.name)}
                 </Toggle>
               ))}
           </div>

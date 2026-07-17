@@ -3,6 +3,7 @@ import { ConciergeBell, Globe, ReceiptText, ShoppingBag } from 'lucide-react';
 import { STATUS_COLORS } from '../config/orderStatus';
 import { fetchSessionOrders, subscribeToOrders } from '../services/dataService';
 import { useOrderStore, cartTotal } from '../state/orderStore';
+import { itemDisplayName } from '../config/menu';
 import { useFullscreen } from '../hooks/useFullscreen';
 import BowlThumbnail from './BowlThumbnail';
 import Button from './Button';
@@ -60,7 +61,7 @@ function CartDropdown({ cart, onGoToCart }) {
                 )}
                 <span className="min-w-0 flex-1 break-words">
                   {item.qty > 1 ? `${item.qty}× ` : ''}
-                  {item.name}
+                  {itemDisplayName(item)}
                 </span>
                 <span className="shrink-0">{item.price * item.qty} €</span>
               </li>

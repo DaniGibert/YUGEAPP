@@ -1,15 +1,21 @@
+import { tx } from '../i18n';
+
 // Segmentierte Auswahl (Nudelhärte, Schärfe, Getränke|Beilagen, …): genau
-// eine Option aktiv. Optionen sind Strings oder { value, label }.
+// eine Option aktiv. Optionen sind entweder Menü-Optionen `{ id, label:{de,en} }`
+// (Wert = id, Anzeige = tx(label)) oder `{ value, label }` mit fertigem String-
+// Label (Tabs, Status/Küche) bzw. reine Strings. tx() lässt Strings unverändert.
 // accent = Farb-Token für den aktiven Zustand (CLAUDE.md §5).
 // Der aktive Bereich ist eine einzige, absolut positionierte Pill, die per
 // transform sanft zum neu gewählten Segment gleitet, statt zu springen.
 export default function ModifierGroup({ label, options, value, onChange, accent }) {
-  const items = options.map((o) => (typeof o === 'string' ? { value: o, label: o } : o));
+  const items = options.map((o) =>
+    typeof o === 'string' ? { value: o, label: o } : { value: o.value ?? o.id, label: tx(o.label) },
+  );
   const index = items.findIndex((o) => o.value === value);
   const count = items.length;
   return (
     <div className="flex flex-col gap-2">
-      {label && <span className="text-small font-semibold text-ink-600">{label}</span>}
+      {label && <span className="text-small font-semibold text-ink-600">{tx(label)}</span>}
       <div className="rounded-md border border-line bg-surface p-1">
         <div className="relative flex w-full gap-1">
           {index >= 0 && (

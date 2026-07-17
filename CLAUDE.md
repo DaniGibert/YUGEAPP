@@ -88,10 +88,12 @@ src/
   styles/
     theme.css              # Design-Tokens + Animationen (Single Source of Truth)
   i18n/
-    de.js / en.js          # UI-Texte (Menü-Namen/-Beschreibungen bleiben in menu.js)
-    index.js               # t(), Sprachwechsel
+    de.js / en.js          # UI-Texte (Menü-Namen/-Beschreibungen bleiben in menu.js, dort jetzt zweisprachig als { de, en })
+    index.js               # t() (UI-Texte), tx() (löst { de, en }-Menüfelder in die aktuelle Sprache auf), Sprachwechsel
   config/
-    menu.js                # alle Zutaten, Getränke, Beilagen + Preise + RECOMMENDED_BOWLS (Daten); sceneVariants je Topping
+    menu.js                # alle Zutaten, Getränke, Beilagen + Preise + RECOMMENDED_BOWLS (Daten); sceneVariants je Topping.
+                           # Sichtbare Texte sind zweisprachig ({ de, en }, via tx()); Varianten/Modifier tragen IDs (Kennung) + label:{de,en} (Anzeige);
+                           # allergens sind IDs aus ALLERGENS; itemDisplayName() liefert den lokalisierten Namen bestellter/Warenkorb-Positionen
     steps.js               # die 5 Bau-Schritte als Daten
     orderStatus.js         # Status-Reihenfolge + Farb-Token (StatusScreen, Küche, Header-Punkt)
     sceneConfig.js         # Positions-/Look-Werte der Bowl-Szene (inkl. ANCHORS: Anrichte-Karte, LAYER_RO)

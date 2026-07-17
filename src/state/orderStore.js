@@ -16,6 +16,12 @@ import {
   TOPPING_MAX,
 } from '../config/menu';
 import { STEPS } from '../config/steps';
+import { tx } from '../i18n';
+
+// Options-Label einer Modifier-Gruppe aus der gewählten ID (z. B. Nudelhärte).
+function optionLabel(group, id) {
+  return tx(group.options.find((o) => o.id === id)?.label) || id;
+}
 
 const emptyBowl = () => ({
   broth: null,
@@ -40,18 +46,21 @@ export function bowlPrice(bowl) {
 }
 
 // Anzeige-Chips: was liegt in der Bowl? (Szene + Übersicht nutzen dieselbe Liste)
+// Wird IM Render aufgerufen, darf also tx() nutzen (liest currentLanguage live).
 export function bowlIngredients(bowl) {
   const find = (list, id) => list.find((o) => o.id === id);
   const chips = [];
   const broth = find(BROTHS, bowl.broth);
-  if (broth) chips.push({ id: broth.id, name: broth.name });
+  if (broth) chips.push({ id: broth.id, name: tx(broth.name) });
   const noodle = find(NOODLES, bowl.noodle);
-  if (noodle) chips.push({ id: noodle.id, name: `${noodle.name} (${bowl.hardness})` });
+  if (noodle) {
+    chips.push({ id: noodle.id, name: `${tx(noodle.name)} (${optionLabel(NOODLE_FIRMNESS, bowl.hardness)})` });
+  }
   const protein = find(PROTEINS, bowl.protein);
-  if (protein && protein.id !== 'ohne') chips.push({ id: protein.id, name: protein.name });
+  if (protein && protein.id !== 'ohne') chips.push({ id: protein.id, name: tx(protein.name) });
   for (const [id, qty] of Object.entries(bowl.toppings)) {
     const topping = find(TOPPINGS, id);
-    if (topping) chips.push({ id, name: `${qty}× ${topping.name}` });
+    if (topping) chips.push({ id, name: `${qty}× ${tx(topping.name)}` });
   }
   return chips;
 }
@@ -129,7 +138,10 @@ export const useOrderStore = create((set) => ({
       const item = {
         key: crypto.randomUUID(),
         type: 'bowl',
-        name: `${broth?.name ?? 'Ramen'}-Bowl`,
+        // Stabiler deutscher Name für DB/Küche/Fallback; der Gast sieht den Namen
+        // lokalisiert über itemDisplayName (config.broth). Kunden-Anzeige nie aus
+        // diesem Feld.
+        name: `${broth?.name.de ?? 'Ramen'}-Bowl`,
         price: bowlPrice(s.bowl),
         qty: 1,
         config: s.bowl,
@@ -146,12 +158,15 @@ export const useOrderStore = create((set) => ({
       if (existing) {
         return { cart: s.cart.map((i) => (i.key === key ? { ...i, qty } : i)) };
       }
+      // variant ist eine Varianten-ID; das `name`-Feld ist der stabile deutsche
+      // String (DB/Küche/Fallback), die Kunden-Anzeige läuft über itemDisplayName.
+      const variantLabel = variant ? menuItem.variants?.find((v) => v.id === variant)?.label : null;
       const line = {
         key,
         type,
         refId: menuItem.id,
         variant: variant ?? null,
-        name: variant ? `${menuItem.name} (${variant})` : menuItem.name,
+        name: variantLabel ? `${menuItem.name.de} (${variantLabel.de})` : menuItem.name.de,
         price: menuItem.price,
         qty,
       };

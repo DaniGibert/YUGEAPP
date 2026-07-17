@@ -1,4 +1,4 @@
-import { getLanguage, t } from '../i18n';
+import { getLanguage, t, tx } from '../i18n';
 
 // Feststehende Textübersicht aller Optionen eines Bau-Schritts (CLAUDE.md §2 Baustein).
 // Zeigt neben der scrollbaren Karten-Liste, welche Optionen es gibt, hebt die
@@ -38,7 +38,7 @@ export default function OptionIndex({ options, visibleIds, selectedIds, accent, 
                 : undefined
             }
           >
-            <span className="min-w-0 break-words hyphens-auto">{option.name}</span>
+            <span className="min-w-0 break-words hyphens-auto">{tx(option.name)}</span>
             {isSelected && (
               <span
                 aria-hidden="true"

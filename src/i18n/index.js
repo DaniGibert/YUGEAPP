@@ -47,3 +47,14 @@ export function t(key, vars) {
   }
   return value ?? key;
 }
+
+// tx('translatable field'): löst ein zweisprachiges { de, en }-Objekt (z. B. aus
+// config/menu.js) in die aktuelle Sprache auf. Liest currentLanguage live wie t(),
+// wertet also beim Sprachwechsel korrekt neu aus (der Baum re-rendert über
+// useLanguage()). Rückwärtssicher: ist das Feld bereits ein String, kommt es
+// unverändert zurück; null/undefined -> ''. Fallback immer auf de.
+export function tx(field) {
+  if (field == null) return '';
+  if (typeof field === 'string') return field;
+  return field[currentLanguage] ?? field.de ?? '';
+}

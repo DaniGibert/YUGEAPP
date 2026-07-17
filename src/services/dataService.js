@@ -25,15 +25,23 @@ export function isDemoMode() {
 
 // Warenkorb-Positionen → order_items-Zeilen. Mengen werden in Einzelzeilen
 // aufgelöst (Schema aus CLAUDE.md §6 hat bewusst keine Mengen-Spalte).
+// Bowls tragen ihre config (enthält schon IDs). Getränke/Beilagen legen ihre
+// Referenzen { refId, variant } ins vorhandene config-JSON (heute null), damit
+// die Anzeige später lokalisieren kann OHNE DB-Schema-Änderung. `name` bleibt
+// der stabile deutsche String (Küche + Fallback).
 function toOrderItems(cartItems) {
-  return cartItems.flatMap((item) =>
-    Array.from({ length: item.qty ?? 1 }, () => ({
+  return cartItems.flatMap((item) => {
+    const config =
+      item.type === 'bowl'
+        ? item.config ?? null
+        : { refId: item.refId ?? null, variant: item.variant ?? null };
+    return Array.from({ length: item.qty ?? 1 }, () => ({
       type: item.type,
       name: item.name,
       price: item.price,
-      config: item.config ?? null,
-    })),
-  );
+      config,
+    }));
+  });
 }
 
 // Demo-Modus: Bestellungen leben nur im Speicher dieses Tabs. Alle Änderungen

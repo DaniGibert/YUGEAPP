@@ -1,9 +1,9 @@
 import { lazy, Suspense } from 'react';
 import { STEPS } from '../config/steps';
-import { BROTHS, NOODLES, PROTEINS, TOPPINGS } from '../config/menu';
+import { BROTHS, NOODLES, NOODLE_FIRMNESS, PROTEINS, TOPPINGS } from '../config/menu';
 import { useOrderStore, bowlPrice, bowlSceneIngredients } from '../state/orderStore';
 import Button from '../components/Button';
-import { t } from '../i18n';
+import { t, tx } from '../i18n';
 
 const BowlScene = lazy(() => import('../scene/BowlScene'));
 
@@ -12,29 +12,32 @@ const BowlScene = lazy(() => import('../scene/BowlScene'));
 
 const find = (list, id) => list.find((o) => o.id === id);
 
+// Options-Label einer Modifier-Gruppe aus der gewählten ID (Härte, Finish).
+const optionLabel = (group, id) => tx(group.options.find((o) => o.id === id)?.label) || id;
+
 // Zusammenfassungstext je Bau-Schritt, datengesteuert aus STEPS.
 function stepSummary(step, bowl) {
   switch (step.id) {
     case 'broth':
-      return find(BROTHS, bowl.broth)?.name;
+      return tx(find(BROTHS, bowl.broth)?.name);
     case 'noodle': {
       const noodle = find(NOODLES, bowl.noodle);
-      return noodle ? `${noodle.name} (${bowl.hardness})` : null;
+      return noodle ? `${tx(noodle.name)} (${optionLabel(NOODLE_FIRMNESS, bowl.hardness)})` : null;
     }
     case 'protein': {
       const protein = find(PROTEINS, bowl.protein);
       if (!protein) return null;
-      return protein.price > 0 ? `${protein.name} (+${protein.price} €)` : protein.name;
+      return protein.price > 0 ? `${tx(protein.name)} (+${protein.price} €)` : tx(protein.name);
     }
     case 'topping': {
       const parts = Object.entries(bowl.toppings).map(
-        ([id, qty]) => `${qty}× ${find(TOPPINGS, id)?.name}`,
+        ([id, qty]) => `${qty}× ${tx(find(TOPPINGS, id)?.name)}`,
       );
       return parts.length > 0 ? parts.join(', ') : t('overview.none');
     }
     case 'finish':
       return Object.entries(step.modifiers)
-        .map(([key, group]) => `${group.label}: ${bowl.finish[key]}`)
+        .map(([key, group]) => `${tx(group.label)}: ${optionLabel(group, bowl.finish[key])}`)
         .join(' · ');
     default:
       return null;

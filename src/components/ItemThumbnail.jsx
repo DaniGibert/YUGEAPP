@@ -5,8 +5,10 @@ import { DRINKS, SIDES } from '../config/menu';
 // Zeigt bei Varianten das Bild der aktiven Variante und fällt aufs Produktbild
 // zurück; fehlt auch das, wird nichts gerendert (kein kaputtes Icon).
 
-// Varianten-Name -> Dateiname-Baustein (klein, Umlaute aufgelöst),
-// z. B. "Gedämpft" -> "gedaempft".
+// Varianten-Text -> Dateiname-Baustein (klein, Umlaute aufgelöst), z. B.
+// "Gedämpft" -> "gedaempft". Nur noch für den Alt-Daten-Fallback (bestellte
+// Positionen ohne refId/variant im config-JSON): dort steht die Variante als
+// deutscher Text im Namen, und dieser Slug entspricht genau der Varianten-ID.
 export function variantSlug(value) {
   return value
     .toLowerCase()
@@ -19,30 +21,37 @@ export function variantSlug(value) {
 }
 
 // Bildpfade: Varianten-Bild zuerst (image), sonst Produktbild (fallback).
-// Konvention: /assets/<type>/<id>[-<variante>].png
+// Konvention: /assets/<type>/<id>[-<variantId>].png — `variant` ist jetzt die
+// Varianten-ID (== Datei-Slug), kein Text mehr.
 export function menuImagePaths({ type, id, variant }) {
   const base = `/assets/${type}/${id}.png`;
   return {
-    image: variant ? `/assets/${type}/${id}-${variantSlug(variant)}.png` : base,
+    image: variant ? `/assets/${type}/${id}-${variant}.png` : base,
     fallback: variant ? base : null,
   };
 }
 
-// type/id/variante aus einer Warenkorb-Zeile ODER bestellten Position ableiten.
-// Warenkorb hat type+refId+variant; bestellte Positionen nur den Namen
-// (z. B. "Softdrink (Cola)"), daraus lesen wir Produkt und Variante.
+// type/id/variante(ID) aus einer Warenkorb-Zeile ODER bestellten Position ableiten.
+// Bevorzugt die Referenzen (Warenkorb: refId/variant direkt; bestellte Position:
+// config.refId/config.variant). Fallback für Alt-Datensätze (nur der deutsche
+// Name, z. B. "Softdrink (Cola)"): Produkt über de/en-Namen matchen, Varianten-ID
+// aus dem deutschen Varianten-Text über variantSlug ableiten.
 function resolve(item) {
   if (item.type === 'drink' || item.type === 'side') {
     const list = item.type === 'drink' ? DRINKS : SIDES;
-    if (item.refId && list.some((m) => m.id === item.refId)) {
-      return { type: item.type, id: item.refId, variant: item.variant ?? null };
+    const refId = item.config?.refId ?? item.refId ?? null;
+    if (refId && list.some((m) => m.id === refId)) {
+      const variant = item.config?.variant ?? item.variant ?? null;
+      return { type: item.type, id: refId, variant };
     }
   }
+  if (typeof item.name !== 'string') return null;
   const baseName = item.name.replace(/ \(.*\)$/, '');
-  const variant = item.name.match(/ \((.*)\)$/)?.[1] ?? null;
-  const drink = DRINKS.find((m) => m.name === baseName);
+  const variantText = item.name.match(/ \((.*)\)$/)?.[1] ?? null;
+  const variant = variantText ? variantSlug(variantText) : null;
+  const drink = DRINKS.find((m) => m.name.de === baseName || m.name.en === baseName);
   if (drink) return { type: 'drink', id: drink.id, variant };
-  const side = SIDES.find((m) => m.name === baseName);
+  const side = SIDES.find((m) => m.name.de === baseName || m.name.en === baseName);
   if (side) return { type: 'side', id: side.id, variant };
   return null;
 }

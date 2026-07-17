@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 import { ClipboardList, ChefHat, BellRing, Soup, CupSoda, Clock } from 'lucide-react';
 import { STATUS_FLOW, STATUS_COLORS } from '../config/orderStatus';
+import { itemDisplayName } from '../config/menu';
 import { fetchSessionOrders, subscribeToOrders } from '../services/dataService';
 import { useOrderStore, bowlSceneIngredients } from '../state/orderStore';
 import AddCard from '../components/AddCard';
@@ -101,19 +102,21 @@ const ICON_VARIANTS = {
 };
 
 // Getränke/Beilagen zusammenfassen ("2× Gyoza (Gebraten)"), Bowls bleiben
-// einzelne Zeilen, damit jede ihr eigenes Bild zeigen kann.
+// einzelne Zeilen, damit jede ihr eigenes Bild zeigen kann. Dedup-Schlüssel ist
+// der stabile deutsche `name`; type + config bleiben erhalten, damit Bild
+// (ItemThumbnail/BowlThumbnail) und lokalisierter Name (itemDisplayName) stimmen.
 function groupItems(items) {
   const groups = new Map();
   const rows = [];
   for (const item of items) {
     if (item.type === 'bowl') {
-      rows.push({ name: item.name, price: item.price, count: 1, config: item.config });
+      rows.push({ ...item, count: 1 });
       continue;
     }
     if (groups.has(item.name)) {
       groups.get(item.name).count += 1;
     } else {
-      const entry = { name: item.name, price: item.price, count: 1, config: null };
+      const entry = { ...item, count: 1 };
       groups.set(item.name, entry);
       rows.push(entry);
     }
@@ -621,14 +624,14 @@ export default function StatusScreen({ onNavigate }) {
                         className="flex items-center justify-between gap-2 text-small text-ink-600"
                       >
                         <span className="flex min-w-0 items-center gap-2">
-                          {item.config ? (
+                          {item.type === 'bowl' ? (
                             <BowlThumbnail config={item.config} className="w-12 shrink-0" />
                           ) : (
                             <ItemThumbnail item={item} className="h-10 w-10 shrink-0" />
                           )}
                           <span className="min-w-0 break-words">
                             {item.count > 1 ? `${item.count}× ` : ''}
-                            {item.name}
+                            {itemDisplayName(item)}
                           </span>
                         </span>
                         <span>{item.price * item.count} €</span>

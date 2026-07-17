@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
-import { TOPPINGS } from '../config/menu';
+import { FINISH, NOODLE_FIRMNESS, TOPPINGS } from '../config/menu';
 import { STATUS_FLOW, STATUS_COLORS } from '../config/orderStatus';
 import { fetchOpenOrders, setOrderStatus, subscribeToAllOrders } from '../services/dataService';
 import ModifierGroup from '../components/ModifierGroup';
-import { t } from '../i18n';
+import { t, tx } from '../i18n';
 
-const toppingName = (id) => TOPPINGS.find((topping) => topping.id === id)?.name ?? id;
+// Personal-Ansicht, deutschsprachiger Betrieb (CLAUDE.md §12): IDs werden über
+// tx() aufgelöst, das ohne Sprachumschalter im Küchen-Header auf de zurückfällt.
+const toppingName = (id) => tx(TOPPINGS.find((topping) => topping.id === id)?.name) || id;
+const hardnessLabel = (id) => tx(NOODLE_FIRMNESS.options.find((o) => o.id === id)?.label) || id;
+const finishLabels = (finish) =>
+  Object.entries(finish).map(([group, value]) =>
+    tx(FINISH[group]?.options.find((o) => o.id === value)?.label) || value,
+  );
 
 // Küchen-Ansicht (Personal-Gerät): alle offenen Bestellungen, Status per Tipp
 // ändern, das Kunden-Tablet aktualisiert sich über Realtime (CLAUDE.md §6).
@@ -67,11 +74,11 @@ export default function KitchenScreen() {
                       {item.type === 'bowl' && item.config && (
                         <span className="block text-caption text-ink-400">
                           {[
-                            `${item.config.hardness}`,
+                            hardnessLabel(item.config.hardness),
                             ...Object.entries(item.config.toppings ?? {}).map(
                               ([id, qty]) => `${qty}× ${toppingName(id)}`,
                             ),
-                            ...Object.values(item.config.finish ?? {}),
+                            ...finishLabels(item.config.finish ?? {}),
                           ].join(' · ')}
                         </span>
                       )}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Trash2 } from 'lucide-react';
-import { DRINKS, SIDES } from '../config/menu';
+import { DRINKS, SIDES, itemDisplayName } from '../config/menu';
 import { useOrderStore, cartTotal, bowlIngredients } from '../state/orderStore';
 import { submitOrder } from '../services/dataService';
 import AddCard from '../components/AddCard';
@@ -11,7 +11,7 @@ import ItemThumbnail, { menuImagePaths } from '../components/ItemThumbnail';
 import ModifierGroup from '../components/ModifierGroup';
 import OptionCard from '../components/OptionCard';
 import QuantityStepper from '../components/QuantityStepper';
-import { t } from '../i18n';
+import { t, tx } from '../i18n';
 
 // Warenkorb = Entwurf der aktuellen Runde (CLAUDE.md §9): links die Runde,
 // rechts Getränke | Beilagen per Umschalter dazulegen. „Bestellen" schickt
@@ -29,7 +29,8 @@ const TAB_ORDER = Object.keys(TABS);
 function AddItemCard({ menuItem, type }) {
   const cart = useOrderStore((s) => s.cart);
   const setCartLineQty = useOrderStore((s) => s.setCartLineQty);
-  const [variant, setVariant] = useState(menuItem.variants?.[0] ?? null);
+  // variant ist eine Varianten-ID (Kennung fürs Bild/DB), Anzeige über tx(label).
+  const [variant, setVariant] = useState(menuItem.variants?.[0]?.id ?? null);
 
   const key = `${type}:${menuItem.id}:${variant ?? ''}`;
   const qty = cart.find((i) => i.key === key)?.qty ?? 0;
@@ -43,8 +44,10 @@ function AddItemCard({ menuItem, type }) {
 
   return (
     <OptionCard
-      name={menuItem.name}
-      desc={menuItem.desc}
+      name={tx(menuItem.name)}
+      desc={tx(menuItem.desc)}
+      diet={menuItem.diet}
+      allergens={menuItem.allergens}
       image={image}
       fallbackImage={fallback}
       imageClassName="h-36"
@@ -123,7 +126,7 @@ export default function CartScreen({ onNavigate }) {
                   <ItemThumbnail item={item} className="h-16 w-16 shrink-0" />
                 )}
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <p className="break-words text-body font-semibold text-ink-900">{item.name}</p>
+                  <p className="break-words text-body font-semibold text-ink-900">{itemDisplayName(item)}</p>
                   {item.type === 'bowl' && (
                     <p className="text-caption text-ink-400">
                       {bowlIngredients(item.config)

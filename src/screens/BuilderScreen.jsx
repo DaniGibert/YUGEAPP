@@ -10,7 +10,7 @@ import OptionCard from '../components/OptionCard';
 import OptionIndex from '../components/OptionIndex';
 import ModifierGroup from '../components/ModifierGroup';
 import QuantityStepper from '../components/QuantityStepper';
-import { t } from '../i18n';
+import { t, tx } from '../i18n';
 
 // Three.js/R3F erst laden, wenn der Builder wirklich offen ist (Start bleibt leicht).
 const BowlScene = lazy(() => import('../scene/BowlScene'));
@@ -68,8 +68,10 @@ function StepContent({ step }) {
               <div key={option.id} data-option-id={option.id} className="flex min-w-0 flex-col">
                 <OptionCard
                   className="h-full"
-                  name={option.name}
-                  desc={option.desc}
+                  name={tx(option.name)}
+                  desc={tx(option.desc)}
+                  diet={option.diet}
+                  allergens={option.allergens}
                   image={`/assets/${step.id}/${option.id}.png`}
                   // Topping-PNGs haben viel transparenten Rand -> groesserer Bildbereich,
                   // damit das Objekt die Kartenbreite fuellt.
@@ -111,8 +113,10 @@ function StepContent({ step }) {
           <div key={option.id} data-option-id={option.id} className="flex min-w-0 flex-col">
             <OptionCard
               className="h-full"
-              name={option.name}
-              desc={option.desc}
+              name={tx(option.name)}
+              desc={tx(option.desc)}
+              diet={option.diet}
+              allergens={option.allergens}
               // Brühe wirkt allein wie eine flache Scheibe, deshalb komponiert
               // in der Schüssel zeigen (BowlThumbnail); Rest als einzelnes PNG.
               visual={

@@ -4,7 +4,7 @@ import { Info, Plus, X } from 'lucide-react';
 import BowlThumbnail from './BowlThumbnail';
 import { BROTHS, NOODLES, PROTEINS, TOPPINGS } from '../config/menu';
 import { bowlPrice } from '../state/orderStore';
-import { t } from '../i18n';
+import { t, tx } from '../i18n';
 
 // Namen der Zutaten einer Empfehlung aus dem Menü ableiten (eine Datenquelle,
 // config/menu). Reihenfolge = Bau-Reihenfolge: Brühe, Nudeln, Protein, Toppings.
@@ -12,14 +12,14 @@ import { t } from '../i18n';
 function ingredientNames(config) {
   const names = [];
   const broth = BROTHS.find((b) => b.id === config.broth);
-  if (broth) names.push(broth.name);
+  if (broth) names.push(tx(broth.name));
   const noodle = NOODLES.find((n) => n.id === config.noodle);
-  if (noodle) names.push(noodle.name);
+  if (noodle) names.push(tx(noodle.name));
   const protein = PROTEINS.find((p) => p.id === config.protein);
-  if (protein && protein.id !== 'ohne') names.push(protein.name);
+  if (protein && protein.id !== 'ohne') names.push(tx(protein.name));
   for (const [id, qty] of Object.entries(config.toppings)) {
     const topping = TOPPINGS.find((tp) => tp.id === id);
-    if (topping) names.push(qty > 1 ? `${topping.name} × ${qty}` : topping.name);
+    if (topping) names.push(qty > 1 ? `${tx(topping.name)} × ${qty}` : tx(topping.name));
   }
   return names;
 }
@@ -91,7 +91,7 @@ export default function RecommendationCard({ bowl, onSelect }) {
     >
       <BowlThumbnail config={bowl.config} className="w-16 shrink-0" />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-body font-semibold text-ink-900">{bowl.name}</span>
+        <span className="text-body font-semibold text-ink-900">{tx(bowl.name)}</span>
         <span className="truncate text-small text-ink-400">{shortLine}</span>
       </div>
       <button
@@ -139,7 +139,7 @@ export default function RecommendationCard({ bowl, onSelect }) {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-3">
-                <h3 className="min-w-0 break-words text-h2 text-ink-900">{bowl.name}</h3>
+                <h3 className="min-w-0 break-words text-h2 text-ink-900">{tx(bowl.name)}</h3>
                 <button
                   type="button"
                   aria-label={t('builder.infoHide')}

@@ -17,10 +17,13 @@ export const HERO_LAYOUT = {
   sideW: 200, // Beilagen (Gyoza, Reis, Karaage ...)
   drinkW: 270, // Getränke (Glas, Flasche, Dose)
   bowlW: 240, // weitere Bowl (Thumbnail)
-  // Einzelne Artikel gezielt feinjustieren (überschreibt sideW/drinkW pro Name).
+  // Einzelne Artikel gezielt feinjustieren (überschreibt sideW/drinkW). Keys sind
+  // sprachunabhängige IDs: entweder varianten-genau als <menü-id>-<varianten-id>
+  // oder für alle Varianten als <menü-id>. Lookup in companionWidth: erst die
+  // Varianten-Kombi, dann die Menü-id, dann der Kategorie-Default.
   itemWOverride: {
-    'Matcha Tee (Warm)': 205, // Tasse füllt den Rahmen stärker -> kleiner
-    Edamame: 165, // Schälchen wirkt sonst groß -> kleiner
+    'matcha-warm': 205, // Tasse füllt den Rahmen stärker -> kleiner (nur die warme Variante)
+    edamame: 165, // Schälchen wirkt sonst groß -> kleiner
   },
   // Fächerung der Flanker (weitere Bowls + Beilagen) um die Bowl.
   fanBase: 100, // px, Versatz des ersten Flankers von der Mitte
@@ -57,8 +60,18 @@ export const companionRole = (c) =>
 
 // Box-Breite eines Begleiters (Getränk/Beilage) in px (unskalierte Roh-Zahl:
 // so liest das Scene-Lab sie ab). Fürs Rendern durch scaledPx schicken.
+// itemWOverride wird über STABILE IDs gekeyt (refId/variant der bestellten
+// Position bzw. des Lab-Presets), nicht über den sprachabhängigen Namen.
+// Lookup-Leiter: erst varianten-genau (<id>-<variant>, z. B. matcha-warm),
+// dann die Menü-id für alle Varianten, dann der Kategorie-Default.
 export function companionWidth(item, cfg = HERO_LAYOUT) {
-  return cfg.itemWOverride[item.name] ?? (item.type === 'drink' ? cfg.drinkW : cfg.sideW);
+  const id = item.config?.refId ?? item.refId ?? item.id ?? null;
+  const variant = item.config?.variant ?? item.variant ?? null;
+  return (
+    (variant != null ? cfg.itemWOverride[`${id}-${variant}`] : undefined) ??
+    cfg.itemWOverride[id] ??
+    (item.type === 'drink' ? cfg.drinkW : cfg.sideW)
+  );
 }
 
 // Position als Style: horizontaler Versatz von der Mitte, Standlinie, z-Ebene.
