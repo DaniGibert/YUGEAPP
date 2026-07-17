@@ -272,6 +272,32 @@
   .screen-veil.is-revealing { transition: none; }
 }
 
+/* ---- Builder: Schritt-Raeume ----
+   Der rechte Builder-Bereich traegt die Kategorie-Farbe des aktiven Schritts
+   als leisen Farbhauch (Wayfinding: jeder Schritt ist ein eigener Raum, der
+   Breadcrumb nutzt dieselben Farben). Die Komponente setzt nur --step-accent,
+   Mischung und Uebergang leben hier. --step-bg wird geteilt: Flaeche UND
+   Scroll-Affordanz-Verlauf muessen dieselbe Farbe treffen.
+   Die Transition laeuft auf der registrierten Property statt auf
+   background-color: Chromium invalidiert background-color nicht, wenn sich nur
+   eine unregistrierte Custom-Property in der color-mix-Kette aendert (der
+   Wechsel wuerde verschluckt). Als <color> registriert interpoliert
+   --step-accent selbst, und Flaeche UND Scroll-Verlauf rechnen pro Frame in
+   einem Rutsch aus der interpolierenden Farbe nach. */
+@property --step-accent {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: transparent;
+}
+.step-room {
+  --step-bg: color-mix(in oklab, var(--step-accent, var(--color-bg)) 9%, var(--color-bg));
+  background-color: var(--step-bg);
+  transition: --step-accent 300ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .step-room { transition: none; }
+}
+
 /* ---- Eintritts-Kaskade nach dem Bowl-Flug (Start -> Builder) ----
    App.jsx setzt .screen-cascade zusammen mit .is-revealing: erst wenn die
    Schuessel gelandet ist, fahren die markierten Builder-Bausteine

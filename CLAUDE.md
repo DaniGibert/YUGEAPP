@@ -152,7 +152,11 @@ docs/
   definiert; global ändern heißt hier ändern.
 - **Kategorie-Farbe pro Schritt:** jeder Bau-Schritt trägt seine Akzentfarbe
   (`broth`/`noodle`/`protein`/`topping`/`finish`) z. B. im Breadcrumb und in aktiven Zuständen,
-  damit der Gast farblich sieht, wo er ist.
+  damit der Gast farblich sieht, wo er ist. Im Builder trägt der **rechte Bereich** die
+  Schritt-Farbe zusätzlich als leise Raum-Tönung (`.step-room` in `theme.css`, die Komponente
+  setzt nur `--step-accent`, Mischung und Überblendung leben im Token), und die
+  Schritt-Überschrift bekommt einen Akzent-Unterstrich in voller Kategorie-Farbe (statt des
+  früheren kleinen Farbpunkts).
 - Nur eine laute Aktionsfarbe pro Screen (`primary`). Alles andere bleibt neutral/ruhig.
 - **Bilder auf Auswahl-Karten:** `OptionCard` zeigt automatisch das Bild
   `/assets/<kategorie>/<id>.png` (gilt auch für `drink`/`side` im Warenkorb).

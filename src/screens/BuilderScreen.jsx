@@ -272,7 +272,12 @@ export default function BuilderScreen({ onNavigate, cameFrom, onSceneReady }) {
       </aside>
 
       {/* Aktueller Schritt */}
-      <div className="flex min-w-0 flex-1 flex-col gap-4 p-6">
+      {/* step-room: der rechte Bereich traegt die Kategorie-Farbe des aktiven
+          Schritts als leise Raum-Toenung (Mischung/Uebergang in theme.css). */}
+      <div
+        className="step-room flex min-w-0 flex-1 flex-col gap-4 p-6"
+        style={{ '--step-accent': `var(--color-${step.accent})` }}
+      >
         <Breadcrumb
           currentIndex={stepIndex}
           maxVisitedIndex={maxStepIndex}
@@ -298,14 +303,16 @@ export default function BuilderScreen({ onNavigate, cameFrom, onSceneReady }) {
                   inert={!isActive}
                   className="flex h-full w-full min-w-0 shrink-0 flex-col gap-4"
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <h2 className="flex items-center gap-3 text-h1">
+                  <div className="flex items-start justify-between gap-3">
+                    {/* Akzent-Marker: kurzer, dicker Unterstrich in voller Kategorie-Farbe
+                        unter der Ueberschrift (ersetzt den alten Farbpunkt). */}
+                    <h2 className="flex flex-col items-start text-h1">
+                      {t(`steps.${panelStep.id}`)}
                       <span
                         aria-hidden="true"
-                        className="inline-block h-3 w-3 rounded-full"
+                        className="mt-1 block h-1.5 w-12 rounded-full"
                         style={{ backgroundColor: `var(--color-${panelStep.accent})` }}
                       />
-                      {t(`steps.${panelStep.id}`)}
                     </h2>
                     {panelStep.type === 'quantity' && (
                       <div
@@ -350,7 +357,9 @@ export default function BuilderScreen({ onNavigate, cameFrom, onSceneReady }) {
                       {isActive && panelHasCards && overflowing && (
                         <div
                           aria-hidden="true"
-                          className={`pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-bg to-transparent transition-opacity ${
+                          // Verlauf muss die Raum-Toenung treffen, nicht das Papier-bg.
+                          style={{ backgroundImage: 'linear-gradient(to top, var(--step-bg), transparent)' }}
+                          className={`pointer-events-none absolute inset-x-0 bottom-0 h-12 transition-opacity ${
                             atBottom ? 'opacity-0' : 'opacity-100'
                           }`}
                         />
