@@ -91,7 +91,7 @@ export default function RecommendationCard({ bowl, onSelect }) {
     >
       <BowlThumbnail config={bowl.config} className="w-16 shrink-0" />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-body font-semibold text-ink-900">{tx(bowl.name)}</span>
+        <span className="font-display text-body text-ink-900">{tx(bowl.name)}</span>
         <span className="truncate text-small text-ink-400">{shortLine}</span>
       </div>
       <button

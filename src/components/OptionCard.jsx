@@ -167,7 +167,7 @@ export default function OptionCard({
 
       <div className="flex items-start justify-between gap-2">
         <span className="flex min-w-0 items-center gap-1.5">
-          <span className="min-w-0 break-words text-body font-semibold text-ink-900">{name}</span>
+          <span className="min-w-0 break-words font-display text-body text-ink-900">{name}</span>
           {dietMeta && (
             <span
               role="img"

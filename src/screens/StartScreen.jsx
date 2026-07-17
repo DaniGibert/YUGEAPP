@@ -93,7 +93,7 @@ export default function StartScreen({ onNavigate }) {
             type="button"
             onClick={startFromElement}
             aria-label={t('start.buildCta')}
-            className="group flex cursor-pointer items-end gap-4 text-left font-display text-display font-bold leading-none text-primary transition-transform active:scale-95"
+            className="group flex cursor-pointer items-end gap-4 text-left font-display text-display leading-none text-primary transition-transform active:scale-95"
           >
             <span className="flex flex-col">
               {t('start.buildCta')
@@ -127,7 +127,7 @@ export default function StartScreen({ onNavigate }) {
             stoppt die Propagation, damit die Karten nicht den Start→Builder-Flug
             der Section auslösen. */}
         <div className="flex w-full flex-col gap-3" onClick={(event) => event.stopPropagation()}>
-          <p className="text-small font-semibold text-ink-400">{t('start.recommendedTitle')}</p>
+          <p className="font-display text-small text-ink-400">{t('start.recommendedTitle')}</p>
           {RECOMMENDED_BOWLS.map((bowl) => (
             <RecommendationCard
               key={bowl.id}
