@@ -14,7 +14,7 @@ Danach: Übersicht → Warenkorb (Getränke/Beilagen/weitere Bowl) → Bestellen
 
 - **Zielgerät:** iPad Pro 11" **Querformat** als Hauptziel; das Layout ist **fluide** und
   füllt jedes Browserfenster komplett aus (PC, Tablet, Handy quer). Schwache Hardware → Performance zählt.
-- **Sprache:** Deutsch, mit Englisch als zweiter Sprache. UI-Texte laufen über die i18n-Struktur (`src/i18n/`); ein Sprach-Umschalter (Deutsch/Englisch) ist im Header eingebaut.
+- **Sprache:** Deutsch, mit Englisch als zweiter Sprache. UI-Texte laufen über die i18n-Struktur (`src/i18n/`, `t()`); **Menü-Texte sind zweisprachig in `menu.js`** (`{ de, en }`, aufgelöst über `tx()`), damit eine Zutat weiter an einer Stelle lebt. Ein Sprach-Umschalter (Deutsch/Englisch) ist im Header eingebaut. **Anzeige und Kennung sind getrennt:** sichtbarer Text ist immer lokalisiert, identifiziert wird ausschließlich über IDs (Item-`id`, Varianten-/Options-`id`), nie über den angezeigten Namen.
 - **Bewertungsfokus:** UX/UI & Nutzerführung. Konsistenz, klare Führung und der „Wow"-Moment der Bowl-Szene haben Priorität.
 
 ---
@@ -93,7 +93,8 @@ src/
   config/
     menu.js                # alle Zutaten, Getränke, Beilagen + Preise + RECOMMENDED_BOWLS (Daten); sceneVariants je Topping.
                            # Sichtbare Texte sind zweisprachig ({ de, en }, via tx()); Varianten/Modifier tragen IDs (Kennung) + label:{de,en} (Anzeige);
-                           # allergens sind IDs aus ALLERGENS; itemDisplayName() liefert den lokalisierten Namen bestellter/Warenkorb-Positionen
+                           # allergens sind IDs aus ALLERGENS, diet ist 'vegan' | 'vegetarian' (fehlt bei Fleisch/Fisch);
+                           # itemDisplayName() liefert den lokalisierten Namen bestellter/Warenkorb-Positionen
     steps.js               # die 5 Bau-Schritte als Daten
     orderStatus.js         # Status-Reihenfolge + Farb-Token (StatusScreen, Küche, Header-Punkt)
     sceneConfig.js         # Positions-/Look-Werte der Bowl-Szene (inkl. ANCHORS: Anrichte-Karte, LAYER_RO)
@@ -115,7 +116,7 @@ src/
     Button.jsx             # Größen: sm | md | lg, Varianten: primary | ghost | dark
     AddCard.jsx            # gestrichelte "Hinzufügen"-Karte (Warenkorb: Noch ein Ramen; Status: Nächste Runde)
     SteamPuffs.jsx         # CSS-Dampf (DOM-Pendant zum Szenen-Dampf) über der Start-Schüssel
-    OptionCard.jsx         # eine Auswahl-Karte (Bild, "i"-Info als verankertes Popover)
+    OptionCard.jsx         # eine Auswahl-Karte (Bild, Diet-Icon, "i"-Info als Popover mit Beschreibung + Diet + Allergenen)
     ModifierGroup.jsx      # segmentierte Auswahl mit gleitender Pill (Härte, Schärfe, ...)
     QuantityStepper.jsx    # − 0 + für Toppings
     BowlThumbnail.jsx      # Mini-Bowl (Brühen-Karten, Warenkorb/Status/Bezahlen)
@@ -132,7 +133,7 @@ src/
     SceneLabScreen.jsx     # Dev-Tool (?ansicht=lab): Brühe, Nudeln, Protein, Toppings + Status-Komposition live per Regler tunen
 public/
   manifest.json / icon.svg      # PWA (display fullscreen, orientation landscape) + App-Icon
-  assets/<kategorie>/<id>.png   # Dateiname == Options-id; Varianten: <id>-<variante>.png;
+  assets/<kategorie>/<id>.png   # Dateiname == Options-id; Varianten: <id>-<varianten-id>.png (Varianten-id aus menu.js);
                                 # Toppings zusätzlich Mengen-Variante <id>-x2.png (vollerer Haufen)
 docs/
   asset-spec.md                 # Look-/Naming-Spec der Zutaten-PNGs (nicht deployt)
@@ -155,16 +156,22 @@ docs/
   `/assets/<kategorie>/<id>.png` (gilt auch für `drink`/`side` im Warenkorb).
   Fehlt die Datei, blendet sich der Bildbereich still aus (kein kaputtes Icon).
   Getränke/Beilagen mit Varianten zeigen das Bild der aktiven Variante
-  (`<id>-<variante>.png`) und fallen aufs Produktbild zurück, wenn es fehlt.
+  (`<id>-<varianten-id>.png`, gebaut aus der **Varianten-id**, nicht aus dem sichtbaren
+  Text) und fallen aufs Produktbild zurück, wenn es fehlt.
   **Ausnahme Brühen:** die flache Brühen-Scheibe sieht allein komisch aus, deshalb
   zeigen Brühen-Karten die Brühe komponiert **in der Schüssel** (`BowlThumbnail`
   über die `visual`-Prop der `OptionCard`).
 - **Produktbilder in der Rechnung:** In Warenkorb/Status/Bezahlen rendern Getränke
   und Beilagen ihr Produktbild über `ItemThumbnail` (Gegenstück zu `BowlThumbnail`
-  bei Bowls); leitet Bild + Variante aus der Warenkorb-Zeile bzw. dem Positions-Namen ab.
+  bei Bowls). Aufgelöst wird über die **IDs** (Warenkorb-Zeile: `refId`/`variant`,
+  bestellte Position: `config.refId`/`config.variant`); das Zerlegen des deutschen
+  Namens ist nur noch der Fallback für Alt-Zeilen ohne diese Referenzen.
 - **OptionCard „i"-Info:** öffnet ein am Button verankertes Popover (per Portal an
   `document.body`, feste lesbare Breite) mit Item-Name als Überschrift plus Beschreibung,
-  nicht mehr an die Kartenbreite gebunden.
+  nicht mehr an die Kartenbreite gebunden. Darunter, wenn die Daten es hergeben, zwei
+  ruhige Zeilen: die Diet-Angabe (Vegan/Vegetarisch) und „Enthält: …" (Allergene aus
+  `ALLERGENS`). Ein **leises Diet-Icon** (`Vegan`/`Leaf` in `text-success`) steht zusätzlich
+  neben dem Namen auf der Karte, nie in der Aktionsfarbe.
 - **Animationen** leben als Tokens/Keyframes in `theme.css` (`animate-*`): u. a.
   `steam`/`float` (Start), `bowl-shadow` (Boden-Schatten der Start-Schüssel, synchron zur
   Schwebe), `nudge-x` (Pfeil am Start-CTA), `pulse-soft` (aktiver Status-Schritt),
@@ -181,7 +188,15 @@ docs/
   laufen über `motion` aus `motion/react`. Dort Pflicht: `reducedMotion`-Handling
   (`MotionConfig reducedMotion="user"`, Ticker separat über `useReducedMotion` + `jump()`),
   refetch-sicher via `initial={false}` + Varianten-Labels statt Inline-Keyframes, und nur billige
-  Properties (transform, opacity, Farben).
+  Properties (transform, opacity, Farben). **`AnimatePresence` in einem oft rendernden Screen
+  gehört in einen memoisierten Baustein**, dessen Vergleich nur die Daten durchlässt, die den
+  Wechsel wirklich auslösen (`StatusHeadline`: nur `status`/`color`). Der Status-Hero rendert
+  sonst im Sekundentakt neu (`cookNowMs`, Realtime-Refetch, nachziehende Delays), und jeder
+  Render im Exit-Fenster unterbricht die laufende Exit-Animation, bis `safeToRemove` nie mehr
+  feuert: alte Kinder bleiben dann als Geister montiert (beim Sprachwechsel sogar sichtbar mit
+  eingefrorenem fremdsprachigem Text). Sprachwechsel gehört in denselben Baustein über
+  `useLanguage()`, damit der Text der **einen** montierten Instanz nachzieht, statt Exit/Enter
+  auszulösen.
 - **Start → Builder ist ein Shared-Element-Flug (nicht kaputt machen).** Beim Tippen misst
   `StartScreen` das Ist-Rect der Schüssel und übergibt es (`onNavigate('builder', { bowlRect })`).
   `App.jsx` fährt den Übergang: die Schüssel (`bowl_back`) fliegt als Overlay (Klassen
@@ -201,7 +216,11 @@ Nur das **Dynamische** kommt in die Datenbank. **Menü & Preise bleiben in `conf
 - `orders`: `id`, `session_id` (Tisch/Gerät), `status`
   (`aufgenommen` | `in_zubereitung` | `fertig`), `total`, `paid` (bool), `created_at`.
 - `order_items`: `id`, `order_id`, `type` (`bowl` | `drink` | `side`), `name`, `price`,
-  `config` (JSON — bei Bowls: broth, noodle+hardness, protein, toppings[], finish).
+  `config` (JSON; bei Bowls: broth, noodle+hardness, protein, toppings[], finish, alles als IDs;
+  bei Getränken/Beilagen: `{ refId, variant }`, also Menü-id plus Varianten-id).
+  **`name` ist bewusst der stabile deutsche String** (Küche liest ihn, Fallback für Alt-Zeilen)
+  und **nie** die Gast-Anzeige: die läuft über `itemDisplayName(item)` und lokalisiert live aus
+  `config`. Sonst friert die Sprache der Bestellzeit die ganze Rechnung ein.
 - Optional später: `waiter_calls` (`id`, `session_id`, `created_at`), damit „Kellner rufen"
   beim Personal aufpoppt.
 
@@ -311,6 +330,12 @@ die echte Szene und damit deren Dampf.)
 - **Toppings:** insgesamt **4 Stück** über alle Toppings zusammen — die Mengen zählen
   gemeinsam (z. B. 4× Mais, oder 2× Mais + 2× Ajitama).
   (`toppings = { id: menge }`, Regel: **Summe aller Mengen ≤ 4**.)
+- **Allergene & Veggie-Kennzeichnung sind Daten** (aus dem Usertest-Feedback, und Allergene
+  sind in der Gastronomie ohnehin Pflicht): jedes essbare Item trägt `allergens` (IDs aus
+  `ALLERGENS`, leeres Array wenn keine) und optional `diet` (`vegan` | `vegetarian`). Vegan
+  impliziert vegetarisch, dann **nur** `vegan` setzen; Fleisch/Fisch bekommen **kein** `diet`.
+  Anzeige: leises Icon auf der Karte, Details im „i"-Popover (§5). Die Zuordnungen sind
+  restaurantabhängig, bei neuen Items also nachfragen statt raten (§10).
 - **Backend:** **Supabase von Anfang an**, aber immer hinter `dataService` gekapselt.
 - **Kellner rufen / Sprache / Warenkorb:** global im Header.
 
@@ -345,7 +370,9 @@ weitere Bowls je als `BowlThumbnail`, dann Getränke/Beilagen als **Sorten** (de
 2× Cola = eine Cola). Die PNGs sind ~1.83:1-Rahmen mit zentriertem Objekt + gebackenem
 Schatten; darum bekommen Begleiter **breite Boxen** (`SIDE_W` für Beilagen, `DRINK_W` für
 Getränke, `BOWL_COMPANION_W` für weitere Bowls; einzelne Artikel per `ITEM_W_OVERRIDE`
-feinjustiert, z. B. Matcha warm / Edamame kleiner), damit Glas/Teller in Bowl-nahe Größe
+feinjustiert, gekeyt über stabile IDs: varianten-genau als `<menü-id>-<varianten-id>`
+(`matcha-warm`, nur die warme Tasse) oder für alle Varianten als `<menü-id>` (`edamame`)),
+damit Glas/Teller in Bowl-nahe Größe
 erscheinen (der transparente Rand überlappt harmlos), alles auf einer gemeinsamen Standlinie.
 **Alle Platzierungs-/Größen-Werte dieser Komposition liegen in `scene/heroCompanions.js`
 (`HERO_LAYOUT`) und die Layout-Funktionen (`layoutCompanions`, `companionWidth`) dort —
@@ -388,7 +415,15 @@ für die ganze Rechnung, „Getrennt" → gleich die Aufteilung. Getrennt funkti
 Tipp auf eine Rechnungs-Position sie dieser Person zu; nochmal tippen legt sie zurück. Zusätzlich
 bleiben der alte Weg (Position vormerken, dann Person antippen) und das Ziehen erhalten. Vor jedem
 Zahlvorgang kommt ein eigener **Bezahlart-Schritt (Bar | Karte)**, beim Getrennt-Zahlen pro Person;
-die Bezahlart ist nur UI-Zustand, nicht in der Datenbank.
+die Bezahlart ist nur UI-Zustand, nicht in der Datenbank. Beim Getrennt-Zahlen zeigt eine ruhige
+Zustands-Zeile den Fortschritt der Zuordnung („X von Y Positionen zugeordnet", Muster des
+Topping-Zählers im Builder), damit sichtbar ist, wann nichts mehr offen ist.
+
+**Der Abschluss ist ein Abschieds-Moment, kein Konfetti** (Mobbin-Abgleich vom 17.07.2026):
+Nach dem letzten Zahlvorgang zeigt der `PayScreen` die leere, dampfende Schüssel in derselben
+Komposition wie der Start (`bowl_back` + `SteamPuffs` + Boden-Schatten, `animate-float`), dazu
+„Danke, bis bald" und „Neuen Tisch starten". Der Wow-Moment der App ist die Schüssel, also
+schließt das Ende denselben Bogen, statt eine fremde Feier-Sprache aufzumachen.
 
 Getränke &amp; Beilagen teilen sich einen Screen, aber über einen **Umschalter (Getränke | Beilagen)**
 — **keine** lange gemeinsame Scroll-Liste.
