@@ -95,6 +95,10 @@ export const useOrderStore = create((set) => ({
   // um die frisch bestellte Runde trotz Remount als "neu angekommen" zu
   // animieren (Slide-in, Gold-Glow, Summen-Ticker).
   lastPlacedOrderId: null,
+  // Key der zuletzt in den Warenkorb gelegten Zeile: der Warenkorb liest ihn
+  // einmalig, damit die frisch hinzugefuegte Zeile trotz Remount (Builder ->
+  // Warenkorb) von links reingleitet. Gleiche Idee wie lastPlacedOrderId.
+  lastAddedCartKey: null,
 
   goToStep: (index) =>
     set((s) => ({ stepIndex: index, maxStepIndex: Math.max(s.maxStepIndex, index) })),
@@ -146,7 +150,13 @@ export const useOrderStore = create((set) => ({
         qty: 1,
         config: s.bowl,
       };
-      return { cart: [...s.cart, item], bowl: emptyBowl(), stepIndex: 0, maxStepIndex: 0 };
+      return {
+        cart: [...s.cart, item],
+        lastAddedCartKey: item.key,
+        bowl: emptyBowl(),
+        stepIndex: 0,
+        maxStepIndex: 0,
+      };
     }),
 
   // Getränk/Beilage: eine Warenkorb-Zeile je Artikel+Variante, Menge änderbar.
@@ -170,7 +180,9 @@ export const useOrderStore = create((set) => ({
         price: menuItem.price,
         qty,
       };
-      return { cart: [...s.cart, line] };
+      // Nur neue Zeilen slidet der Warenkorb rein; reine Mengenaenderungen oben
+      // (existing-Zweig) setzen den Key bewusst nicht.
+      return { cart: [...s.cart, line], lastAddedCartKey: key };
     }),
 
   // Menge einer bestehenden Warenkorb-Zeile ändern (0 = Zeile entfernen).
@@ -190,4 +202,8 @@ export const useOrderStore = create((set) => ({
   // One-shot: der Status-Screen konsumiert die Id, sobald die Runde wirklich
   // geliefert und animiert wurde; erneutes Öffnen animiert dann nicht wieder.
   consumeLastPlacedOrderId: () => set({ lastPlacedOrderId: null }),
+
+  // One-shot fuer den Warenkorb: konsumiert, sobald die frische Zeile beim
+  // Betreten gesehen wurde; erneutes Oeffnen slidet dann nicht wieder.
+  consumeLastAddedCartKey: () => set({ lastAddedCartKey: null }),
 }));

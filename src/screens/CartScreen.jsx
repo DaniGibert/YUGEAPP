@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion, MotionConfig } from 'motion/react';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import { DRINKS, SIDES, itemDisplayName } from '../config/menu';
 import { useOrderStore, cartTotal, bowlIngredients } from '../state/orderStore';
@@ -77,10 +78,45 @@ export default function CartScreen({ onNavigate, cameFrom }) {
   // sondern der Startpunkt der nächsten Runde (Runden-Modell, CLAUDE.md §9):
   // der geleerte Korb nach "Bestellen" darf nicht wie "fertig" aussehen.
   const hasOrdered = useOrderStore((s) => s.orders.length > 0);
+  // Frisch hinzugefuegte Zeile: slidet einmal von links rein (Gegenstueck zur
+  // Runden-Ankunft im Status, die von rechts kommt). One-shot ueber den Store,
+  // damit die frische Zeile den Remount Builder -> Warenkorb ueberlebt.
+  const lastAddedCartKey = useOrderStore((s) => s.lastAddedCartKey);
+  const consumeLastAddedCartKey = useOrderStore((s) => s.consumeLastAddedCartKey);
   const [tab, setTab] = useState('drinks');
   const tabIndex = TAB_ORDER.indexOf(tab);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(false);
+
+  // Leer-Ansicht bewusst NICHT direkt an cart.length haengen: sonst wirft der
+  // Wechsel beim Entfernen der LETZTEN Zeile die ganze Liste samt AnimatePresence
+  // im selben Moment weg, und die Zeile ist weg, bevor sie rausgleiten kann.
+  // showEmpty legt erst um, wenn AnimatePresence die Exit-Animation abgeschlossen
+  // meldet (onExitComplete). Neues Item macht sofort wieder die Liste sichtbar.
+  const [showEmpty, setShowEmpty] = useState(cart.length === 0);
+  useEffect(() => {
+    if (cart.length > 0) setShowEmpty(false);
+  }, [cart.length]);
+
+  // Set der bereits gesehenen Zeilen-Keys (null = noch kein Commit). Beim ersten
+  // Commit zaehlt nur die frisch hinzugefuegte Zeile (lastAddedCartKey) als neu,
+  // alle aelteren stehen sofort. Danach slidet jede neu dazukommende Zeile rein,
+  // reine Mengenaenderungen (gleicher Key) nicht. initial in motion feuert nur
+  // beim Mount, darum genuegt der Key-Vergleich zum Mount-Zeitpunkt.
+  const seenKeysRef = useRef(null);
+  useEffect(() => {
+    if (seenKeysRef.current === null) seenKeysRef.current = new Set();
+    const addedPresent =
+      lastAddedCartKey !== null && cart.some((i) => i.key === lastAddedCartKey);
+    for (const i of cart) {
+      if (addedPresent && i.key === lastAddedCartKey) continue;
+      seenKeysRef.current.add(i.key);
+    }
+    if (addedPresent) consumeLastAddedCartKey();
+    // lastAddedCartKey bewusst nicht in den Deps: pro cart-Commit zaehlt der Stand
+    // seines Renders (gleiches Muster wie seenIdsRef im StatusScreen).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart]);
 
   async function handleOrder() {
     setSubmitting(true);
@@ -112,7 +148,7 @@ export default function CartScreen({ onNavigate, cameFrom }) {
         )}
         <h2 className="text-h1">{t('cart.round')}</h2>
 
-        {cart.length === 0 ? (
+        {showEmpty ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
             <p className="text-body font-semibold text-ink-900">
               {t(hasOrdered ? 'cart.emptyAgainTitle' : 'cart.emptyTitle')}
@@ -123,11 +159,31 @@ export default function CartScreen({ onNavigate, cameFrom }) {
             <AddCard label={t('cart.anotherBowl')} onClick={() => onNavigate?.('builder')} />
           </div>
         ) : (
+          // reducedMotion="user": bei prefers-reduced-motion laesst motion die
+          // Transform (x) weg und blendet nur per Opacity ein (kein Slide).
+          <MotionConfig reducedMotion="user">
           <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
-            {cart.map((item) => (
-              <li
+            {/* AnimatePresence haelt eine entfernte Zeile bis zum Ende ihrer
+                exit-Animation gemountet: sie gleitet nach links raus (Gegenstueck
+                zum Eintritt). layout laesst die uebrigen Zeilen die Luecke weich
+                nachruecken statt zu springen. */}
+            <AnimatePresence onExitComplete={() => cart.length === 0 && setShowEmpty(true)}>
+            {cart.map((item) => {
+              // Neu = zum Mount-Zeitpunkt ungesehen. Erster Commit: nur die frische
+              // Zeile; danach jede Zeile mit noch unbekanntem Key.
+              const isNew =
+                seenKeysRef.current === null
+                  ? item.key === lastAddedCartKey
+                  : !seenKeysRef.current.has(item.key);
+              return (
+              <motion.li
                 key={item.key}
+                layout
                 className="flex items-center gap-3 rounded-lg border border-line bg-surface p-3"
+                initial={isNew ? { x: -48, opacity: 0 } : false}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: -48, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 24 }}
               >
                 {item.type === 'bowl' ? (
                   <BowlThumbnail config={item.config} className="w-20 shrink-0" />
@@ -163,12 +219,19 @@ export default function CartScreen({ onNavigate, cameFrom }) {
                 >
                   <Trash2 size={18} />
                 </button>
+              </motion.li>
+              );
+            })}
+            </AnimatePresence>
+            {/* Waehrend die letzte Zeile rausgleitet ist cart schon leer: die
+                "Noch ein Ramen"-Karte solange ausblenden, nur die Zeile slidet. */}
+            {cart.length > 0 && (
+              <li>
+                <AddCard label={t('cart.anotherBowl')} onClick={() => onNavigate?.('builder')} />
               </li>
-            ))}
-            <li>
-              <AddCard label={t('cart.anotherBowl')} onClick={() => onNavigate?.('builder')} />
-            </li>
+            )}
           </ul>
+          </MotionConfig>
         )}
 
         <div className="flex items-baseline justify-between border-t border-line pt-3">
