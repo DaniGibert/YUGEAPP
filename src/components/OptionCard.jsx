@@ -61,6 +61,12 @@ export default function OptionCard({
   onSelect,
   children,
   className = '',
+  // Ausgegraut, wenn die Karte gerade nicht dazugewaehlt werden kann (Topping-
+  // Limit erreicht, Karte selbst noch bei 0). Nutzt das etablierte opacity-40-
+  // Muster von Button/QuantityStepper. Bewusst KLICKBAR (kein pointer-events-
+  // none): der Tipp soll das Pillen-Feedback ausloesen koennen und das "i"-Info-
+  // Popover erreichbar bleiben (portalt an document.body, voll deckend).
+  dimmed = false,
   // Höhe des Bildbereichs; Default passt zu den Builder-Karten. Getränke/
   // Beilagen zeigen ihr Produktbild größer (z. B. "h-36").
   imageClassName = 'h-24',
@@ -166,8 +172,8 @@ export default function OptionCard({
         }
       }}
       className={`relative flex min-w-0 cursor-pointer flex-col justify-between gap-3 rounded-lg border-2 bg-surface p-4 text-left transition-colors ${
-        selected ? '' : 'border-line hover:border-ink-400'
-      } ${className}`}
+        selected ? '' : dimmed ? 'border-line' : 'border-line hover:border-ink-400'
+      } ${dimmed ? 'opacity-40' : ''} ${className}`}
       style={selected ? { borderColor: `var(--color-${accent})` } : undefined}
     >
       {visual ? (

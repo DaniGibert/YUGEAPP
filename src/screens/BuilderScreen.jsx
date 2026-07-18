@@ -33,7 +33,7 @@ function pairsWithBroth(option, brothId) {
   return option.pairsWith === 'alle' || (option.pairsWith ?? []).includes(brothId);
 }
 
-function StepContent({ step }) {
+function StepContent({ step, onLimitBlocked }) {
   const bowl = useOrderStore((s) => s.bowl);
   const selectOption = useOrderStore((s) => s.selectOption);
   const setHardness = useOrderStore((s) => s.setHardness);
@@ -64,6 +64,7 @@ function StepContent({ step }) {
         <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
           {step.options.map((option) => {
             const qty = bowl.toppings[option.id] ?? 0;
+            const atLimit = used >= step.max;
             return (
               <div key={option.id} data-option-id={option.id} className="flex min-w-0 flex-col">
                 <OptionCard
@@ -77,9 +78,16 @@ function StepContent({ step }) {
                   // damit das Objekt die Kartenbreite fuellt.
                   imageClassName="h-40"
                   selected={qty > 0}
+                  // Bei vollem Limit graut eine noch nicht gewaehlte Karte aus; die
+                  // schon gewaehlten bleiben normal (der Stepper kann noch runter).
+                  dimmed={atLimit && qty === 0}
                   accent={step.accent}
                   badge={pairsWithBroth(option, bowl.broth) ? t('builder.recommended') : null}
-                  onSelect={() => setToppingQty(option.id, qty + 1)}
+                  // Voll -> Store verwuerfe den Tipp still; stattdessen die Pille
+                  // blitzen lassen, damit der Gast das Limit sichtbar merkt.
+                  onSelect={() =>
+                    atLimit ? onLimitBlocked?.() : setToppingQty(option.id, qty + 1)
+                  }
                 >
                   <QuantityStepper
                     value={qty}
@@ -173,6 +181,13 @@ export default function BuilderScreen({ onNavigate, cameFrom, onSceneReady }) {
 
   // Nur Schritte mit Options-Karten bekommen die Übersichts-Leiste (kein Finish/Modifier).
   const hasCards = step.type === 'single' || step.type === 'quantity';
+
+  // Zaehlt hoch bei jedem blockierten Topping-Tipp (Limit erreicht). Der Wert
+  // dient nur als key-Retrigger fuer die Pillen-Animation, nicht als Anzeige.
+  // Kein Reset noetig: die Filmstrip-Panels bleiben alle montiert, die Pille
+  // wird also nie neu gemountet -> die Klasse feuert nur bei echtem Increment,
+  // nicht beim Rueckkehren zum Topping-Schritt.
+  const [limitFlash, setLimitFlash] = useState(0);
 
   // Scroll-Container der Karten-Liste; darüber laufen Sichtbarkeits- und Overflow-Tracking.
   const scrollRef = useRef(null);
@@ -315,8 +330,21 @@ export default function BuilderScreen({ onNavigate, cameFrom, onSceneReady }) {
                       />
                     </h2>
                     {panelStep.type === 'quantity' && (
+                      // key={limitFlash} als Retrigger: jeder blockierte Tipp
+                      // remountet die Pille und startet den Blitz neu. Bewusst
+                      // ohne animationend-Handling; die Klasse haengt nur an der
+                      // Pille (both = einmalig). Bei limitFlash === 0 keine
+                      // Animation, damit sie beim Betreten des Schritts ruht.
                       <div
-                        className="flex items-center gap-3 rounded-full border-2 px-4 py-2"
+                        key={limitFlash}
+                        // mr/mt halten die Pille etwas von der oberen rechten Ecke
+                        // weg: dort liegt die overflow-clip-Kante des Filmstreifens,
+                        // und der zentrierte Puls wuerde sonst rechts und oben
+                        // abgeschnitten. So bleibt der gleichmaessige Puls und die
+                        // Pille sitzt zugleich etwas weiter links.
+                        className={`mr-2.5 mt-1 flex items-center gap-3 rounded-full border-2 px-4 py-2 ${
+                          limitFlash > 0 ? 'animate-limit-flash motion-reduce:animate-none' : ''
+                        }`}
                         style={{ borderColor: `var(--color-${panelStep.accent})` }}
                       >
                         <span aria-hidden="true" className="flex items-center gap-1.5">
@@ -351,7 +379,10 @@ export default function BuilderScreen({ onNavigate, cameFrom, onSceneReady }) {
                         onScroll={isActive ? handleScroll : undefined}
                         className="@container h-full overflow-y-auto overflow-x-hidden pr-1"
                       >
-                        <StepContent step={panelStep} />
+                        <StepContent
+                          step={panelStep}
+                          onLimitBlocked={() => setLimitFlash((n) => n + 1)}
+                        />
                       </div>
                       {/* Scroll-Affordanz: Verlauf zur Hintergrundfarbe, solange unten noch Inhalt liegt. */}
                       {isActive && panelHasCards && overflowing && (
@@ -394,7 +425,7 @@ export default function BuilderScreen({ onNavigate, cameFrom, onSceneReady }) {
           <div className="flex items-center gap-5">
             <div className="flex items-baseline gap-2">
               <span className="text-small text-ink-400">{t('builder.price')}</span>
-              <span className="font-display text-h2 text-ink-900">
+              <span className="font-sans text-h2 font-bold text-ink-900">
                 <AnimatedNumber value={bowlPrice(bowl)} /> €
               </span>
             </div>

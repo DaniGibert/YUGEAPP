@@ -111,7 +111,7 @@ export default function OverviewScreen({ onNavigate }) {
         <footer className="flex items-center justify-between gap-4 border-t border-line pt-4">
           <div className="flex items-baseline gap-3">
             <span className="text-small text-ink-400">{t('overview.total')}</span>
-            <span className="font-display text-h2 text-ink-900">{bowlPrice(bowl)} €</span>
+            <span className="font-sans text-h2 font-bold text-ink-900">{bowlPrice(bowl)} €</span>
           </div>
           <Button
             size="lg"

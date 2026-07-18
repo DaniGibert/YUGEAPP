@@ -128,8 +128,11 @@ export default function RecommendationCard({ bowl, onSelect }) {
         <DietIcon diet={diet} size={15} />
       </span>
 
-      {/* Ruhige Fußzeile: „i"-Info, Preis (leiser als früher), Plus-Kreis */}
-      <div className="flex items-center justify-between gap-2">
+      {/* Ruhige Fußzeile: „i"-Info, Preis (leiser als früher), Plus-Kreis.
+          mt-auto drückt sie an den unteren Kartenrand: die Karten werden im Grid
+          auf gleiche Höhe gestreckt, so sitzt die Fußzeile bei ein- und
+          zweizeiligem Namen gleich hoch (Info und Preis bündig über beide Karten). */}
+      <div className="mt-auto flex items-center justify-between gap-2">
         <button
           type="button"
           aria-label={t('builder.infoShow')}
@@ -139,7 +142,7 @@ export default function RecommendationCard({ bowl, onSelect }) {
           <Info size={18} />
         </button>
         <div className="flex items-center gap-2">
-          <span className="font-display text-body-lg text-ink-900">{bowlPrice(bowl.config)} €</span>
+          <span className="font-sans text-body-lg font-bold text-ink-900">{bowlPrice(bowl.config)} €</span>
           <span
             aria-hidden="true"
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line text-ink-400 transition-colors group-hover:border-primary group-hover:text-primary"

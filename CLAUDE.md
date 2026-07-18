@@ -149,7 +149,10 @@ docs/
 - **Display-Schrift** (`font-display`) ist **Dela Gothic One** (nur ein Gewicht 400, die
   Fette steckt in der Glyphenform). Sie trägt Überschriften **und Produkt-Namen auf Karten**
   (`OptionCard`-Name, Empfehlungs-Karten-Bowl-Name, „Beliebt bei uns"-Label). Beschreibungen,
-  Preise und alle Fließtexte bleiben im UI-Font (`font-sans`, Inter). Auf `font-display`-Elementen
+  Preise und alle Fließtexte bleiben im UI-Font (`font-sans`, Inter). **Das gilt auch für die
+  großen Summen** (Bowl-Preis, Warenkorb-/Rechnungs-Summe, Bezahl-Beträge in `text-h2`): sie sind
+  `font-sans font-bold`, **nicht** `font-display` — auch wenn die große Zahl danach verlangt.
+  Auf `font-display`-Elementen
   **keine** Gewichts-Utility (`font-bold`/`-semibold`) setzen — Dela ist von sich aus fett,
   synthetisches Bold verzerrt sie (`font-synthesis: none` sichert h1–h3 ab). Beide Fonts sind
   **selbst gehostet** (kein Google-CDN, DSGVO): woff2 in `public/fonts/`, `@font-face` in

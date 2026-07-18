@@ -706,7 +706,7 @@ export default function StatusScreen({ onNavigate }) {
           </ul>
           <div className="flex items-baseline justify-between border-t border-line pt-3">
             <span className="text-small text-ink-400">{t('status.tabTotal')}</span>
-            <span className="font-display text-h2 text-ink-900">
+            <span className="font-sans text-h2 font-bold text-ink-900">
               <AnimatedNumber value={grandTotal} from={tickerFrom} ready={!!orders} /> €
             </span>
           </div>
