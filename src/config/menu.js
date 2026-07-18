@@ -501,10 +501,12 @@ export const KAEDAMA = {
 export function itemDisplayName(item) {
   const config = item?.config ?? null;
 
-  // Bowl: über die Brühe benannt.
+  // Bowl: über die Brühe benannt. Gast-facing heißt es „Ramen", nie „Bowl"
+  // (CLAUDE.md §3.8: Code bleibt `bowl`, sichtbarer Text ist „Ramen").
   if (config && config.broth) {
     const broth = BROTHS.find((b) => b.id === config.broth);
-    return `${tx(broth?.name) || 'Ramen'}-Bowl`;
+    const brothName = tx(broth?.name);
+    return brothName ? `${brothName}-Ramen` : 'Ramen';
   }
 
   const refId = config?.refId ?? item?.refId ?? null;
