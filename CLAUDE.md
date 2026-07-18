@@ -24,7 +24,7 @@ Danach: Übersicht → Warenkorb (Getränke/Beilagen/weitere Bowl) → Bestellen
 - **Vite + React 19**
 - **Tailwind CSS v4** über `@tailwindcss/vite`, Tokens in `src/styles/theme.css` (`@theme`)
 - **Bowl-Szene:** `three` + `@react-three/fiber` v9 + `@react-spring/three` (eigene Szenen-Komponenten, kein `drei`)
-- **UI-Animationen:** `motion` v12 (Framer Motion), Import ausschließlich aus `motion/react`. Nur für datengetriebene UI-Übergänge (derzeit `StatusScreen`); die Bowl-Szene bleibt bei `@react-spring/three`.
+- **UI-Animationen:** `motion` v12 (Framer Motion), Import ausschließlich aus `motion/react`. Nur für datengetriebene UI-Übergänge (`StatusScreen`, `CartScreen`); die Bowl-Szene bleibt bei `@react-spring/three`.
 - **Backend:** **Supabase** (Datenbank + Realtime für den Live-Status)
 - **State:** ein leichter globaler Store (z. B. `zustand`) für Bau-Zustand + Warenkorb
 - **Analytics:** `@vercel/analytics` (Web Analytics, zählt nur auf der Live-Version)
@@ -211,6 +211,16 @@ docs/
   eingefrorenem fremdsprachigem Text). Sprachwechsel gehört in denselben Baustein über
   `useLanguage()`, damit der Text der **einen** montierten Instanz nachzieht, statt Exit/Enter
   auszulösen.
+- **Warenkorb-Zeilen gleiten rein und raus** (`CartScreen`, `motion/react`, `reducedMotion="user"`):
+  eine neu dazugelegte Zeile slidet von links ein (Gegenstück zur Runden-Ankunft im Status, die von
+  rechts kommt), eine entfernte Zeile slidet über `AnimatePresence` nach links wieder raus. **Nur
+  frisch dazugekommene Zeilen animieren:** ein `lastAddedCartKey`-One-shot im Store (Muster von
+  `lastPlacedOrderId`) markiert die zuletzt gelegte Zeile, damit sie den Remount Builder → Warenkorb
+  übersteht; ein `seenKeysRef` hält alle schon gesehenen Keys, sodass reine Mengenänderungen und
+  erneutes Öffnen nichts auslösen (`initial` feuert nur beim Mount). **Die Leer-Ansicht darf nicht
+  an `cart.length` hängen:** sonst wirft der Wechsel beim Entfernen der letzten Zeile die Liste samt
+  `AnimatePresence` weg, bevor die Exit-Animation läuft. Ein `showEmpty`-Flag schaltet erst nach
+  `onExitComplete` um, damit auch die letzte Zeile ihren Abgang bekommt.
 - **Start → Builder ist ein Shared-Element-Flug (nicht kaputt machen).** Beim Tippen misst
   `StartScreen` das Ist-Rect der Schüssel und übergibt es (`onNavigate('builder', { bowlRect })`).
   `App.jsx` fährt den Übergang: die Schüssel (`bowl_back`) fliegt als Overlay (Klassen
