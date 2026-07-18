@@ -56,6 +56,7 @@ const en = {
     emptyCta: 'Build a ramen',
   },
   cart: {
+    back: 'Back to status',
     round: 'Your round',
     emptyTitle: 'Nothing in this round yet',
     emptyHint: 'Build a ramen or add drinks and sides.',

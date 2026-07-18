@@ -56,6 +56,7 @@ const de = {
     emptyCta: 'Ramen bauen',
   },
   cart: {
+    back: 'Zurück zum Status',
     round: 'Deine Runde',
     emptyTitle: 'Noch nichts in dieser Runde',
     emptyHint: 'Bau einen Ramen oder leg Getränke und Beilagen dazu.',

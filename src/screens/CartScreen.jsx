@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { ArrowLeft, Trash2 } from 'lucide-react';
 import { DRINKS, SIDES, itemDisplayName } from '../config/menu';
 import { useOrderStore, cartTotal, bowlIngredients } from '../state/orderStore';
 import { submitOrder } from '../services/dataService';
@@ -68,7 +68,7 @@ function AddItemCard({ menuItem, type }) {
   );
 }
 
-export default function CartScreen({ onNavigate }) {
+export default function CartScreen({ onNavigate, cameFrom }) {
   const cart = useOrderStore((s) => s.cart);
   const removeCartItem = useOrderStore((s) => s.removeCartItem);
   const changeCartQty = useOrderStore((s) => s.changeCartQty);
@@ -101,6 +101,15 @@ export default function CartScreen({ onNavigate }) {
     <div className="flex h-full min-h-0">
       {/* Aktuelle Runde */}
       <aside className="flex w-2/5 min-w-0 flex-col gap-4 border-r border-line p-6">
+        {/* Nachbestell-Abstecher: Rueckweg zum Status; im Bau-Flow bewusst kein Zurueck. */}
+        {cameFrom === 'status' && (
+          <div>
+            <Button size="sm" variant="ghost" onClick={() => onNavigate?.('status')}>
+              <ArrowLeft size={16} />
+              {t('cart.back')}
+            </Button>
+          </div>
+        )}
         <h2 className="text-h1">{t('cart.round')}</h2>
 
         {cart.length === 0 ? (

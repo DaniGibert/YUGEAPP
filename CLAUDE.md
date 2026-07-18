@@ -372,7 +372,10 @@ Warenkorb** für die nächste Runde. Danach zeigt der Status, dass zubereitet wi
 Entscheidung im Chat vom 10.07.2026, keine Erklärtexte): Die **Nachbestell-Weiche ist an den
 Tracker angedockt** (im Hero-Block, warme Fläche `bg-gold/10`, Titel „Noch Hunger? Bestell
 jederzeit nach") statt als abgetrennter Fußbereich — „dein Essen kommt" und „du kannst mehr
-bestellen" lesen sich als eine Botschaft. Der Hero ist eine **lebende Koch-Szene**
+bestellen" lesen sich als eine Botschaft. Beim Nachbestellen ist der Warenkorb ein Abstecher
+vom Status: kommt der Gast von dort (`cameFrom === 'status'`), zeigt der `CartScreen` oben in
+der Runden-Spalte einen leisen Zurück-zum-Status-Knopf (`cart.back`); im normalen Bau-Flow
+(Builder/Übersicht → Warenkorb) fehlt er bewusst, dort ist der Warenkorb der Schritt nach vorn. Der Hero ist eine **lebende Koch-Szene**
 (echte `BowlScene` der ersten Bowl der Runde): „aufgenommen" zeigt die leere Schüssel,
 ab „in Zubereitung" füllt sich die Brühe und die bestellten Zutaten fallen nacheinander,
 „fertig" steht komplett; der Dampf kommt aus der Szene, sobald Brühe drin ist. Timing
