@@ -15,7 +15,7 @@ const de = {
     cartGoTo: 'Zum Warenkorb',
   },
   start: {
-    buildCta: 'Ramen zusammenstellen',
+    buildCta: 'Baue deinen Ramen',
     recommendedTitle: 'Beliebt bei uns',
     drinksOnly: 'Nur Getränke & Beilagen',
   },

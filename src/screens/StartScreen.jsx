@@ -128,16 +128,18 @@ export default function StartScreen({ onNavigate }) {
             der Section auslösen. */}
         <div className="flex w-full flex-col gap-3" onClick={(event) => event.stopPropagation()}>
           <p className="font-display text-small text-ink-400">{t('start.recommendedTitle')}</p>
-          {RECOMMENDED_BOWLS.map((bowl) => (
-            <RecommendationCard
-              key={bowl.id}
-              bowl={bowl}
-              onSelect={() => {
-                loadBowl(bowl.config);
-                onNavigate?.('overview');
-              }}
-            />
-          ))}
+          <div className="grid grid-cols-2 gap-3">
+            {RECOMMENDED_BOWLS.map((bowl) => (
+              <RecommendationCard
+                key={bowl.id}
+                bowl={bowl}
+                onSelect={() => {
+                  loadBowl(bowl.config);
+                  onNavigate?.('overview');
+                }}
+              />
+            ))}
+          </div>
         </div>
       </div>
 

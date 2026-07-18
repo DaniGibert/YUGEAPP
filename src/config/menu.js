@@ -72,7 +72,10 @@ export const BROTHS = [
       de: 'Herzhafte Brühe mit Miso-Paste. Kräftig im Geschmack, mit einer leicht süßlichen Note.',
       en: 'Savoury broth with miso paste. Bold in flavour, with a slightly sweet note.',
     },
-    allergens: ['soy', 'gluten', 'fish'],
+    // Bewusst ohne Fisch-Dashi (Restaurant-Entscheidung): die vegetarische Brühe
+    // des Hauses, damit Veggie-Gäste ein Ramen bestellen können.
+    allergens: ['soy', 'gluten'],
+    diet: 'vegetarian',
   },
   {
     id: 'shio',
@@ -455,7 +458,7 @@ export const RECOMMENDED_BOWLS = [
   },
   {
     id: 'miso-garten',
-    name: { de: 'Miso Garten', en: 'Miso garden' },
+    name: { de: 'Miso Veggie', en: 'Veggie miso' },
     config: {
       broth: 'miso',
       noodle: 'dick',

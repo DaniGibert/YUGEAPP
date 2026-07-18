@@ -2,26 +2,52 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Info, Plus, X } from 'lucide-react';
 import BowlThumbnail from './BowlThumbnail';
-import { BROTHS, NOODLES, PROTEINS, TOPPINGS } from '../config/menu';
+import { DietIcon } from './OptionCard';
+import { ALLERGENS, BROTHS, NOODLES, PROTEINS, TOPPINGS } from '../config/menu';
 import { bowlPrice } from '../state/orderStore';
 import { t, tx } from '../i18n';
 
-// Namen der Zutaten einer Empfehlung aus dem Menü ableiten (eine Datenquelle,
+// Die verwendeten Zutaten einer Empfehlung aus dem Menü sammeln (eine Datenquelle,
 // config/menu). Reihenfolge = Bau-Reihenfolge: Brühe, Nudeln, Protein, Toppings.
-// Toppings mit Menge > 1 als „Name × n". Protein „ohne" wird ausgelassen.
-function ingredientNames(config) {
-  const names = [];
+// Protein „ohne" wird ausgelassen. Toppings mit Menge > 1 tragen ihre Menge mit.
+function usedIngredients(config) {
+  const items = [];
   const broth = BROTHS.find((b) => b.id === config.broth);
-  if (broth) names.push(tx(broth.name));
+  if (broth) items.push({ item: broth, qty: 1 });
   const noodle = NOODLES.find((n) => n.id === config.noodle);
-  if (noodle) names.push(tx(noodle.name));
+  if (noodle) items.push({ item: noodle, qty: 1 });
   const protein = PROTEINS.find((p) => p.id === config.protein);
-  if (protein && protein.id !== 'ohne') names.push(tx(protein.name));
+  if (protein && protein.id !== 'ohne') items.push({ item: protein, qty: 1 });
   for (const [id, qty] of Object.entries(config.toppings)) {
     const topping = TOPPINGS.find((tp) => tp.id === id);
-    if (topping) names.push(qty > 1 ? `${tx(topping.name)} × ${qty}` : tx(topping.name));
+    if (topping) items.push({ item: topping, qty });
   }
-  return names;
+  return items;
+}
+
+// Namen der Zutaten (Toppings mit Menge > 1 als „Name × n").
+function ingredientNames(config) {
+  return usedIngredients(config).map(({ item, qty }) =>
+    qty > 1 ? `${tx(item.name)} × ${qty}` : tx(item.name),
+  );
+}
+
+// Diet und Allergene der ganzen Bowl aus den Zutaten ableiten (Daten, nicht raten):
+// - diet: alle Zutaten vegan -> vegan; alle mindestens vegetarisch -> vegetarisch;
+//   sonst kein Icon.
+// - allergens: Vereinigungsmenge aller Zutaten-Allergene (deterministische
+//   Reihenfolge über Bau-Reihenfolge + Allergen-Reihenfolge der Zutat).
+function bowlDietAndAllergens(config) {
+  const items = usedIngredients(config).map(({ item }) => item);
+  let diet = null;
+  if (items.length > 0) {
+    if (items.every((it) => it.diet === 'vegan')) diet = 'vegan';
+    else if (items.every((it) => it.diet === 'vegan' || it.diet === 'vegetarian'))
+      diet = 'vegetarian';
+  }
+  const allergenSet = new Set();
+  for (const it of items) for (const a of it.allergens || []) allergenSet.add(a);
+  return { diet, allergens: [...allergenSet] };
 }
 
 // Empfehlungs-Karte auf dem Start-Screen (CLAUDE.md §8): Schnellstart für
@@ -35,7 +61,7 @@ export default function RecommendationCard({ bowl, onSelect }) {
   const cardRef = useRef(null);
 
   const names = ingredientNames(bowl.config);
-  const shortLine = names.join(', ');
+  const { diet, allergens } = bowlDietAndAllergens(bowl.config);
 
   // Popover schließen: Escape, oder wenn gescrollt/Fenster verändert wird (sonst
   // bliebe es an seiner alten, jetzt falschen Position hängen). Wie OptionCard.
@@ -87,28 +113,41 @@ export default function RecommendationCard({ bowl, onSelect }) {
           onSelect?.();
         }
       }}
-      className="group flex cursor-pointer items-center gap-3 rounded-lg border-2 border-line bg-surface p-3 text-left transition-colors hover:border-ink-400 active:scale-[0.98]"
+      className="group flex cursor-pointer flex-col gap-3 rounded-lg border-2 border-line bg-surface p-4 text-left transition-colors hover:border-ink-400 active:scale-[0.98]"
     >
-      <BowlThumbnail config={bowl.config} className="w-16 shrink-0" />
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="font-display text-body text-ink-900">{tx(bowl.name)}</span>
-        <span className="truncate text-small text-ink-400">{shortLine}</span>
+      {/* Bild groß und zentriert (Muster der OptionCard: Bild zuerst) */}
+      <div className="flex items-center justify-center">
+        <BowlThumbnail config={bowl.config} className="w-28" />
       </div>
-      <button
-        type="button"
-        aria-label={t('builder.infoShow')}
-        onClick={openInfo}
-        className="shrink-0 cursor-pointer text-ink-400 transition-colors hover:text-ink-900"
-      >
-        <Info size={18} />
-      </button>
-      <span className="font-display text-h2 text-ink-900">{bowlPrice(bowl.config)} €</span>
-      <span
-        aria-hidden="true"
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line text-ink-400 transition-colors group-hover:border-primary group-hover:text-primary"
-      >
-        <Plus size={18} />
+
+      {/* Name mit leisem Diet-Icon (wenn vegetarisch/vegan) */}
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span className="min-w-0 break-words font-display text-body text-ink-900">
+          {tx(bowl.name)}
+        </span>
+        <DietIcon diet={diet} size={15} />
       </span>
+
+      {/* Ruhige Fußzeile: „i"-Info, Preis (leiser als früher), Plus-Kreis */}
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          aria-label={t('builder.infoShow')}
+          onClick={openInfo}
+          className="shrink-0 cursor-pointer text-ink-400 transition-colors hover:text-ink-900"
+        >
+          <Info size={18} />
+        </button>
+        <div className="flex items-center gap-2">
+          <span className="font-display text-body-lg text-ink-900">{bowlPrice(bowl.config)} €</span>
+          <span
+            aria-hidden="true"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line text-ink-400 transition-colors group-hover:border-primary group-hover:text-primary"
+          >
+            <Plus size={18} />
+          </span>
+        </div>
+      </div>
 
       {showInfo &&
         infoPos &&
@@ -156,6 +195,16 @@ export default function RecommendationCard({ bowl, onSelect }) {
                   </li>
                 ))}
               </ul>
+              {/* Dieselben zwei ruhigen Zeilen wie im OptionCard-Popover, wenn die
+                  Daten es hergeben: Diet-Angabe und „Enthält: …" (Allergene). */}
+              <DietIcon diet={diet} size={14} withLabel />
+              {allergens.length > 0 && (
+                <span className="break-words text-caption text-ink-400">
+                  {t('card.contains', {
+                    list: allergens.map((id) => tx(ALLERGENS[id])).join(', '),
+                  })}
+                </span>
+              )}
             </div>
           </div>,
           document.body,

@@ -11,6 +11,31 @@ const DIET_META = {
   vegetarian: { Icon: Leaf, labelKey: 'card.vegetarian' },
 };
 
+// Wiederverwendbarer Diet-Baustein (CLAUDE.md §3.2): leises Icon in text-success,
+// gilt für OptionCard und RecommendationCard. Ohne diet rendert es nichts.
+// withLabel = false: nur Icon (neben dem Namen auf der Karte, als role=img mit
+// aria-label). withLabel = true: Icon plus sichtbares Label als ruhige Zeile
+// (im Info-Popover). Kein diet -> null (Fleisch/Fisch).
+export function DietIcon({ diet, size = 15, withLabel = false }) {
+  const meta = diet ? DIET_META[diet] : null;
+  if (!meta) return null;
+  const { Icon, labelKey } = meta;
+  const label = t(labelKey);
+  if (withLabel) {
+    return (
+      <span className="flex items-center gap-1.5 text-small text-ink-400">
+        <Icon size={size} className="shrink-0 text-success" aria-hidden="true" />
+        {label}
+      </span>
+    );
+  }
+  return (
+    <span role="img" aria-label={label} title={label} className="shrink-0 text-success">
+      <Icon size={size} aria-hidden="true" />
+    </span>
+  );
+}
+
 // DIE Auswahl-Karte der App (CLAUDE.md §4): optionales Produktbild, Name,
 // optionaler Preis-Text (fertig formatiert, z. B. "+3 €" oder "5 €"), „i"-Info
 // mit Beschreibung, optionales Badge („Passt zur Brühe") und optionaler Footer
@@ -45,8 +70,6 @@ export default function OptionCard({
   const cardRef = useRef(null);
   const [src, setSrc] = useState(image);
   const [imageHidden, setImageHidden] = useState(false);
-  const dietMeta = diet ? DIET_META[diet] : null;
-  const DietIcon = dietMeta?.Icon;
   const hasAllergens = Array.isArray(allergens) && allergens.length > 0;
 
   // Bild-/Variantenwechsel: Quelle zurücksetzen und wieder versuchen. Ist der
@@ -168,16 +191,7 @@ export default function OptionCard({
       <div className="flex items-start justify-between gap-2">
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="min-w-0 break-words font-display text-body text-ink-900">{name}</span>
-          {dietMeta && (
-            <span
-              role="img"
-              aria-label={t(dietMeta.labelKey)}
-              title={t(dietMeta.labelKey)}
-              className="shrink-0 text-success"
-            >
-              <DietIcon size={15} aria-hidden="true" />
-            </span>
-          )}
+          <DietIcon diet={diet} size={15} />
         </span>
         {desc && (
           <button
@@ -250,12 +264,7 @@ export default function OptionCard({
               <p className="min-h-0 flex-1 overflow-y-auto break-words text-body text-ink-600">
                 {desc}
               </p>
-              {dietMeta && (
-                <span className="flex items-center gap-1.5 text-small text-ink-400">
-                  <DietIcon size={14} className="shrink-0 text-success" aria-hidden="true" />
-                  {t(dietMeta.labelKey)}
-                </span>
-              )}
+              <DietIcon diet={diet} size={14} withLabel />
               {hasAllergens && (
                 <span className="break-words text-caption text-ink-400">
                   {t('card.contains', {

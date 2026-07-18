@@ -73,7 +73,7 @@ Nichts anderes ohne Rückfrage hinzufügen.
 
 8. **Schreibweise & Preise.** Deutsche UI-Texte in Sentence-Case. Preise sind **Ganzzahlen**
    (z. B. `5`, nicht `4,99`). Der Gast-facing Begriff für die Bowl ist **„Ramen"** (alle
-   i18n-Texte: „Ramen zusammenstellen", „Dein Ramen", „Noch ein Ramen"; „der Ramen",
+   i18n-Texte: „Baue deinen Ramen", „Dein Ramen", „Noch ein Ramen"; „der Ramen",
    also keinen/deinen/einen). **Code-Bezeichner bleiben `bowl`** (`bowlPrice`,
    `RECOMMENDED_BOWLS`, DB-Typ `bowl`, Asset-Pfade) — nur sichtbarer Text ist „Ramen".
 
@@ -328,10 +328,15 @@ die echte Szene und damit deren Dampf.)
 
 - **Start:** zwei Spalten (Querformat). **Rechts** die leere, dampfende Schüssel (`bowl_back`),
   groß und klickbar. **Links** die Aktions-Spalte von laut nach leise: Haupt-CTA
-  „Ramen zusammenstellen" (**reiner Text, kein Hintergrund/Rand**: die Wörter untereinander,
+  „Baue deinen Ramen" (**reiner Text, kein Hintergrund/Rand**: die Wörter untereinander,
   groß, im Tare-Rot, mit dezent wippendem Pfeil `nudge-x`), dann „Nur Getränke &amp; Beilagen" (ghost), dann 1–2
-  Empfehlungs-Karten (fertige Bowls aus `RECOMMENDED_BOWLS` in `menu.js`: Mini-Bowl, Name,
-  Zutaten, Preis via `bowlPrice`). Schüssel, Haupt-CTA und der Hintergrund lösen alle
+  Empfehlungs-Karten (fertige Bowls aus `RECOMMENDED_BOWLS` in `menu.js`) als **stehende
+  Bild-Karten nebeneinander** (`grid grid-cols-2`, Muster der `OptionCard`): Mini-Bowl groß
+  oben, darunter der Name (`font-display`) mit leisem Diet-Icon, wenn die Bowl vegetarisch/
+  vegan ist (Diet + Allergene aus den Zutaten abgeleitet, `RecommendationCard`), und eine
+  ruhige Fußzeile aus „i"-Info, leisem Preis (`text-body-lg` via `bowlPrice`) und Plus-Kreis.
+  Die Zutatenliste steht nur noch im „i"-Popover (dort auch Diet-Angabe + „Enthält: …"), nicht
+  mehr als abgeschnittene Zeile auf der Karte. Schüssel, Haupt-CTA und der Hintergrund lösen alle
   **denselben Flug** in den Builder aus (siehe §5); die anderen Elemente stoppen die
   Propagation. **Empfehlungs-Karten sind der Schnellstart für Unentschlossene:** ein Tipp
   lädt die fertige Bowl in den Bau-Zustand (`loadBowl` im `orderStore`, Config kopiert,
