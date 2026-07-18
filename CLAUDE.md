@@ -131,7 +131,7 @@ src/
     PayScreen.jsx
     KitchenScreen.jsx      # Küchen-Ansicht: Status ändern (löst Live-Update aus)
     SceneLabScreen.jsx     # Dev-Tool (?ansicht=lab): Brühe, Nudeln, Protein, Toppings + Status-Komposition live per Regler tunen
-    DesignLabPanel.jsx     # Dev-Tool (?ansicht=design): schwebendes Panel über der echten App, überschreibt live die Token-CSS-Variablen (Fonts, Radien, Farben)
+    DesignLabPanel.jsx     # Dev-Tool (?ansicht=design): schwebendes Panel über der echten App, überschreibt live die Token-CSS-Variablen (Fonts, Radien, Farben) und tunt den Dampf-Hintergrund des Starts (SteamBackdrop)
     labControls.jsx        # geteilte Dev-Bausteine (Slider, Toggle, ValueBox) für Scene-Lab und Design-Lab
 public/
   manifest.json / icon.svg      # PWA (display fullscreen, orientation landscape) + App-Icon
@@ -486,6 +486,9 @@ Getränke &amp; Beilagen teilen sich einen Screen, aber über einen **Umschalter
   `?ansicht=design` = Design-Lab: legt ein schwebendes Panel über die normal
   laufende Gast-App und überschreibt live die Token-CSS-Variablen (Fonts, Radien,
   Farben), mit Werte-Snippet für `theme.css` (kein Early-Return, die App bleibt bedienbar).
+  Dort wird auch der Dampf-Hintergrund des Start-Screens getunt (Sektion „Dampf",
+  eigenes Snippet); diese Werte wandern als Konstanten nach `SteamBackdrop.jsx`,
+  nicht nach `theme.css`.
 - **Assets komprimieren:** neue PNGs vor dem Commit auf max. 1100 px lange Kante +
   optimiertes PNG bringen (Asset-Spec). Kein Tool im Repo — bei Bedarf `sharp`
   temporär mit `npm install sharp --no-save` nutzen (package.json unberührt lassen).

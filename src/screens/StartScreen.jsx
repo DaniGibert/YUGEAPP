@@ -3,6 +3,7 @@ import { ArrowRight } from 'lucide-react';
 import BowlGraphic from '../components/BowlGraphic';
 import Button from '../components/Button';
 import RecommendationCard from '../components/RecommendationCard';
+import SteamBackdrop from '../components/SteamBackdrop';
 import SteamPuffs from '../components/SteamPuffs';
 import { RECOMMENDED_BOWLS } from '../config/menu';
 import { useOrderStore } from '../state/orderStore';
@@ -83,8 +84,13 @@ export default function StartScreen({ onNavigate }) {
       onClick={start}
       className="relative flex h-full w-full items-center py-8"
     >
-      {/* Links: Aktions-Spalte, vertikal zentriert */}
-      <div className="flex w-2/5 flex-col items-start justify-center gap-14 p-8">
+      {/* Generativer Dampf-Hintergrund: liegt hinter allem, pointer-events-none
+          laesst den Flug-Klick auf die Section durch. */}
+      <SteamBackdrop className="absolute inset-0 h-full w-full" />
+
+      {/* Links: Aktions-Spalte, vertikal zentriert. relative haelt sie in der
+          Paint-Order sicher ueber dem absoluten Canvas (kein z-index noetig). */}
+      <div className="relative flex w-2/5 flex-col items-start justify-center gap-14 p-8">
         {/* CTA + Sekundärpfad: lauteste bzw. leiseste Aktion.
             Haupt-CTA ist reiner Text (kein Hintergrund, kein Rand): jedes Wort
             in einer eigenen Zeile, groß und im Tare-Rot. */}

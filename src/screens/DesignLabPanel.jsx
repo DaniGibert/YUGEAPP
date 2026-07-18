@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Palette, X, RotateCcw } from 'lucide-react';
 import { Slider, Toggle, ValueBox } from './labControls';
+import { STEAM_DEFAULTS, setSteamLabOverrides, getSteamDefaultTonedColor } from '../components/SteamBackdrop';
 
 // ============================================================================
 // Design-Lab (Dev-Tool, NICHT im Gast-Flow): ?ansicht=design.
@@ -18,6 +19,35 @@ import { Slider, Toggle, ValueBox } from './labControls';
 // ============================================================================
 
 const STORAGE_KEY = 'yuge-design-lab';
+
+// Eigener Speicher-Key fuer den Dampf: der Haupt-STORAGE_KEY landet 1:1 als
+// CSS-Property auf :root, da duerfen keine JS-Konstanten hineingemischt werden.
+const STEAM_STORAGE_KEY = 'yuge-design-lab-steam';
+
+// Dampf-Regler (SteamBackdrop): Key, Label, min, max, step. Reihenfolge =
+// Anzeige und Snippet. Der Dampf laeuft nur auf dem Start-Screen, getunt wird
+// also dort. Der Backdrop hat zwei Modi (Nebel | Fluss); die geteilten Felder
+// gelten in beiden, die Modus-Felder werden nur fuer den aktiven Modus gezeigt.
+const STEAM_FIELDS_SHARED = [
+  ['COUNT', 'Dichte (Elemente)', 1, 24, 1],
+  ['ALPHA', 'Deckkraft je Element', 0, 1, 0.02],
+  ['SHADE_VAR', 'Farb-Variation', 0, 1, 0.05],
+  ['SPEED', 'Tempo', 0.1, 3, 0.05],
+  ['WISP_TONE', 'Ton (Token-Mischung)', 0, 1, 0.05],
+  ['CANVAS_OPACITY', 'Gesamt-Deckkraft', 0, 1, 0.05],
+  ['CANVAS_BLUR_PX', 'Weichzeichnung (px)', 0, 40, 1],
+];
+const STEAM_FIELDS_NEBEL = [
+  ['NEBEL_SCALE', 'Blob-Groesse', 0.08, 0.7, 0.01],
+  ['NEBEL_LIFE_S', 'Atem-Dauer (s)', 6, 40, 1],
+];
+const STEAM_FIELDS_FLUSS = [
+  ['FLUSS_ANGLE', 'Richtung (Grad)', -180, 180, 5],
+  ['FLUSS_TURB', 'Verwirbelung', 0, 1.5, 0.05],
+  ['FLUSS_LENGTH', 'Linienlaenge', 0.1, 1.5, 0.05],
+  ['FLUSS_WIDTH', 'Linienstaerke', 0.002, 0.03, 0.001],
+];
+const STEAM_FIELDS_ALL = [...STEAM_FIELDS_SHARED, ...STEAM_FIELDS_NEBEL, ...STEAM_FIELDS_FLUSS];
 
 // Radien: Token, Label, Slider-Grenzen (px). Defaults kommen live aus theme.css
 // (getComputedStyle), damit hier keine zweite Wahrheit steht.
@@ -262,6 +292,49 @@ function loadStored() {
   }
 }
 
+function loadStoredSteam() {
+  try {
+    const raw = localStorage.getItem(STEAM_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    // Nur bekannte Keys behalten: der Backdrop wurde intern mehrfach umgebaut,
+    // alte localStorage-Staende koennen tote Keys (SPRITE_RADIUS,
+    // PARTICLE_COUNT, FILAMENT_COUNT, RISE_SPEED, ...) tragen, die sonst ewig
+    // mitgeschleppt wuerden.
+    return Object.fromEntries(
+      Object.entries(parsed).filter(([key]) => key in STEAM_DEFAULTS)
+    );
+  } catch {
+    return {};
+  }
+}
+
+// SteamBackdrop.jsx-fertiges Snippet: nur abweichende Keys, als Konstanten-
+// Zeilen zum direkten Einsetzen. Floats auf 3 Nachkommastellen gerundet, sonst
+// landet Slider-Float-Muell (0.030000000000000002) im Code. MODE und
+// WISP_COLOR sind Strings und duerfen nie in Math.round landen (NaN), darum
+// eigene Zeilen. Das Snippet emittiert bewusst BEIDE Modi: jede Abweichung ist
+// eine echte Konstante, beim Uebertragen geht kein Tuning des inaktiven Modus
+// verloren.
+function buildSteamSnippet(steam) {
+  const lines = [];
+  if ('MODE' in steam) lines.push(`const MODE = '${steam.MODE}';`);
+  if ('BLEND' in steam) lines.push(`const BLEND = '${steam.BLEND}';`);
+  STEAM_FIELDS_ALL
+    .filter(([key]) => key in steam)
+    .forEach(([key]) => lines.push(`const ${key} = ${Math.round(steam[key] * 1000) / 1000};`));
+  // WISP_COLOR nur mit Anfuehrungszeichen emittieren, wenn es wirklich ein
+  // String ist: ein null-Override (Alt-Stand) wuerde sonst als kaputtes
+  // 'null' landen. null ist der einzig gueltige Nicht-String-Wert und steht
+  // ohne Anfuehrungszeichen.
+  if (typeof steam.WISP_COLOR === 'string') {
+    lines.push(`const WISP_COLOR = '${steam.WISP_COLOR}';`);
+  } else if ('WISP_COLOR' in steam) {
+    lines.push('const WISP_COLOR = null;');
+  }
+  if (!lines.length) return '/* Keine Aenderungen */';
+  return ['/* SteamBackdrop.jsx */', ...lines].join('\n');
+}
+
 // theme.css-fertiges Snippet: nur abweichende Tokens, eine Zeile pro Token. Bei
 // geaenderten Fonts oben als Kommentar die noetige @import-Ergaenzung.
 function buildSnippet(overrides) {
@@ -288,9 +361,47 @@ function buildSnippet(overrides) {
   return lines.length ? lines.join('\n') : '/* Keine Aenderungen */';
 }
 
+// Hex-Eingabe fuer die Dampf-Farbe: das native OS-Farbfenster (Windows) hat
+// kein Hex-Feld, darum die eigene Eingabe. Der Feldtext lebt lokal, damit
+// halbe Eingaben beim Tippen nicht committen (sonst spraenge die Farbe);
+// committet wird bei Enter und Blur. Aenderungen von aussen (Farbwaehler,
+// Token-Reset, Ton-Regler) ziehen per Effekt nach.
+function SteamHexInput({ value, onCommit }) {
+  const [text, setText] = useState(value);
+  useEffect(() => {
+    setText(value);
+  }, [value]);
+  const commit = () => {
+    const m = /^#?([0-9a-f]{6})$/i.exec(text.trim());
+    if (m) {
+      const hex = '#' + m[1].toUpperCase();
+      setText(hex); // Eingabe normalisieren (fuehrendes #, Grossbuchstaben)
+      onCommit(hex);
+    } else {
+      setText(value); // ungueltig: zurueck auf den letzten gueltigen Wert
+    }
+  };
+  return (
+    <input
+      type="text"
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') commit();
+      }}
+      aria-label="Farbe als Hex"
+      className="w-24 rounded-sm border border-line bg-surface px-2 py-1 text-caption tabular-nums text-ink-600"
+    />
+  );
+}
+
 export default function DesignLabPanel() {
   const [open, setOpen] = useState(false);
   const [overrides, setOverrides] = useState(loadStored);
+  // Dampf-Overrides (SteamBackdrop): haelt nur echte Abweichungen von
+  // STEAM_DEFAULTS, Muster von overrides/setToken.
+  const [steam, setSteam] = useState(loadStoredSteam);
 
   // Defaults nur einmal lesen (theme.css bleibt die Wahrheit). Ref, damit sie
   // nicht bei jedem Render neu aus dem DOM gezogen werden.
@@ -336,6 +447,27 @@ export default function DesignLabPanel() {
       localStorage.removeItem(STORAGE_KEY);
     }
   }, [overrides]);
+
+  // Dampf-Stand in den SteamBackdrop-Seitenkanal schieben und persistieren.
+  // Laeuft auch beim Mount, damit ein gespeicherter Stand sofort wieder greift.
+  useEffect(() => {
+    setSteamLabOverrides(steam);
+    if (Object.keys(steam).length) {
+      localStorage.setItem(STEAM_STORAGE_KEY, JSON.stringify(steam));
+    } else {
+      localStorage.removeItem(STEAM_STORAGE_KEY);
+    }
+  }, [steam]);
+
+  // Einen Dampf-Wert setzen; Wert == Default fliegt raus (Muster von setToken).
+  const setSteamField = (key, value) => {
+    setSteam((s) => {
+      const next = { ...s };
+      if (value === STEAM_DEFAULTS[key]) delete next[key];
+      else next[key] = value;
+      return next;
+    });
+  };
 
   // Ein Token setzen; entspricht der Wert dem Default, faellt der Override raus
   // (overrides haelt so nur echte Abweichungen).
@@ -415,7 +547,10 @@ export default function DesignLabPanel() {
     });
   };
 
-  const resetAll = () => setOverrides({});
+  const resetAll = () => {
+    setOverrides({});
+    setSteam({});
+  };
 
   // Aktiver Display-Font + sein aktuelles Gewicht fuer den Dicke-Regler.
   const activeDisplay = FONT_OPTIONS.find(
@@ -428,6 +563,21 @@ export default function DesignLabPanel() {
       : displayWeightDefault;
 
   const snippet = buildSnippet(overrides);
+
+  // Angezeigte Dampf-Farbe: expliziter Override, sonst der wirksame
+  // Code-Default (STEAM_DEFAULTS.WISP_COLOR). Die Token-Mischung zum aktuellen
+  // Ton bleibt der Fallback fuer den Fall, dass der Code-Default irgendwann
+  // wieder null ist; pro Render neu berechnet (billig), damit das Feld dann
+  // auch Live-Paletten-Overrides folgt.
+  const steamColor =
+    steam.WISP_COLOR ??
+    STEAM_DEFAULTS.WISP_COLOR ??
+    getSteamDefaultTonedColor(steam.WISP_TONE ?? STEAM_DEFAULTS.WISP_TONE);
+
+  // Aktiver Dampf-Modus entscheidet, welche Modus-Regler sichtbar sind. Der
+  // inaktive Modus behaelt seine Overrides im steam-State, Umschalten verliert
+  // also kein Tuning.
+  const activeMode = steam.MODE ?? STEAM_DEFAULTS.MODE;
 
   // Eingeklappt: nur ein runder Knopf am rechten Rand.
   if (!open) {
@@ -575,7 +725,94 @@ export default function DesignLabPanel() {
           </div>
         </section>
 
-        {/* Sektion 4: Werte */}
+        {/* Sektion 4: Dampf-Hintergrund des Start-Screens (SteamBackdrop).
+            Laeuft nur dort, getunt wird also auf dem Start-Screen. Eigene
+            ValueBox mit eigenem Snippet, weil die Werte nicht nach theme.css
+            wandern, sondern als Konstanten nach SteamBackdrop.jsx. */}
+        <section className="flex flex-col gap-3 border-t border-line pt-4">
+          <h3 className="font-display text-body-lg text-ink-900">Dampf (Start-Screen)</h3>
+          {/* Modus-Umschalter: zwei Looks zum Live-Vergleichen. */}
+          <div className="flex flex-wrap gap-2">
+            {[['nebel', 'Nebel'], ['fluss', 'Fluss']].map(([value, label]) => (
+              <Toggle
+                key={value}
+                on={activeMode === value}
+                onClick={() => setSteamField('MODE', value)}
+                color="nori"
+              >
+                {label}
+              </Toggle>
+            ))}
+          </div>
+          {/* Blend-Umschalter: Tinte (multiply) toent das Papier statt milchig
+              darueber zu liegen. Gold, um sich von den nori-MODE-Toggles
+              abzusetzen. */}
+          <div className="flex flex-wrap gap-2">
+            {[['normal', 'Normal'], ['multiply', 'Tinte']].map(([value, label]) => (
+              <Toggle
+                key={value}
+                on={(steam.BLEND ?? STEAM_DEFAULTS.BLEND) === value}
+                onClick={() => setSteamField('BLEND', value)}
+                color="gold"
+              >
+                {label}
+              </Toggle>
+            ))}
+          </div>
+          <div className="flex flex-col gap-4">
+            {[...STEAM_FIELDS_SHARED, ...(activeMode === 'nebel' ? STEAM_FIELDS_NEBEL : STEAM_FIELDS_FLUSS)].map(
+              ([key, label, min, max, step]) => (
+                <Slider
+                  key={key}
+                  label={label}
+                  value={steam[key] ?? STEAM_DEFAULTS[key]}
+                  min={min}
+                  max={max}
+                  step={step}
+                  defaultValue={STEAM_DEFAULTS[key]}
+                  onChange={(v) => setSteamField(key, v)}
+                />
+              )
+            )}
+          </div>
+          {/* Freie Element-Farbe (WISP_COLOR): ohne Override zeigt das Feld
+              den wirksamen Code-Default. Der Ton-Regler wirkt nur auf dem
+              Token-Pfad (WISP_COLOR null), bei gesetzter Farbe ist er
+              wirkungslos. */}
+          <label className="flex items-center justify-between gap-3 text-small text-ink-600">
+            <span>Farbe</span>
+            <span className="flex items-center gap-2">
+              {/* Zuruecksetzen loescht den Override (Wert === Default fliegt
+                  raus): bei null-Default hiess das Token-Farbe, mit gesetztem
+                  Farb-Default heisst zuruecksetzen jetzt Standard-Farbe. */}
+              {'WISP_COLOR' in steam && (
+                <button
+                  type="button"
+                  onClick={() => setSteamField('WISP_COLOR', STEAM_DEFAULTS.WISP_COLOR)}
+                  title="Zurueck zum Standard"
+                  aria-label="Dampf-Farbe zuruecksetzen"
+                  className="text-body leading-none text-ink-400 hover:text-primary"
+                >
+                  ↺
+                </button>
+              )}
+              <SteamHexInput
+                value={steamColor}
+                onCommit={(hex) => setSteamField('WISP_COLOR', hex)}
+              />
+              <input
+                type="color"
+                value={steamColor}
+                onChange={(e) => setSteamField('WISP_COLOR', e.target.value.toUpperCase())}
+                aria-label="Farbe"
+                className="h-7 w-9 cursor-pointer rounded-sm border border-line bg-surface"
+              />
+            </span>
+          </label>
+          <ValueBox snippet={buildSteamSnippet(steam)} onReset={() => setSteam({})} />
+        </section>
+
+        {/* Sektion 5: Werte */}
         <section className="border-t border-line pt-4">
           <ValueBox snippet={snippet} onReset={resetAll} />
         </section>
