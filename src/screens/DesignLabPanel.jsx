@@ -24,30 +24,22 @@ const STORAGE_KEY = 'yuge-design-lab';
 // CSS-Property auf :root, da duerfen keine JS-Konstanten hineingemischt werden.
 const STEAM_STORAGE_KEY = 'yuge-design-lab-steam';
 
-// Dampf-Regler (SteamBackdrop): Key, Label, min, max, step. Reihenfolge =
-// Anzeige und Snippet. Der Dampf laeuft nur auf dem Start-Screen, getunt wird
-// also dort. Der Backdrop hat zwei Modi (Nebel | Fluss); die geteilten Felder
-// gelten in beiden, die Modus-Felder werden nur fuer den aktiven Modus gezeigt.
-const STEAM_FIELDS_SHARED = [
-  ['COUNT', 'Dichte (Elemente)', 1, 24, 1],
-  ['ALPHA', 'Deckkraft je Element', 0, 1, 0.02],
+// Dampf-Regler (SteamBackdrop, Tinten-Marmorierung): Key, Label, min, max,
+// step. Reihenfolge = Anzeige und Snippet. Der Backdrop laeuft nur auf dem
+// Start-Screen, getunt wird also dort.
+const STEAM_FIELDS = [
+  ['BAND_COUNT', 'Baender', 2, 8, 1],
+  ['ALPHA', 'Deckkraft je Band', 0, 1, 0.02],
   ['SHADE_VAR', 'Farb-Variation', 0, 1, 0.05],
   ['SPEED', 'Tempo', 0.1, 3, 0.05],
+  ['DRIFT', 'Drift', -2, 2, 0.1],
+  ['WAVELENGTH', 'Wellenlaenge', 0.3, 2, 0.05],
+  ['BAND_THICK', 'Banddicke', 0.01, 0.15, 0.005],
+  ['SWIRL', 'Verwirbelung', 0, 0.12, 0.005],
   ['WISP_TONE', 'Ton (Token-Mischung)', 0, 1, 0.05],
   ['CANVAS_OPACITY', 'Gesamt-Deckkraft', 0, 1, 0.05],
   ['CANVAS_BLUR_PX', 'Weichzeichnung (px)', 0, 40, 1],
 ];
-const STEAM_FIELDS_NEBEL = [
-  ['NEBEL_SCALE', 'Blob-Groesse', 0.08, 0.7, 0.01],
-  ['NEBEL_LIFE_S', 'Atem-Dauer (s)', 6, 40, 1],
-];
-const STEAM_FIELDS_FLUSS = [
-  ['FLUSS_ANGLE', 'Richtung (Grad)', -180, 180, 5],
-  ['FLUSS_TURB', 'Verwirbelung', 0, 1.5, 0.05],
-  ['FLUSS_LENGTH', 'Linienlaenge', 0.1, 1.5, 0.05],
-  ['FLUSS_WIDTH', 'Linienstaerke', 0.002, 0.03, 0.001],
-];
-const STEAM_FIELDS_ALL = [...STEAM_FIELDS_SHARED, ...STEAM_FIELDS_NEBEL, ...STEAM_FIELDS_FLUSS];
 
 // Radien: Token, Label, Slider-Grenzen (px). Defaults kommen live aus theme.css
 // (getComputedStyle), damit hier keine zweite Wahrheit steht.
@@ -310,16 +302,13 @@ function loadStoredSteam() {
 
 // SteamBackdrop.jsx-fertiges Snippet: nur abweichende Keys, als Konstanten-
 // Zeilen zum direkten Einsetzen. Floats auf 3 Nachkommastellen gerundet, sonst
-// landet Slider-Float-Muell (0.030000000000000002) im Code. MODE und
+// landet Slider-Float-Muell (0.030000000000000002) im Code. BLEND und
 // WISP_COLOR sind Strings und duerfen nie in Math.round landen (NaN), darum
-// eigene Zeilen. Das Snippet emittiert bewusst BEIDE Modi: jede Abweichung ist
-// eine echte Konstante, beim Uebertragen geht kein Tuning des inaktiven Modus
-// verloren.
+// eigene Zeilen.
 function buildSteamSnippet(steam) {
   const lines = [];
-  if ('MODE' in steam) lines.push(`const MODE = '${steam.MODE}';`);
   if ('BLEND' in steam) lines.push(`const BLEND = '${steam.BLEND}';`);
-  STEAM_FIELDS_ALL
+  STEAM_FIELDS
     .filter(([key]) => key in steam)
     .forEach(([key]) => lines.push(`const ${key} = ${Math.round(steam[key] * 1000) / 1000};`));
   // WISP_COLOR nur mit Anfuehrungszeichen emittieren, wenn es wirklich ein
@@ -574,11 +563,6 @@ export default function DesignLabPanel() {
     STEAM_DEFAULTS.WISP_COLOR ??
     getSteamDefaultTonedColor(steam.WISP_TONE ?? STEAM_DEFAULTS.WISP_TONE);
 
-  // Aktiver Dampf-Modus entscheidet, welche Modus-Regler sichtbar sind. Der
-  // inaktive Modus behaelt seine Overrides im steam-State, Umschalten verliert
-  // also kein Tuning.
-  const activeMode = steam.MODE ?? STEAM_DEFAULTS.MODE;
-
   // Eingeklappt: nur ein runder Knopf am rechten Rand.
   if (!open) {
     return (
@@ -725,28 +709,16 @@ export default function DesignLabPanel() {
           </div>
         </section>
 
-        {/* Sektion 4: Dampf-Hintergrund des Start-Screens (SteamBackdrop).
-            Laeuft nur dort, getunt wird also auf dem Start-Screen. Eigene
-            ValueBox mit eigenem Snippet, weil die Werte nicht nach theme.css
-            wandern, sondern als Konstanten nach SteamBackdrop.jsx. */}
+        {/* Sektion 4: Dampf-Hintergrund des Start-Screens (SteamBackdrop),
+            eine gekaemmte Tinten-Marmorierung (Ebru): wenige goldene Baender,
+            die langsam durchs Papier ziehen. Laeuft nur auf dem Start-Screen,
+            getunt wird also dort. Eigene ValueBox mit eigenem Snippet, weil
+            die Werte nicht nach theme.css wandern, sondern als Konstanten
+            nach SteamBackdrop.jsx. */}
         <section className="flex flex-col gap-3 border-t border-line pt-4">
           <h3 className="font-display text-body-lg text-ink-900">Dampf (Start-Screen)</h3>
-          {/* Modus-Umschalter: zwei Looks zum Live-Vergleichen. */}
-          <div className="flex flex-wrap gap-2">
-            {[['nebel', 'Nebel'], ['fluss', 'Fluss']].map(([value, label]) => (
-              <Toggle
-                key={value}
-                on={activeMode === value}
-                onClick={() => setSteamField('MODE', value)}
-                color="nori"
-              >
-                {label}
-              </Toggle>
-            ))}
-          </div>
           {/* Blend-Umschalter: Tinte (multiply) toent das Papier statt milchig
-              darueber zu liegen. Gold, um sich von den nori-MODE-Toggles
-              abzusetzen. */}
+              darueber zu liegen. */}
           <div className="flex flex-wrap gap-2">
             {[['normal', 'Normal'], ['multiply', 'Tinte']].map(([value, label]) => (
               <Toggle
@@ -760,20 +732,18 @@ export default function DesignLabPanel() {
             ))}
           </div>
           <div className="flex flex-col gap-4">
-            {[...STEAM_FIELDS_SHARED, ...(activeMode === 'nebel' ? STEAM_FIELDS_NEBEL : STEAM_FIELDS_FLUSS)].map(
-              ([key, label, min, max, step]) => (
-                <Slider
-                  key={key}
-                  label={label}
-                  value={steam[key] ?? STEAM_DEFAULTS[key]}
-                  min={min}
-                  max={max}
-                  step={step}
-                  defaultValue={STEAM_DEFAULTS[key]}
-                  onChange={(v) => setSteamField(key, v)}
-                />
-              )
-            )}
+            {STEAM_FIELDS.map(([key, label, min, max, step]) => (
+              <Slider
+                key={key}
+                label={label}
+                value={steam[key] ?? STEAM_DEFAULTS[key]}
+                min={min}
+                max={max}
+                step={step}
+                defaultValue={STEAM_DEFAULTS[key]}
+                onChange={(v) => setSteamField(key, v)}
+              />
+            ))}
           </div>
           {/* Freie Element-Farbe (WISP_COLOR): ohne Override zeigt das Feld
               den wirksamen Code-Default. Der Ton-Regler wirkt nur auf dem

@@ -1,75 +1,80 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { PREFERS_REDUCED_MOTION } from '../scene/reducedMotion';
 
-// Generativer Dampf-Hintergrund (Canvas 2D, Processing-Stil) mit zwei
-// schaltbaren Modi, beide ohne sichtbaren Anfang und Ende (reine Atmosphaere):
-// 'nebel' = weiche Blob-Formen ueber die ganze Flaeche, die langsam in
-// beliebige Richtung driften und atmen; 'fluss' = feine Linien, die einem
-// Stroemungsfeld folgen und durchs Bild ziehen, wie Tinte in Wasser. Farbe aus
-// den Tokens (line Richtung ink-400 gemischt), weichgezeichnet und leise.
-// Wirkt wie lebendige Papier-Textur hinter dem Start-Screen; die Schuessel
-// bleibt der Star.
+// Gekaemmte Tinten-Marmorierung (Ebru/Suminagashi) als generativer Hintergrund
+// des Start-Screens (Canvas 2D): wenige goldene Tintenbaender, die wie in
+// leicht bewegtem Wasser horizontal durchs Papier ziehen. Die Baender sind
+// dauerhaft (kein Spawn, kein Tod): das Muster scrollt ueber Phasen-Terme,
+// nie ueber Positions-Spruenge, darum hat nichts einen Ursprung und nichts
+// blinkt. Viel leeres Papier zwischen den Baendern ist Absicht.
 //
-// Alle Tuning-Werte hier benannt, damit nichts inline verstreut liegt.
-// Die Geschmacks-Regler fuers Design-Lab leben direkt in STEAM_DEFAULTS
-// (Keys = Konstantennamen im Snippet). MODE und WISP_COLOR sind Strings und
-// duerfen nie durch Math.round laufen.
+// Fuehl-Kriterien (Definition von fertig): 4 bis 5 ruhige Baender, viel leeres
+// Papier, die Raender wabern sehr langsam (sichtbare Bewegung dauert
+// Sekunden), kaum merkliche Drift, kein Ursprung, nichts blinkt. Beim
+// Wegschauen Atmosphaere, beim Hinschauen Tinte, die im Papier lebt.
+//
+// Die Geschmacks-Regler fuers Design-Lab leben in STEAM_DEFAULTS (Keys =
+// Konstantennamen im Snippet). BLEND und WISP_COLOR sind Strings und duerfen
+// nie durch Math.round laufen.
 export const STEAM_DEFAULTS = {
-  MODE: 'fluss',        // 'nebel' | 'fluss' (String, nie durch Math.round)
-  BLEND: 'multiply',    // 'normal' | 'multiply' (String wie MODE, nie durch Math.round).
-                        // multiply faerbt das Papier wie Tinte/Aquarell statt milchig
-                        // darueber zu liegen: dieselbe Deckkraft wirkt dadurch deutlich
-                        // sichtbarer und Farben bleiben satt.
-  // geteilt (Bedeutung in beiden Modi identisch)
-  COUNT: 19,            // Elemente gleichzeitig (Blobs bzw. Linien)
-  ALPHA: 0.34,          // Deckkraft je Element
-  SHADE_VAR: 0.15,      // 0..1, Anteil der Ton-Streuung ueber die Elemente. Manche
-                        // Elemente dunkler als andere gibt Tiefe; mit multiply sind
-                        // hellere Abstufungen unsichtbar, darum streut die Variation
-                        // nur nach dunkler.
-  SPEED: 1.55,          // dimensionsloser Tempo-Multiplikator auf alle Bewegung
+  BLEND: 'multiply',    // 'normal' | 'multiply'; multiply faerbt das Papier wie
+                        // Tinte statt milchig darueber zu liegen
+  BAND_COUNT: 5,        // Tintenbaender; viel leeres Papier dazwischen ist Absicht
+  ALPHA: 0.16,          // Fuell-Alpha je Band; bewusst sehr leise, die Baender
+                        // sollen Papier toenen und nicht als Flaeche auftreten
+  SPEED: 1.2,           // globaler Zeit-Faktor (Drift + Atmen)
+  DRIFT: -2,            // -2..2, Vorzeichen = Richtung der Muster-Wanderung.
+                        // Bewusste Vereinfachung: kein echter Winkel, die Drift
+                        // ist die Phasen-Wanderung der Kanten-Wellen; ein
+                        // Kipp-Winkel wuerde die Baender nur verzerren.
+  WAVELENGTH: 1.55,     // Grundwellenlaenge der Kanten, Anteil der Breite; lang,
+                        // damit die Baender ruhig schwingen statt zu zappeln
+  BAND_THICK: 0.03,     // Grunddicke eines Bands, Anteil der Breite
+  SWIRL: 0.03,          // Kanten-Auslenkung, Anteil der Breite
+  SHADE_VAR: 0,         // 0..1, Ton-Streuung ueber die Baender (nur nach dunkler,
+                        // hellere Stufen waeren unter multiply unsichtbar).
+                        // Default 0: eine einheitliche Tinte wirkt ruhiger.
   WISP_TONE: 0,         // Token-Mischung line -> ink-400; bei gesetzter WISP_COLOR
                         // wirkungslos, nur die Fallback-Mischung fuer den Token-Pfad
   WISP_COLOR: '#F2B33D', // Das Ei-Gold aus der Palette, im Design-Lab vom Menschen
                         // getunt (Tuning-DATUM im Geist der sceneColor-Werte in
                         // config/menu.js). Auf null setzen = zurueck zum Token-Pfad
                         // via WISP_TONE.
-  CANVAS_OPACITY: 0.45, // CSS-Opacity-Deckel des Elements
-  CANVAS_BLUR_PX: 33,   // CSS-Blur; bewusst stark weichgezeichnet, der weiche
-                        // Look ist im Lab so gewaehlt
-  // Nebel
-  NEBEL_SCALE: 0.21,    // Blob-Radius als Anteil der internen Breite
-  NEBEL_LIFE_S: 8,      // mittlere Atem-Dauer in Sekunden
-  // Fluss
-  FLUSS_ANGLE: 175,     // globale Vorzugsrichtung in Grad (0 = nach rechts)
-  FLUSS_TURB: 0.25,     // Feld-Verwirbelung (Radiant-Amplitude der Sinus-Summe)
-  FLUSS_LENGTH: 1.5,    // Linienlaenge als Anteil der Breite
-  FLUSS_WIDTH: 0.009,   // Linienstaerke als Anteil der internen Breite
+  CANVAS_OPACITY: 0.5,  // CSS-Opacity-Deckel des Elements
+  CANVAS_BLUR_PX: 4,    // nur ein Hauch; die halbe interne Aufloesung zeichnet
+                        // schon weich, die Tuschekanten sollen lesbar bleiben
 };
 
 // Reine Code-Konstanten (Performance/Form/Kalibrierung, kein Geschmack).
-const FPS_CAP = 30;             // langsamer Dampf braucht keine 60fps
+const FPS_CAP = 30;             // langsame Marmorierung braucht keine 60fps
 const FADE_IN_MS = 1600;        // sanftes Einblenden nach Mount
 const FADE_IN_DELAY_MS = 350;   // erst erscheinen wenn der Screen steht
-const SEGMENTS = 36;            // Punkte pro Fluss-Linie
-const BANDS = 9;                // Alpha-/Breiten-Stufen (4 Segmente je Band)
-const HALO_WIDTH_MUL = 2.6;     // Schleier-Pass: Breiten-Faktor
-const HALO_ALPHA_MUL = 0.35;    // Schleier-Pass: Alpha-Faktor
-// Interne Aufloesung pro Modus: grosse weiche Blobs vertragen wenig Pixel,
-// duenne Linien brauchen mehr, sonst saufen sie ab.
-const NEBEL_RES_DIVISOR = 4;
-const NEBEL_MAX_W = 280;
-const FLUSS_RES_DIVISOR = 2;
-const FLUSS_MAX_W = 560;
-// Blobs ueberlappen flaechig; ohne Kalibrierfaktor waere der geteilte
-// Alpha-Regler fuer Nebel sofort zu laut. Kalibrierung ist Physik, kein
-// Geschmack, darum keine Lab-Konstante.
-const NEBEL_ALPHA_SCALE = 0.35;
-const NEBEL_DRIFT = 0.012;      // Drift-Tempo der Blobs (Breiten-Einheiten/s)
-const FLUSS_ADVECT = 0.018;     // Reise-Tempo der Linien-Seeds (Breiten-Einheiten/s)
-const LIFE_MIN_S = 12;          // Lebensdauer-Spanne der Fluss-Linien in Sekunden
-const LIFE_MAX_S = 24;
-const SHADES = 4;               // Abstufungen der Farb-Variation (Code, kein Geschmack)
+// Interne Aufloesung bewusst OHNE devicePixelRatio: das Bild ist durch Blur
+// und niedrige Deckkraft weich, scharfe Pixel kosten nur Fuellrate.
+const RES_DIVISOR = 2;
+const MAX_INTERNAL_WIDTH = 640;
+const SHADES = 4;               // Abstufungen der Farb-Variation
+const SAMPLES = 48;             // Stuetzstellen je Bandkante ueber die Breite
+const OVERSCAN = 0.05;          // Kanten beginnen/enden ausserhalb des Bilds
+const DRIFT_RATE = 0.05;        // Grundtempo der Phasen-Wanderung (langsam!)
+const BREATHE_AMP = 0.012;      // sehr langsames vertikales Atmen der Band-Mitten
+const BREATHE_RATE = 0.05;
+// Parallaxe: ein Teil der Baender liegt "hinten" (dicker, blasser, langsamer,
+// staerker ausgelenkt). Eine staerkere Weichzeichnung je Ebene geht auf einem
+// Canvas nicht; Breite und Alpha uebernehmen die Tiefenwirkung.
+const LAYER_BACK = { thkMul: 2.5, speedMul: 0.5, alphaMul: 0.5, ampMul: 1.3 };
+const LAYER_BACK_SHARE = 0.4;   // Anteil der Baender auf der hinteren Ebene
+// Malerische Tiefe ohne Gradient (bewusste Abweichung von der Design-Spec:
+// ein Linear-Gradient je Band waere Objektmuell im 30fps-Loop): ein zweiter
+// Fuell-Pass als Innen-Ribbon in hellerer Stufe hellt die Bandmitte auf und
+// liest sich als Dimensionalitaet.
+const INNER_RATIO = 0.55;       // Dicke des Innen-Ribbons relativ zum Band
+const INNER_ALPHA_MUL = 0.5;    // Alpha des Innen-Ribbons relativ zum Fuell-Alpha
+const LIGHTEN = 0.25;           // Aufhellung der Innen-Stufen (Kanal Richtung 255)
+// Tuschelinie entlang der Oberkante: gibt Ebru den Biss.
+const EDGE_LINE_W = 0.0015;     // Strichstaerke als Anteil der internen Breite
+const EDGE_ALPHA_MUL = 1.4;     // relativ zum Fuell-Alpha
+const EDGE_ALPHA_MAX = 0.5;     // Deckel, damit die Linie nie hart wird
 
 // Modul-lokaler Override-Seitenkanal fuers Design-Lab: das Panel rendert den
 // Backdrop nicht selbst (anders als das Scene-Lab, das anchorOverrides als Prop
@@ -120,15 +125,6 @@ export function getSteamDefaultTonedColor(tone) {
   ).toUpperCase();
 }
 
-// Billiges Pseudo-Curl-Feld: drei Sinus-Terme aus x, y und langsamem t. Die
-// t-Terme lassen das Feld atmen, damit die Linien nicht eingefroren wirken.
-function flowAngle(x, y, t, bias, turb) {
-  return bias + turb * (
-      Math.sin(x * 4.1 + t * 0.18) * 0.55
-    + Math.sin(y * 3.3 - t * 0.11) * 0.45
-    + Math.sin(x * 1.9 + y * 2.6 + t * 0.07) * 0.35);
-}
-
 export default function SteamBackdrop({ className = '' }) {
   // Reduced Motion: Dampf ist Stimmung, keine Information (Muster von
   // SteamPuffs). Early-Return VOR allen Hooks, aber hook-sicher: der Wert ist
@@ -151,81 +147,52 @@ export default function SteamBackdrop({ className = '' }) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Modus-Guard: alles ausser 'nebel' faellt defensiv auf Fluss zurueck,
-    // auch kaputte Strings aus altem localStorage.
-    const isNebel = cfg.MODE === 'nebel';
-
     // Farbaufloesung: explizite Lab-Farbe gewinnt, sonst die Token-Mischung.
     const hex = cfg.WISP_COLOR || getSteamDefaultTonedColor(cfg.WISP_TONE);
     const rgb = parseHex(hex);
     if (!rgb) return; // Ohne verwertbare Farbe lieber gar nicht malen.
-    const strokeStyle = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
 
-    // Farb-Abstufungen vorberechnen: SHADE_VAR streut die Elemente nur nach
-    // dunkler (hellere Stufen waeren unter multiply unsichtbar). Fertige
-    // Style-Strings entstehen HIER, im Frame-Loop faellt nur noch eine billige
-    // String-Zuweisung an (keine Allokation).
-    const shadeRgbs = Array.from({ length: SHADES }, (_, i) => {
+    // Farb-Abstufungen vorberechnen: SHADE_VAR streut die Baender nur nach
+    // dunkler (hellere Stufen waeren unter multiply unsichtbar). Dazu je Stufe
+    // eine aufgehellte Variante fuer das Innen-Ribbon. Fertige Style-Strings
+    // entstehen HIER, im Frame-Loop fallen nur String-Zuweisungen an.
+    const shadeStyles = [];
+    const lightStyles = [];
+    for (let i = 0; i < SHADES; i++) {
       const factor = 1 - cfg.SHADE_VAR * 0.5 * (i / (SHADES - 1));
-      return {
-        r: Math.round(rgb.r * factor),
-        g: Math.round(rgb.g * factor),
-        b: Math.round(rgb.b * factor),
-      };
-    });
-    const strokeStyles = shadeRgbs.map((c) => `rgb(${c.r}, ${c.g}, ${c.b})`);
+      const r = Math.round(rgb.r * factor);
+      const g = Math.round(rgb.g * factor);
+      const b = Math.round(rgb.b * factor);
+      shadeStyles.push(`rgb(${r}, ${g}, ${b})`);
+      const lighten = (c) => Math.round(c + (255 - c) * LIGHTEN);
+      lightStyles.push(`rgb(${lighten(r)}, ${lighten(g)}, ${lighten(b)})`);
+    }
 
-    const count = Math.max(1, Math.round(cfg.COUNT));
-
-    // Nebel-Sprites: weiche radiale Blobs, je Farb-Abstufung eines, offscreen
-    // gebaut (in resize, weil ihr Pixel-Radius an der internen Breite haengt).
-    // Im Loop nur noch drawImage, keine Gradients.
-    const sprites = Array.from({ length: SHADES }, () => document.createElement('canvas'));
-
-    // Interne Aufloesung bewusst OHNE devicePixelRatio: das Bild ist durch Blur
-    // und niedrige Deckkraft weich, scharfe Pixel kosten nur Fuellrate.
     let internalW = 1;
     let internalH = 1;
     // Seitenverhaeltnis fuer Breiten-normierte Koordinaten: x in [0,1],
-    // y in [0, aspect]; so bleiben alle Schritte isotrop.
+    // y in [0, aspect]; so bleibt alles aufloesungsunabhaengig.
     let aspect = 1;
 
-    function buildSprites() {
-      // 1.3 = groesster scaleMul, damit die Sprites nie hochskaliert werden.
-      const radius = Math.max(2, Math.round(cfg.NEBEL_SCALE * internalW * 1.3));
-      const size = radius * 2;
-      sprites.forEach((sprite, i) => {
-        const c = shadeRgbs[i];
-        sprite.width = size;
-        sprite.height = size;
-        const sctx = sprite.getContext('2d');
-        sctx.clearRect(0, 0, size, size);
-        const grad = sctx.createRadialGradient(radius, radius, 0, radius, radius, radius);
-        grad.addColorStop(0, `rgba(${c.r}, ${c.g}, ${c.b}, 1)`);
-        grad.addColorStop(0.35, `rgba(${c.r}, ${c.g}, ${c.b}, 0.6)`);
-        grad.addColorStop(1, `rgba(${c.r}, ${c.g}, ${c.b}, 0)`);
-        sctx.fillStyle = grad;
-        sctx.fillRect(0, 0, size, size);
-      });
-    }
+    // Stuetzstellen-X in Pixeln, einmal alloziert, bei Resize neu gefuellt.
+    const xPx = new Float32Array(SAMPLES + 1);
 
     function resize() {
       const cw = canvas.clientWidth || 1;
       const ch = canvas.clientHeight || 1;
-      const divisor = isNebel ? NEBEL_RES_DIVISOR : FLUSS_RES_DIVISOR;
-      const maxW = isNebel ? NEBEL_MAX_W : FLUSS_MAX_W;
-      internalW = Math.max(1, Math.min(Math.round(cw / divisor), maxW));
+      internalW = Math.max(1, Math.min(Math.round(cw / RES_DIVISOR), MAX_INTERNAL_WIDTH));
       internalH = Math.max(1, Math.round(internalW * (ch / cw)));
       aspect = internalH / internalW;
       canvas.width = internalW;
       canvas.height = internalH;
       // Canvas-Gotcha: das Setzen von canvas.width resettet den KOMPLETTEN
-      // Context-State. Stroke-Farbe und Linien-Enden muessen darum HIER nach
-      // jedem Resize neu gesetzt werden, nicht einmalig nach getContext.
-      ctx.strokeStyle = strokeStyle;
+      // Context-State. Linien-Enden darum HIER nach jedem Resize setzen, nicht
+      // einmalig nach getContext (die Farben setzt der Frame je Band selbst).
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      if (isNebel) buildSprites();
+      for (let s = 0; s <= SAMPLES; s++) {
+        xPx[s] = (-OVERSCAN + ((1 + 2 * OVERSCAN) * s) / SAMPLES) * internalW;
+      }
     }
 
     resize();
@@ -233,179 +200,135 @@ export default function SteamBackdrop({ className = '' }) {
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
 
-    // ---- Nebel: weiche Blobs, die frei ueber die Flaeche driften und atmen.
-    // Komplett abgewanderte Blobs werden recycelt (siehe stepNebel): bei hohem
-    // Tempo oder langer Atem-Dauer verbrauchen sie ihr Leben sonst unsichtbar
-    // draussen und die Bild-Dichte laeuft leer.
-    function respawnNebel(b, prewarm) {
-      b.x = -0.1 + 1.2 * Math.random();
-      b.y = -0.1 + (aspect + 0.2) * Math.random();
-      b.dir = Math.random() * Math.PI * 2; // Drift in JEDE Richtung, kein Aufsteigen
-      b.scaleMul = 0.7 + 0.6 * Math.random();
-      b.maxAge = cfg.NEBEL_LIFE_S * (0.7 + 0.6 * Math.random());
-      b.seed = Math.random() * 1000;
-      b.shadeIdx = Math.floor(Math.random() * SHADES); // Farb-Abstufung fuer Tiefe
-      // Vorwaermen: Alter zufaellig verteilen, damit der Screen nicht leer startet.
-      b.age = prewarm ? Math.random() * b.maxAge : 0;
-    }
+    // ---- Baender: dauerhaft und fest alloziert, danach nur mutiert (die
+    // Float32Array-Puffer werden pro Frame ueberschrieben, im Loop faellt
+    // keine Allokation an). Vertikale Slots mit stabilem Jitter verteilen die
+    // Mitten mit grossen Luecken ueber die Hoehe. Die hintere Ebene wird
+    // gleichmaessig ueber die Slots verteilt (nicht nur die obersten), dann
+    // einmalig sortiert: die Zeichen-Schleife laeuft automatisch hinten -> vorn.
+    const count = Math.max(1, Math.round(cfg.BAND_COUNT));
+    const bands = Array.from({ length: count }, (_, i) => {
+      const back =
+        Math.round((i + 1) * LAYER_BACK_SHARE) > Math.round(i * LAYER_BACK_SHARE);
+      const layer = back ? LAYER_BACK : null;
+      return {
+        back,
+        // Slot-Mitte plus stabiler Jitter, in Breiten-Einheiten (y bis aspect).
+        // aspect ist nach dem ersten resize() gueltig; ein spaeterer Resize
+        // verschiebt die Slots bewusst nicht (das Muster bleibt ruhig).
+        yBase: (aspect * (i + 0.5 + (Math.random() * 2 - 1) * 0.3)) / count,
+        // Alle Phasen einmal gewuerfelt und dann stabil: keine Spruenge,
+        // kein Ursprung, nichts blinkt.
+        ph1: Math.random() * Math.PI * 2,
+        ph2: Math.random() * Math.PI * 2,
+        ph3: Math.random() * Math.PI * 2,
+        phT: Math.random() * Math.PI * 2,
+        phB: Math.random() * Math.PI * 2,
+        // Leichte Streuung je Band, damit kein Band dem anderen gleicht.
+        ampMul: (layer ? layer.ampMul : 1) * (0.85 + Math.random() * 0.3),
+        thkMul: (layer ? layer.thkMul : 1) * (0.85 + Math.random() * 0.3),
+        shadeIdx: Math.floor(Math.random() * SHADES),
+        // Zwischenwerte je Stuetzstelle (Pixel), pro Frame ueberschrieben:
+        // Mittellinie und halbe Dicke. Daraus bauen sich Aussen- UND
+        // Innen-Ribbon, es braucht keine vier Kanten-Puffer.
+        yCs: new Float32Array(SAMPLES + 1),
+        halfs: new Float32Array(SAMPLES + 1),
+      };
+    }).sort((a, b) => (b.back ? 1 : 0) - (a.back ? 1 : 0));
 
-    function stepNebel(dt, t) {
-      const v = NEBEL_DRIFT * cfg.SPEED;
-      for (const b of blobs) {
-        b.age += dt;
-        // Respawn NUR hier: die Atem-Huelle ist an beiden Lebens-Enden 0, der
-        // Positionssprung ist darum unsichtbar (kein Pop, kein Teleport).
-        if (b.age > b.maxAge) respawnNebel(b, false);
-        b.dir += Math.sin(t * 0.06 + b.seed) * 0.15 * dt; // leichtes Kurven-Wandern
-        b.x += Math.cos(b.dir) * v * dt;
-        b.y += Math.sin(b.dir) * v * dt;
-        // Offscreen-Recycling (ersetzt NICHT den age-Respawn oben, beide
-        // bleiben): ist der Blob samt Radius komplett draussen, ist auch der
-        // Respawn-Sprung garantiert unsichtbar. Ohne das Recycling verbraucht
-        // ein abgewanderter Blob sein restliches Leben ausserhalb des Bilds
-        // und die Dichte duennt bei hohem Tempo aus.
-        const rNorm = cfg.NEBEL_SCALE * b.scaleMul * 1.1; // Aufbluehen eingerechnet
-        if (
-          b.x + rNorm < -0.02 || b.x - rNorm > 1.02 ||
-          b.y + rNorm < -0.02 || b.y - rNorm > aspect + 0.02
-        ) {
-          respawnNebel(b, false);
-          continue;
-        }
-        const env = Math.sin(Math.PI * (b.age / b.maxAge)); // Atem-Huelle: schmilzt rein/raus
-        const r = cfg.NEBEL_SCALE * internalW * b.scaleMul * (0.9 + 0.2 * env); // leichtes Aufbluehen
-        ctx.globalAlpha = env * cfg.ALPHA * NEBEL_ALPHA_SCALE;
-        ctx.drawImage(sprites[b.shadeIdx], b.x * internalW - r, b.y * internalW - r, 2 * r, 2 * r);
+    // Geschlossenen Ribbon-Pfad aus Mittellinie +- halber Dicke bauen:
+    // Oberkante links -> rechts, Unterkante rechts -> links, closePath.
+    function traceRibbon(band, thicknessMul) {
+      ctx.beginPath();
+      ctx.moveTo(xPx[0], band.yCs[0] - band.halfs[0] * thicknessMul);
+      for (let s = 1; s <= SAMPLES; s++) {
+        ctx.lineTo(xPx[s], band.yCs[s] - band.halfs[s] * thicknessMul);
       }
-    }
-
-    // ---- Fluss: feine Linien, die dem Stroemungsfeld folgen. Der Seed jeder
-    // Linie advektiert MIT dem Feld, die Linien reisen also durchs Bild.
-    // Teilweise sichtbare Linien clippt der Rasterizer billig; komplett
-    // abgewanderte werden recycelt (siehe stepFluss), sonst verbrauchen sie
-    // ihr Leben unsichtbar draussen und die Bild-Dichte laeuft bei hohem
-    // Tempo leer.
-    const SEG_PER_BAND = SEGMENTS / BANDS;
-
-    // Seeding ueber die GANZE Flaeche inkl. Rand-Margin, kein fester Ursprung.
-    function respawnFluss(f, prewarm) {
-      f.sx = -0.1 + 1.2 * Math.random();
-      f.sy = -0.1 + (aspect + 0.2) * Math.random();
-      f.maxAge = LIFE_MIN_S + Math.random() * (LIFE_MAX_S - LIFE_MIN_S);
-      f.shadeIdx = Math.floor(Math.random() * SHADES); // Farb-Abstufung fuer Tiefe
-      f.age = prewarm ? Math.random() * f.maxAge : 0;
-    }
-
-    function stepFluss(dt, t) {
-      const tf = t * cfg.SPEED;
-      const bias = (cfg.FLUSS_ANGLE * Math.PI) / 180;
-      const h = cfg.FLUSS_LENGTH / SEGMENTS; // Schrittlaenge in Breiten-Einheiten
-      for (const f of filaments) {
-        f.age += dt;
-        // env ist an beiden Lebens-Enden 0: der Respawn-Sprung ist unsichtbar.
-        if (f.age > f.maxAge) respawnFluss(f, false);
-        const a0 = flowAngle(f.sx, f.sy, tf, bias, cfg.FLUSS_TURB);
-        f.sx += Math.cos(a0) * FLUSS_ADVECT * cfg.SPEED * dt;
-        f.sy += Math.sin(a0) * FLUSS_ADVECT * cfg.SPEED * dt;
-
-        // Euler-Integration der Polyline entlang des Felds. BEIDE Achsen mal
-        // internalW: der Schritt bleibt isotrop, Linien verzerren nicht.
-        // Nebenbei min/max mitfuehren (vier lokale Zahlen, keine Allokation)
-        // fuer das Offscreen-Recycling danach.
-        let px = f.sx;
-        let py = f.sy;
-        let minX = px;
-        let maxX = px;
-        let minY = py;
-        let maxY = py;
-        for (let j = 0; j <= SEGMENTS; j++) {
-          f.xs[j] = px * internalW;
-          f.ys[j] = py * internalW;
-          if (px < minX) minX = px;
-          if (px > maxX) maxX = px;
-          if (py < minY) minY = py;
-          if (py > maxY) maxY = py;
-          const a = flowAngle(px, py, tf, bias, cfg.FLUSS_TURB);
-          px += Math.cos(a) * h;
-          py += Math.sin(a) * h;
-        }
-
-        // Offscreen-Recycling (ersetzt NICHT den age-Respawn oben, beide
-        // bleiben): liegt die GANZE Polyline ausserhalb des Bilds plus Margin,
-        // ist der Positionssprung garantiert unsichtbar. Ohne das Recycling
-        // verbrauchen abgewanderte Linien ihr Leben draussen und die
-        // Bild-Dichte laeuft bei hohem Tempo leer (Repro: SPEED > 2 mit
-        // seitlicher Richtung). Naechster Frame zeichnet die neue Linie mit
-        // env nahe 0, alles weich.
-        if (maxX < -0.05 || minX > 1.05 || maxY < -0.05 || minY > aspect + 0.05) {
-          respawnFluss(f, false);
-          continue;
-        }
-
-        const env = Math.sin(Math.PI * (f.age / f.maxAge));
-
-        // Abstufungs-Farbe des Filaments: billige String-Zuweisung, keine
-        // Allokation. Der resize()-strokeStyle bleibt der Grundzustand.
-        ctx.strokeStyle = strokeStyles[f.shadeIdx];
-
-        // Band-Rendering: bewusst KEIN Gradient-Stroke (30fps-Objektmuell und
-        // kann keine Breiten-Zunahme) und KEIN quadraticCurveTo (bei 36
-        // Segmenten unter Blur unsichtbar teurer). Die Baender teilen ihre
-        // Endpunkte; lineCap 'round' plus Blur macht die Naehte unsichtbar.
-        // Alpha und Breite laufen SYMMETRISCH (Sinus-Bauch in der Mitte, beide
-        // Enden duenn und blass), damit kein Ursprung ablesbar ist.
-        for (let b = 0; b < BANDS; b++) {
-          const j0 = b * SEG_PER_BAND;
-          const uMid = (j0 + SEG_PER_BAND / 2) / SEGMENTS;
-          const alpha = env * cfg.ALPHA * (0.55 + 0.45 * Math.sin(Math.PI * uMid));
-          if (alpha < 0.004) continue;
-          ctx.beginPath();
-          ctx.moveTo(f.xs[j0], f.ys[j0]);
-          for (let j = j0 + 1; j <= j0 + SEG_PER_BAND; j++) ctx.lineTo(f.xs[j], f.ys[j]);
-          // Untergrenze schuetzt vor Sub-Pixel-Flackern.
-          const w = Math.max(0.75, cfg.FLUSS_WIDTH * internalW * (0.75 + 0.5 * Math.sin(Math.PI * uMid)));
-          ctx.globalAlpha = alpha * HALO_ALPHA_MUL; // Pass 1: breiter Schleier
-          ctx.lineWidth = w * HALO_WIDTH_MUL;
-          ctx.stroke();
-          ctx.globalAlpha = alpha;                  // Pass 2: Kernlinie, gleicher Pfad
-          ctx.lineWidth = w;
-          ctx.stroke();
-        }
+      for (let s = SAMPLES; s >= 0; s--) {
+        ctx.lineTo(xPx[s], band.yCs[s] + band.halfs[s] * thicknessMul);
       }
+      ctx.closePath();
     }
 
-    // Zustand des aktiven Modus: feste Allokation beim Effekt-Aufbau, danach
-    // nur mutiert (die Float32Array-Puffer werden pro Frame wiederverwendet,
-    // im Loop faellt keine Allokation an). Allokation NACH dem ersten resize,
-    // weil die Respawns das echte aspect brauchen.
-    const blobs = isNebel
-      ? Array.from({ length: count }, () => {
-          const b = { x: 0, y: 0, dir: 0, scaleMul: 1, age: 0, maxAge: 1, seed: 0, shadeIdx: 0 };
-          respawnNebel(b, true);
-          return b;
-        })
-      : null;
-    const filaments = isNebel
-      ? null
-      : Array.from({ length: count }, () => {
-          const f = {
-            sx: 0,
-            sy: 0,
-            age: 0,
-            maxAge: 1,
-            shadeIdx: 0,
-            xs: new Float32Array(SEGMENTS + 1),
-            ys: new Float32Array(SEGMENTS + 1),
-          };
-          respawnFluss(f, true);
-          return f;
-        });
-    const stepMode = isNebel ? stepNebel : stepFluss;
+    function renderFrame(t) {
+      ctx.clearRect(0, 0, internalW, internalH);
+
+      // Kanten-Wellenzahlen aus der Wellenlaenge, leicht verstimmt statt exakt
+      // harmonisch: zusammen mit den irrationalen Zeit-Faktoren (1 / 2.1 / 4.3)
+      // entsteht keine sichtbar wiederkehrende Periode.
+      const kx1 = (2 * Math.PI) / cfg.WAVELENGTH;
+      const kx2 = kx1 * 1.9;
+      const kx3 = kx1 * 3.7;
+      const ktx = kx1 * 0.8;
+      // DRIFT steuert Vorzeichen und Tempo der Phasen-Wanderung: das Muster
+      // scrollt seitlich, ohne dass sich irgendein Objekt bewegt.
+      const driftBase = t * cfg.SPEED * DRIFT_RATE * cfg.DRIFT;
+
+      for (const band of bands) {
+        const drift = driftBase * (band.back ? LAYER_BACK.speedMul : 1);
+        // Sehr langsames vertikales Atmen der Band-Mitte; die Amplitude ist so
+        // klein, dass es nie als Bewegung, nur als Leben liest.
+        const yCenter =
+          band.yBase + BREATHE_AMP * Math.sin(t * BREATHE_RATE * cfg.SPEED + band.phB);
+
+        for (let s = 0; s <= SAMPLES; s++) {
+          const x = -OVERSCAN + ((1 + 2 * OVERSCAN) * s) / SAMPLES;
+          // Mittellinie: drei Sinus-Oktaven (Amplituden 1 / 0.5 / 0.25,
+          // normiert), Phasen wandern ueber drift.
+          const yC =
+            yCenter +
+            cfg.SWIRL *
+              band.ampMul *
+              (Math.sin((x * kx1 + drift) * 1.0 + band.ph1) * (1 / 1.75) +
+                Math.sin((x * kx2 + drift) * 2.1 + band.ph2) * (0.5 / 1.75) +
+                Math.sin((x * kx3 + drift) * 4.3 + band.ph3) * (0.25 / 1.75));
+          // Dicke schwillt an und ab wie ein Pinselzug.
+          const half =
+            0.5 *
+            cfg.BAND_THICK *
+            band.thkMul *
+            (1 + 0.3 * Math.sin(x * ktx + drift * 0.5 + band.phT));
+          band.yCs[s] = yC * internalW;
+          band.halfs[s] = half * internalW;
+        }
+
+        const fillAlpha = cfg.ALPHA * (band.back ? LAYER_BACK.alphaMul : 1);
+
+        // Pass 1: Aussenband in der Band-Abstufung.
+        ctx.fillStyle = shadeStyles[band.shadeIdx];
+        ctx.globalAlpha = fillAlpha;
+        traceRibbon(band, 1);
+        ctx.fill();
+
+        // Pass 2: Innen-Ribbon in hellerer Stufe -> hellere Bandmitte, liest
+        // sich als malerische Tiefe (siehe INNER_*-Konstanten).
+        ctx.fillStyle = lightStyles[band.shadeIdx];
+        ctx.globalAlpha = fillAlpha * INNER_ALPHA_MUL;
+        traceRibbon(band, INNER_RATIO);
+        ctx.fill();
+
+        // Pass 3: Tuschelinie entlang der Oberkante, eine Stufe dunkler im
+        // Shade-System (bei der dunkelsten Stufe gibt das erhoehte Alpha den
+        // Biss).
+        ctx.strokeStyle = shadeStyles[Math.min(band.shadeIdx + 1, SHADES - 1)];
+        ctx.globalAlpha = Math.min(fillAlpha * EDGE_ALPHA_MUL, EDGE_ALPHA_MAX);
+        ctx.lineWidth = Math.max(0.75, internalW * EDGE_LINE_W);
+        ctx.beginPath();
+        ctx.moveTo(xPx[0], band.yCs[0] - band.halfs[0]);
+        for (let s = 1; s <= SAMPLES; s++) {
+          ctx.lineTo(xPx[s], band.yCs[s] - band.halfs[s]);
+        }
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
 
     // Loop-Disziplin: EIN RAF-Loop, der zwar durchlaeuft, aber nur bei
-    // erreichtem FPS-Cap simuliert und zeichnet.
+    // erreichtem FPS-Cap zeichnet. dt wird geklemmt zur Zeitbasis akkumuliert,
+    // damit eine Tab-Rueckkehr keinen Sprung ins Muster reisst.
     const frameGap = 1000 / FPS_CAP - 1;
     let last = performance.now();
+    let simT = 0;
     let raf = 0;
     let running = true;
 
@@ -413,12 +336,10 @@ export default function SteamBackdrop({ className = '' }) {
       if (!running) return;
       raf = requestAnimationFrame(step);
       if (now - last < frameGap) return;
-      // dt geklemmt: nach Tab-Rueckkehr kein Riesensprung.
       const dt = Math.min((now - last) / 1000, 0.1);
       last = now;
-      ctx.clearRect(0, 0, internalW, internalH);
-      stepMode(dt, now / 1000);
-      ctx.globalAlpha = 1;
+      simT += dt;
+      renderFrame(simT);
     }
 
     function startLoop() {
@@ -473,8 +394,8 @@ export default function SteamBackdrop({ className = '' }) {
       window.clearTimeout(fadeTimer);
     };
     // Snapshot in den Deps: ein Lab-Tick baut den Effekt komplett neu auf. Das
-    // ist billig (eine Handvoll Elemente mit festen Puffern) und haelt den Code
-    // einfach; die Elemente streuen dabei per prewarm neu, das ist ok.
+    // ist billig (eine Handvoll Baender mit festen Puffern) und haelt den Code
+    // einfach; die Baender wuerfeln ihre stabilen Phasen dabei neu, das ist ok.
   }, [overrides]);
 
   return (
