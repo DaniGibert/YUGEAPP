@@ -239,7 +239,7 @@ export default function CartScreen({ onNavigate, cameFrom }) {
           {/* from={0}: die Summe zählt beim Betreten des Warenkorbs von 0 hoch
               (typischer Weg: Bowl bauen -> "In den Warenkorb" -> hier landen).
               Danach animiert jede Mengen-/Lösch-Änderung vom alten Wert aus. */}
-          <span className="font-sans text-h2 font-bold text-ink-900">
+          <span className="font-price text-h2 font-bold text-ink-900">
             <AnimatedNumber value={cartTotal(cart)} from={0} /> €
           </span>
         </div>

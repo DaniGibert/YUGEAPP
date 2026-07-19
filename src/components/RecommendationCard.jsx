@@ -142,7 +142,7 @@ export default function RecommendationCard({ bowl, onSelect }) {
           <Info size={18} />
         </button>
         <div className="flex items-center gap-2">
-          <span className="font-sans text-body-lg font-bold text-ink-900">{bowlPrice(bowl.config)} €</span>
+          <span className="font-price text-body-lg font-bold text-ink-900">{bowlPrice(bowl.config)} €</span>
           <span
             aria-hidden="true"
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line text-ink-400 transition-colors group-hover:border-primary group-hover:text-primary"

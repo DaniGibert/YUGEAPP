@@ -425,7 +425,7 @@ export default function BuilderScreen({ onNavigate, cameFrom, onSceneReady }) {
           <div className="flex items-center gap-5">
             <div className="flex items-baseline gap-2">
               <span className="text-small text-ink-400">{t('builder.price')}</span>
-              <span className="font-sans text-h2 font-bold text-ink-900">
+              <span className="font-price text-h2 font-bold text-ink-900">
                 <AnimatedNumber value={bowlPrice(bowl)} /> €
               </span>
             </div>

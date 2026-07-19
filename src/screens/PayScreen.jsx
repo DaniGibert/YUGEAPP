@@ -386,7 +386,7 @@ export default function PayScreen({ onNavigate, payMode }) {
           {person && (
             <span className="text-body text-ink-400">{t('pay.person', { n: personIndex })}</span>
           )}
-          <span className="font-sans text-h2 font-bold text-ink-900">{amount} €</span>
+          <span className="font-price text-h2 font-bold text-ink-900">{amount} €</span>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -462,7 +462,7 @@ export default function PayScreen({ onNavigate, payMode }) {
               Getrennt-Screens von 0 hoch, aber erst wenn die Positionen geladen
               sind (sonst liefe die Animation gegen 0 ins Leere). Danach zählt
               jede Zuweisung von dort aus runter. */}
-          <span className="font-sans text-h2 font-bold text-ink-900">
+          <span className="font-price text-h2 font-bold text-ink-900">
             <AnimatedNumber value={sumOf(poolItems)} from={0} ready={!!items} /> €
           </span>
         </div>

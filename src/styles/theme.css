@@ -17,7 +17,11 @@
    latin-ext (die App ist deutsch/englisch), unicode-range wie im Original.
    font-display: swap zeigt sofort den Fallback und tauscht nach. Inter ist ein
    variabler Font: die drei Gewichte teilen sich je eine Datei pro Subset.
-   Lizenz SIL OFL, siehe public/fonts/ (OFL-DelaGothicOne.txt, OFL-Inter.txt). */
+   Bricolage Grotesque traegt ausschliesslich die Preise (siehe --font-price);
+   sie ist variabel (Gewichte 600 bis 800 in einer Datei je Subset) und war die
+   erste Display-Schrift des Projekts.
+   Lizenz SIL OFL, siehe public/fonts/ (OFL-DelaGothicOne.txt, OFL-Inter.txt,
+   OFL-BricolageGrotesque.txt). */
 @font-face {
   font-family: 'Dela Gothic One';
   font-style: normal;
@@ -82,6 +86,24 @@
   src: url('/fonts/inter-400-latin-ext.woff2') format('woff2');
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-weight: 600 800;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url('/fonts/bricolage-grotesque-600-800-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-weight: 600 800;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url('/fonts/bricolage-grotesque-600-800-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
 
 /* "static": ALLE Tokens landen als CSS-Variablen im Build, auch die, die nur
    per Inline-var() genutzt werden (z. B. Kategorie-Farben in Breadcrumb/Szene). */
@@ -115,6 +137,7 @@
   /* ---- Schriften ---- */
   --font-display: "Dela Gothic One", ui-sans-serif, sans-serif;  /* Überschriften + Produkt-Namen -> font-display */
   --font-sans:    "Inter", ui-sans-serif, system-ui, sans-serif;      /* UI / Fließtext -> font-sans */
+  --font-price:   "Bricolage Grotesque", ui-sans-serif, sans-serif;  /* NUR Preise und Summen -> font-price */
 
   /* ---- Schriftgrößen (inkl. Zeilenhöhe & Gewicht) ----
      Nutzung: text-display, text-h1, text-h2, text-body-lg, text-body, text-small, text-caption */

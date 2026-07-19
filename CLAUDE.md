@@ -148,10 +148,15 @@ docs/
 - Farben/Schrift/Radien: siehe `theme.css`. Immer die Token-Utilities nutzen.
 - **Display-Schrift** (`font-display`) ist **Dela Gothic One** (nur ein Gewicht 400, die
   Fette steckt in der Glyphenform). Sie trägt Überschriften **und Produkt-Namen auf Karten**
-  (`OptionCard`-Name, Empfehlungs-Karten-Bowl-Name, „Beliebt bei uns"-Label). Beschreibungen,
-  Preise und alle Fließtexte bleiben im UI-Font (`font-sans`, Inter). **Das gilt auch für die
-  großen Summen** (Bowl-Preis, Warenkorb-/Rechnungs-Summe, Bezahl-Beträge in `text-h2`): sie sind
-  `font-sans font-bold`, **nicht** `font-display` — auch wenn die große Zahl danach verlangt.
+  (`OptionCard`-Name, Empfehlungs-Karten-Bowl-Name, „Beliebt bei uns"-Label). Beschreibungen
+  und alle Fließtexte bleiben im UI-Font (`font-sans`, Inter).
+- **Preis-Schrift** (`font-price`) ist **Bricolage Grotesque** (variabel, echte Gewichte 600–800;
+  war die erste Display-Schrift des Projekts). Sie trägt **ausschließlich die herausgehobenen
+  Preise und Summen**: Empfehlungs-Karten-Preis, Builder-Laufpreis, Übersichts-, Warenkorb- und
+  Rechnungs-Summe, Bezahl-Beträge. Kleine Inline-Preise in Listen und Modifier („+3 €",
+  Warenkorb-Zeilen, Header) bleiben `font-sans`. Anders als bei Dela ist eine Gewichts-Utility
+  hier **Pflicht**: die Größen-Tokens setzen 400, was außerhalb des Bereichs liegt und still auf
+  600 geklemmt würde — Preise stehen darum explizit auf `font-bold` (700).
   Auf `font-display`-Elementen
   **keine** Gewichts-Utility (`font-bold`/`-semibold`) setzen — Dela ist von sich aus fett,
   synthetisches Bold verzerrt sie (`font-synthesis: none` sichert h1–h3 ab). Beide Fonts sind
