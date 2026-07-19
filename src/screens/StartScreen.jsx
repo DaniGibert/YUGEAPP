@@ -82,7 +82,7 @@ export default function StartScreen({ onNavigate }) {
     // Die ganze Section ist eine große Klickfläche -> Flug (wie Schüssel/CTA).
     <section
       onClick={start}
-      className="relative flex h-full w-full items-center py-8"
+      className="start-screen relative flex h-full w-full items-center py-8"
     >
       {/* Generativer Dampf-Hintergrund: liegt hinter allem, pointer-events-none
           laesst den Flug-Klick auf die Section durch. */}

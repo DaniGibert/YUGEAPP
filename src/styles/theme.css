@@ -323,6 +323,12 @@
    flache Schirme), faengt der Scroll-Container der Spalte den Rest ab, statt
    Text abzuschneiden. Ab 520px Hoehe (iPad, Tablet, Desktop) unberuehrt. */
 @media (max-height: 519px) {
+  /* Kopfzeile und Screen-Rahmen sind auf dem Tablet richtig, kosten auf einem
+     ~400px hohen Handy aber zusammen fast 100px Hoehe. Beides straffen, damit
+     der Start-Screen ohne Scrollen sitzt: Scrollen wuerde hier den Inhalt in
+     der zentrierten Spalte nach oben schieben und das erste Wort anschneiden. */
+  .app-header { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+  .start-screen { padding-top: 0.5rem; padding-bottom: 0.5rem; }
   /* Vertikal straff (Hoehe ist knapp), seitlich aber grosszuegig: die Spalte
      soll nicht am Displayrand kleben. Breite ist auf dem Handy quer genug da. */
   .start-actions { gap: 1rem; padding: 0.5rem 2rem; }
@@ -336,13 +342,18 @@
    erst navigieren, dann das echte Ziel messen, dann fliegen. */
 .start-bowl {
   position: absolute;
-  left: 50%;
+  left: 74%;
   top: 50%;
   width: var(--start-bowl-w);
   transform: translate(calc(-50% + var(--start-bowl-x)), calc(-50% + var(--start-bowl-y)));
-  /* Basisbreite an der Builder-Spalte orientiert (40vw Aside - 3rem Padding) */
-  --start-bowl-w: calc((40vw - 3rem) * 0.9);
-  --start-bowl-x: 24vw;   /* Idle-Mitte rechtes Drittel (50vw + 24vw = 74vw) */
+  /* Breite und Idle-Mitte bewusst in % des Containers statt in vw: die Buehne
+     rueckt auf Geraeten mit Aussparung per safe-area ein, vw wuesste davon
+     nichts und die Schuessel liefe rechts aus dem Bild. Ohne Aussparung ist
+     der Container genau so breit wie der Viewport, dort rechnen beide gleich.
+     Basisbreite an der Builder-Spalte orientiert (40% Aside - 3rem Padding).
+     Die frueheren 24vw Versatz stecken jetzt in left: 74% (50% + 24%). */
+  --start-bowl-w: calc((40% - 3rem) * 0.9);
+  --start-bowl-x: 0px;
   --start-bowl-y: 0px;
 }
 .start-bowl-inner {

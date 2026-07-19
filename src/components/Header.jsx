@@ -171,7 +171,7 @@ export default function Header({ onNavigate, minimal = false }) {
   }, [cartOpen]);
 
   return (
-    <header className="relative flex items-center justify-between border-b border-line bg-surface px-8 py-4">
+    <header className="app-header relative flex items-center justify-between border-b border-line bg-surface px-8 py-4">
       <button
         type="button"
         onClick={handleLogoClick}
