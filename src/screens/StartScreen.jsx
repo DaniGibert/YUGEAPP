@@ -89,12 +89,18 @@ export default function StartScreen({ onNavigate }) {
       <SteamBackdrop className="absolute inset-0 h-full w-full" />
 
       {/* Links: Aktions-Spalte, vertikal zentriert. relative haelt sie in der
-          Paint-Order sicher ueber dem absoluten Canvas (kein z-index noetig). */}
-      <div className="relative flex w-2/5 flex-col items-start justify-center gap-14 p-8">
+          Paint-Order sicher ueber dem absoluten Canvas (kein z-index noetig).
+          Scroll-Container wie im Status-Hero: bei genug Hoehe steht die Spalte
+          mittig (iPad/Desktop), auf kurzen Schirmen (Handy quer) scrollt sie von
+          oben, statt unter den Rand zu laufen. min-h-full am Inneren haelt das
+          Zentrieren, kappt den Kopf aber nie. Die Abstaende strafft
+          .start-actions per Hoehen-Media-Query (theme.css). */}
+      <div className="relative flex h-full w-2/5 min-h-0 flex-col overflow-y-auto">
+        <div className="start-actions flex min-h-full flex-col items-start justify-center gap-14 p-8">
         {/* CTA + Sekundärpfad: lauteste bzw. leiseste Aktion.
             Haupt-CTA ist reiner Text (kein Hintergrund, kein Rand): jedes Wort
             in einer eigenen Zeile, groß und im Tare-Rot. */}
-        <div className="flex flex-col items-start gap-10">
+        <div className="start-cta-group flex flex-col items-start gap-10">
           <button
             type="button"
             onClick={startFromElement}
@@ -146,6 +152,7 @@ export default function StartScreen({ onNavigate }) {
               />
             ))}
           </div>
+        </div>
         </div>
       </div>
 

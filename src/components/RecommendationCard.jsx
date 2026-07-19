@@ -117,7 +117,10 @@ export default function RecommendationCard({ bowl, onSelect }) {
     >
       {/* Bild groß und zentriert (Muster der OptionCard: Bild zuerst) */}
       <div className="flex items-center justify-center">
-        <BowlThumbnail config={bowl.config} className="w-28" />
+        {/* rec-thumb traegt die Breite (theme.css): auf kurzen Schirmen zieht
+            die Hoehen-Media-Query die Mini-Bowl kleiner, damit die Karten in
+            die Aktions-Spalte passen. */}
+        <BowlThumbnail config={bowl.config} className="rec-thumb" />
       </div>
 
       {/* Name mit leisem Diet-Icon (wenn vegetarisch/vegan) */}

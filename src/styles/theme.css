@@ -297,6 +297,25 @@
   .status-hero-scene { --hero-scale: 0.77; }
 }
 
+/* Mini-Bowl auf den Empfehlungs-Karten. Die Breite lebt hier statt als
+   w-28-Utility, damit die Hoehen-Media-Query unten sie ueberschreiben kann
+   (Reihenfolge zaehlt: Grundregel vor der Query). */
+.rec-thumb { width: 7rem; }
+
+/* ---- Start-Aktionsspalte auf kurzen Schirmen (Handy quer) ----
+   Die Spalte zeigt Haupt-CTA, Sekundaerknopf UND zwei Empfehlungs-Karten. Auf
+   dem iPad passt das mit Luft, auf einem Handy im Querformat (~400px hoch,
+   abzueglich Browser-Leiste noch weniger) will sie deutlich mehr Hoehe als da
+   ist. Hier die Abstaende straffen und die Mini-Bowls der Empfehlungen kleiner
+   ziehen, damit die Spalte ohne Scrollen sitzt. Reicht es trotzdem nicht (sehr
+   flache Schirme), faengt der Scroll-Container der Spalte den Rest ab, statt
+   Text abzuschneiden. Ab 520px Hoehe (iPad, Tablet, Desktop) unberuehrt. */
+@media (max-height: 519px) {
+  .start-actions { gap: 1rem; padding: 0.75rem 1rem; }
+  .start-cta-group { gap: 0.75rem; }
+  .rec-thumb { width: 3.5rem; }
+}
+
 /* ---- Startbild: Schuessel im rechten Drittel (Idle) ----
    Nur Ruhe-Position/-Groesse. Der Flug zum Builder laeuft NICHT mehr hier,
    sondern als Shared-Element-Overlay in App.jsx (.start-handoff-bowl):
