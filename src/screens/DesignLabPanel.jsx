@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Palette, X, RotateCcw } from 'lucide-react';
 import { Slider, Toggle, ValueBox } from './labControls';
-import { STEAM_DEFAULTS, setSteamLabOverrides, getSteamDefaultTonedColor } from '../components/SteamBackdrop';
+import {
+  STEAM_DEFAULTS,
+  setSteamLabOverrides,
+  getSteamDefaultTonedColor,
+  renderMarblingPNG,
+} from '../components/SteamBackdrop';
 
 // ============================================================================
 // Design-Lab (Dev-Tool, NICHT im Gast-Flow): ?ansicht=design.
@@ -39,6 +44,13 @@ const STEAM_FIELDS = [
   ['WISP_TONE', 'Ton (Token-Mischung)', 0, 1, 0.05],
   ['CANVAS_OPACITY', 'Gesamt-Deckkraft', 0, 1, 0.05],
   ['CANVAS_BLUR_PX', 'Weichzeichnung (px)', 0, 40, 1],
+];
+
+// Standbild-Groessen fuer Praesentations-Folien (Breite, Hoehe, Label).
+const STEAM_EXPORT_SIZES = [
+  [1920, 1080],
+  [3840, 2160],
+  [2560, 1440],
 ];
 
 // Radien: Token, Label, Slider-Grenzen (px). Defaults kommen live aus theme.css
@@ -448,6 +460,26 @@ export default function DesignLabPanel() {
     }
   }, [steam]);
 
+  // Standbild als PNG herunterladen: exportiert wird der AKTUELL eingestellte
+  // Stand (Defaults gemerged mit den Lab-Overrides), damit das Bild zeigt was
+  // man sieht. Die Papierfarbe kommt live aus dem Token, folgt also auch
+  // Paletten-Overrides. Jeder Klick wuerfelt neue Phasen: mehrfach klicken bis
+  // ein Bild gefaellt, und fuer verschiedene Folien verschiedene Varianten
+  // ziehen.
+  const exportSteamPNG = (width, height) => {
+    const paperHex = getComputedStyle(document.documentElement)
+      .getPropertyValue('--color-bg')
+      .trim();
+    const url = renderMarblingPNG({ ...STEAM_DEFAULTS, ...steam }, { width, height, paperHex });
+    if (!url) return;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `yuge-marmorierung-${width}x${height}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
   // Einen Dampf-Wert setzen; Wert == Default fliegt raus (Muster von setToken).
   const setSteamField = (key, value) => {
     setSteam((s) => {
@@ -780,6 +812,18 @@ export default function DesignLabPanel() {
             </span>
           </label>
           <ValueBox snippet={buildSteamSnippet(steam)} onReset={() => setSteam({})} />
+          {/* Standbild fuer Folien: rendert dieselbe Mathematik in voller
+              Aufloesung als PNG. */}
+          <div className="flex flex-col gap-2">
+            <span className="text-small font-semibold text-ink-900">Standbild fuer Folien</span>
+            <div className="flex flex-wrap gap-2">
+              {STEAM_EXPORT_SIZES.map(([w, h]) => (
+                <Toggle key={`${w}x${h}`} on={false} onClick={() => exportSteamPNG(w, h)} color="nori">
+                  {`${w} x ${h}`}
+                </Toggle>
+              ))}
+            </div>
+          </div>
         </section>
 
         {/* Sektion 5: Werte */}

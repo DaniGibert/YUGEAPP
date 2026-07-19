@@ -125,6 +125,219 @@ export function getSteamDefaultTonedColor(tone) {
   ).toUpperCase();
 }
 
+// ============================================================================
+// Marmorierungs-Mathematik auf Modulebene: die LIVE-Animation und der
+// PNG-Export fuer Folien teilen sich exakt diese Funktionen. Sonst driften
+// App und Praesentation auseinander (Projektregel: eine Quelle).
+// ============================================================================
+
+// Fertige Style-Strings je Abstufung (nur nach dunkler, hellere Stufen waeren
+// unter multiply unsichtbar) plus je eine aufgehellte Variante fuers
+// Innen-Ribbon. Entstehen einmal vorab, im Frame-Loop fallen damit nur noch
+// String-Zuweisungen an.
+function buildShadeStyles(rgb, shadeVar) {
+  const shadeStyles = [];
+  const lightStyles = [];
+  for (let i = 0; i < SHADES; i++) {
+    const factor = 1 - shadeVar * 0.5 * (i / (SHADES - 1));
+    const r = Math.round(rgb.r * factor);
+    const g = Math.round(rgb.g * factor);
+    const b = Math.round(rgb.b * factor);
+    shadeStyles.push(`rgb(${r}, ${g}, ${b})`);
+    const lighten = (c) => Math.round(c + (255 - c) * LIGHTEN);
+    lightStyles.push(`rgb(${lighten(r)}, ${lighten(g)}, ${lighten(b)})`);
+  }
+  return { shadeStyles, lightStyles };
+}
+
+// Stuetzstellen-X in Pixeln (inkl. Overscan), fuellt einen vorhandenen Puffer.
+function fillSampleX(xPx, internalW) {
+  for (let s = 0; s <= SAMPLES; s++) {
+    xPx[s] = (-OVERSCAN + ((1 + 2 * OVERSCAN) * s) / SAMPLES) * internalW;
+  }
+}
+
+// Baender: dauerhaft und fest alloziert, danach nur mutiert (die
+// Float32Array-Puffer werden pro Frame ueberschrieben, im Loop faellt keine
+// Allokation an). Vertikale Slots mit stabilem Jitter verteilen die Mitten mit
+// grossen Luecken ueber die Hoehe. Die hintere Ebene wird gleichmaessig ueber
+// die Slots verteilt (nicht nur die obersten), dann einmalig sortiert: die
+// Zeichen-Schleife laeuft damit automatisch hinten -> vorn.
+// rng ist injizierbar, damit ein Aufrufer reproduzierbare Bilder erzeugen
+// kann; der Default bleibt Math.random.
+function createBands(count, aspect, rng = Math.random) {
+  return Array.from({ length: count }, (_, i) => {
+    const back =
+      Math.round((i + 1) * LAYER_BACK_SHARE) > Math.round(i * LAYER_BACK_SHARE);
+    const layer = back ? LAYER_BACK : null;
+    return {
+      back,
+      // Slot-Mitte plus stabiler Jitter, in Breiten-Einheiten (y bis aspect).
+      // Ein spaeterer Resize verschiebt die Slots bewusst nicht (das Muster
+      // bleibt ruhig).
+      yBase: (aspect * (i + 0.5 + (rng() * 2 - 1) * 0.3)) / count,
+      // Alle Phasen einmal gewuerfelt und dann stabil: keine Spruenge,
+      // kein Ursprung, nichts blinkt.
+      ph1: rng() * Math.PI * 2,
+      ph2: rng() * Math.PI * 2,
+      ph3: rng() * Math.PI * 2,
+      phT: rng() * Math.PI * 2,
+      phB: rng() * Math.PI * 2,
+      // Leichte Streuung je Band, damit kein Band dem anderen gleicht.
+      ampMul: (layer ? layer.ampMul : 1) * (0.85 + rng() * 0.3),
+      thkMul: (layer ? layer.thkMul : 1) * (0.85 + rng() * 0.3),
+      shadeIdx: Math.floor(rng() * SHADES),
+      // Zwischenwerte je Stuetzstelle (Pixel), pro Frame ueberschrieben:
+      // Mittellinie und halbe Dicke. Daraus bauen sich Aussen- UND
+      // Innen-Ribbon, es braucht keine vier Kanten-Puffer.
+      yCs: new Float32Array(SAMPLES + 1),
+      halfs: new Float32Array(SAMPLES + 1),
+    };
+  }).sort((a, b) => (b.back ? 1 : 0) - (a.back ? 1 : 0));
+}
+
+// Geschlossenen Ribbon-Pfad aus Mittellinie +- halber Dicke bauen:
+// Oberkante links -> rechts, Unterkante rechts -> links, closePath.
+function traceRibbon(ctx, band, xPx, thicknessMul) {
+  ctx.beginPath();
+  ctx.moveTo(xPx[0], band.yCs[0] - band.halfs[0] * thicknessMul);
+  for (let s = 1; s <= SAMPLES; s++) {
+    ctx.lineTo(xPx[s], band.yCs[s] - band.halfs[s] * thicknessMul);
+  }
+  for (let s = SAMPLES; s >= 0; s--) {
+    ctx.lineTo(xPx[s], band.yCs[s] + band.halfs[s] * thicknessMul);
+  }
+  ctx.closePath();
+}
+
+// EIN Frame zeichnen. Das Leeren der Flaeche macht bewusst der Aufrufer (die
+// Live-Animation loescht, der Export malt auf ein frisches Canvas).
+function drawMarbling(ctx, { bands, cfg, internalW, t, xPx, shadeStyles, lightStyles }) {
+  // Kanten-Wellenzahlen aus der Wellenlaenge, leicht verstimmt statt exakt
+  // harmonisch: zusammen mit den irrationalen Zeit-Faktoren (1 / 2.1 / 4.3)
+  // entsteht keine sichtbar wiederkehrende Periode.
+  const kx1 = (2 * Math.PI) / cfg.WAVELENGTH;
+  const kx2 = kx1 * 1.9;
+  const kx3 = kx1 * 3.7;
+  const ktx = kx1 * 0.8;
+  // DRIFT steuert Vorzeichen und Tempo der Phasen-Wanderung: das Muster
+  // scrollt seitlich, ohne dass sich irgendein Objekt bewegt.
+  const driftBase = t * cfg.SPEED * DRIFT_RATE * cfg.DRIFT;
+
+  for (const band of bands) {
+    const drift = driftBase * (band.back ? LAYER_BACK.speedMul : 1);
+    // Sehr langsames vertikales Atmen der Band-Mitte; die Amplitude ist so
+    // klein, dass es nie als Bewegung, nur als Leben liest.
+    const yCenter =
+      band.yBase + BREATHE_AMP * Math.sin(t * BREATHE_RATE * cfg.SPEED + band.phB);
+
+    for (let s = 0; s <= SAMPLES; s++) {
+      const x = -OVERSCAN + ((1 + 2 * OVERSCAN) * s) / SAMPLES;
+      // Mittellinie: drei Sinus-Oktaven (Amplituden 1 / 0.5 / 0.25,
+      // normiert), Phasen wandern ueber drift.
+      const yC =
+        yCenter +
+        cfg.SWIRL *
+          band.ampMul *
+          (Math.sin((x * kx1 + drift) * 1.0 + band.ph1) * (1 / 1.75) +
+            Math.sin((x * kx2 + drift) * 2.1 + band.ph2) * (0.5 / 1.75) +
+            Math.sin((x * kx3 + drift) * 4.3 + band.ph3) * (0.25 / 1.75));
+      // Dicke schwillt an und ab wie ein Pinselzug.
+      const half =
+        0.5 *
+        cfg.BAND_THICK *
+        band.thkMul *
+        (1 + 0.3 * Math.sin(x * ktx + drift * 0.5 + band.phT));
+      band.yCs[s] = yC * internalW;
+      band.halfs[s] = half * internalW;
+    }
+
+    const fillAlpha = cfg.ALPHA * (band.back ? LAYER_BACK.alphaMul : 1);
+
+    // Pass 1: Aussenband in der Band-Abstufung.
+    ctx.fillStyle = shadeStyles[band.shadeIdx];
+    ctx.globalAlpha = fillAlpha;
+    traceRibbon(ctx, band, xPx, 1);
+    ctx.fill();
+
+    // Pass 2: Innen-Ribbon in hellerer Stufe -> hellere Bandmitte, liest
+    // sich als malerische Tiefe (siehe INNER_*-Konstanten).
+    ctx.fillStyle = lightStyles[band.shadeIdx];
+    ctx.globalAlpha = fillAlpha * INNER_ALPHA_MUL;
+    traceRibbon(ctx, band, xPx, INNER_RATIO);
+    ctx.fill();
+
+    // Pass 3: Tuschelinie entlang der Oberkante, eine Stufe dunkler im
+    // Shade-System (bei der dunkelsten Stufe gibt das erhoehte Alpha den
+    // Biss).
+    ctx.strokeStyle = shadeStyles[Math.min(band.shadeIdx + 1, SHADES - 1)];
+    ctx.globalAlpha = Math.min(fillAlpha * EDGE_ALPHA_MUL, EDGE_ALPHA_MAX);
+    ctx.lineWidth = Math.max(0.75, internalW * EDGE_LINE_W);
+    ctx.beginPath();
+    ctx.moveTo(xPx[0], band.yCs[0] - band.halfs[0]);
+    for (let s = 1; s <= SAMPLES; s++) {
+      ctx.lineTo(xPx[s], band.yCs[s] - band.halfs[s]);
+    }
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// Hochaufloesendes Standbild als PNG-DataURL, fuer Praesentations-Folien.
+// Stellt die App-Optik nach: transparente Baender -> Weichzeichner -> ueber
+// dem Papier multipliziert. Jeder Aufruf wuerfelt frische Phasen, liefert also
+// eine andere Variante desselben Looks.
+export function renderMarblingPNG(cfg, { width, height, paperHex }) {
+  const hex = cfg.WISP_COLOR || getSteamDefaultTonedColor(cfg.WISP_TONE);
+  const rgb = parseHex(hex);
+  if (!rgb) return null; // Ohne verwertbare Farbe lieber gar nichts liefern.
+  const { shadeStyles, lightStyles } = buildShadeStyles(rgb, cfg.SHADE_VAR);
+
+  // Schritt 1: Baender auf ein transparentes Offscreen-Canvas in voller
+  // Zielaufloesung. t = 0, die Variation kommt aus den frischen Phasen.
+  const ink = document.createElement('canvas');
+  ink.width = width;
+  ink.height = height;
+  const inkCtx = ink.getContext('2d');
+  inkCtx.lineCap = 'round';
+  inkCtx.lineJoin = 'round';
+  const xPx = new Float32Array(SAMPLES + 1);
+  fillSampleX(xPx, width);
+  const bands = createBands(Math.max(1, Math.round(cfg.BAND_COUNT)), height / width);
+  drawMarbling(inkCtx, {
+    bands,
+    cfg,
+    internalW: width,
+    t: 0,
+    xPx,
+    shadeStyles,
+    lightStyles,
+  });
+
+  // Schritt 2: Papier als Grund. Die Papierfarbe kommt vom Aufrufer (Token
+  // --color-bg), damit der Export Paletten-Overrides folgt.
+  const out = document.createElement('canvas');
+  out.width = width;
+  out.height = height;
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = paperHex || '#FFFFFF'; // nur Notnagel, normal kommt der Token
+  ctx.fillRect(0, 0, width, height);
+
+  // Schritt 3: Tinte weichgezeichnet darueber. Der Lab-Blur gilt fuer eine
+  // typische Tablet-Breite, fuer grosse Exporte muss der Weichzeichner
+  // proportional mitwachsen, sonst wirkt das Bild hart.
+  const blurPx = cfg.CANVAS_BLUR_PX * (width / 1280);
+  ctx.filter = `blur(${blurPx}px)`;
+  if (cfg.BLEND === 'multiply') ctx.globalCompositeOperation = 'multiply';
+  ctx.globalAlpha = cfg.CANVAS_OPACITY;
+  ctx.drawImage(ink, 0, 0);
+  ctx.filter = 'none';
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+
+  return out.toDataURL('image/png');
+}
+
 export default function SteamBackdrop({ className = '' }) {
   // Reduced Motion: Dampf ist Stimmung, keine Information (Muster von
   // SteamPuffs). Early-Return VOR allen Hooks, aber hook-sicher: der Wert ist
@@ -152,21 +365,8 @@ export default function SteamBackdrop({ className = '' }) {
     const rgb = parseHex(hex);
     if (!rgb) return; // Ohne verwertbare Farbe lieber gar nicht malen.
 
-    // Farb-Abstufungen vorberechnen: SHADE_VAR streut die Baender nur nach
-    // dunkler (hellere Stufen waeren unter multiply unsichtbar). Dazu je Stufe
-    // eine aufgehellte Variante fuer das Innen-Ribbon. Fertige Style-Strings
-    // entstehen HIER, im Frame-Loop fallen nur String-Zuweisungen an.
-    const shadeStyles = [];
-    const lightStyles = [];
-    for (let i = 0; i < SHADES; i++) {
-      const factor = 1 - cfg.SHADE_VAR * 0.5 * (i / (SHADES - 1));
-      const r = Math.round(rgb.r * factor);
-      const g = Math.round(rgb.g * factor);
-      const b = Math.round(rgb.b * factor);
-      shadeStyles.push(`rgb(${r}, ${g}, ${b})`);
-      const lighten = (c) => Math.round(c + (255 - c) * LIGHTEN);
-      lightStyles.push(`rgb(${lighten(r)}, ${lighten(g)}, ${lighten(b)})`);
-    }
+    // Farb-Abstufungen einmal vorab (geteilte Modul-Funktion, siehe oben).
+    const { shadeStyles, lightStyles } = buildShadeStyles(rgb, cfg.SHADE_VAR);
 
     let internalW = 1;
     let internalH = 1;
@@ -190,9 +390,7 @@ export default function SteamBackdrop({ className = '' }) {
       // einmalig nach getContext (die Farben setzt der Frame je Band selbst).
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      for (let s = 0; s <= SAMPLES; s++) {
-        xPx[s] = (-OVERSCAN + ((1 + 2 * OVERSCAN) * s) / SAMPLES) * internalW;
-      }
+      fillSampleX(xPx, internalW);
     }
 
     resize();
@@ -200,127 +398,13 @@ export default function SteamBackdrop({ className = '' }) {
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
 
-    // ---- Baender: dauerhaft und fest alloziert, danach nur mutiert (die
-    // Float32Array-Puffer werden pro Frame ueberschrieben, im Loop faellt
-    // keine Allokation an). Vertikale Slots mit stabilem Jitter verteilen die
-    // Mitten mit grossen Luecken ueber die Hoehe. Die hintere Ebene wird
-    // gleichmaessig ueber die Slots verteilt (nicht nur die obersten), dann
-    // einmalig sortiert: die Zeichen-Schleife laeuft automatisch hinten -> vorn.
-    const count = Math.max(1, Math.round(cfg.BAND_COUNT));
-    const bands = Array.from({ length: count }, (_, i) => {
-      const back =
-        Math.round((i + 1) * LAYER_BACK_SHARE) > Math.round(i * LAYER_BACK_SHARE);
-      const layer = back ? LAYER_BACK : null;
-      return {
-        back,
-        // Slot-Mitte plus stabiler Jitter, in Breiten-Einheiten (y bis aspect).
-        // aspect ist nach dem ersten resize() gueltig; ein spaeterer Resize
-        // verschiebt die Slots bewusst nicht (das Muster bleibt ruhig).
-        yBase: (aspect * (i + 0.5 + (Math.random() * 2 - 1) * 0.3)) / count,
-        // Alle Phasen einmal gewuerfelt und dann stabil: keine Spruenge,
-        // kein Ursprung, nichts blinkt.
-        ph1: Math.random() * Math.PI * 2,
-        ph2: Math.random() * Math.PI * 2,
-        ph3: Math.random() * Math.PI * 2,
-        phT: Math.random() * Math.PI * 2,
-        phB: Math.random() * Math.PI * 2,
-        // Leichte Streuung je Band, damit kein Band dem anderen gleicht.
-        ampMul: (layer ? layer.ampMul : 1) * (0.85 + Math.random() * 0.3),
-        thkMul: (layer ? layer.thkMul : 1) * (0.85 + Math.random() * 0.3),
-        shadeIdx: Math.floor(Math.random() * SHADES),
-        // Zwischenwerte je Stuetzstelle (Pixel), pro Frame ueberschrieben:
-        // Mittellinie und halbe Dicke. Daraus bauen sich Aussen- UND
-        // Innen-Ribbon, es braucht keine vier Kanten-Puffer.
-        yCs: new Float32Array(SAMPLES + 1),
-        halfs: new Float32Array(SAMPLES + 1),
-      };
-    }).sort((a, b) => (b.back ? 1 : 0) - (a.back ? 1 : 0));
-
-    // Geschlossenen Ribbon-Pfad aus Mittellinie +- halber Dicke bauen:
-    // Oberkante links -> rechts, Unterkante rechts -> links, closePath.
-    function traceRibbon(band, thicknessMul) {
-      ctx.beginPath();
-      ctx.moveTo(xPx[0], band.yCs[0] - band.halfs[0] * thicknessMul);
-      for (let s = 1; s <= SAMPLES; s++) {
-        ctx.lineTo(xPx[s], band.yCs[s] - band.halfs[s] * thicknessMul);
-      }
-      for (let s = SAMPLES; s >= 0; s--) {
-        ctx.lineTo(xPx[s], band.yCs[s] + band.halfs[s] * thicknessMul);
-      }
-      ctx.closePath();
-    }
+    // Baender einmal aufbauen (geteilte Modul-Funktion): aspect ist nach dem
+    // ersten resize() gueltig.
+    const bands = createBands(Math.max(1, Math.round(cfg.BAND_COUNT)), aspect);
 
     function renderFrame(t) {
       ctx.clearRect(0, 0, internalW, internalH);
-
-      // Kanten-Wellenzahlen aus der Wellenlaenge, leicht verstimmt statt exakt
-      // harmonisch: zusammen mit den irrationalen Zeit-Faktoren (1 / 2.1 / 4.3)
-      // entsteht keine sichtbar wiederkehrende Periode.
-      const kx1 = (2 * Math.PI) / cfg.WAVELENGTH;
-      const kx2 = kx1 * 1.9;
-      const kx3 = kx1 * 3.7;
-      const ktx = kx1 * 0.8;
-      // DRIFT steuert Vorzeichen und Tempo der Phasen-Wanderung: das Muster
-      // scrollt seitlich, ohne dass sich irgendein Objekt bewegt.
-      const driftBase = t * cfg.SPEED * DRIFT_RATE * cfg.DRIFT;
-
-      for (const band of bands) {
-        const drift = driftBase * (band.back ? LAYER_BACK.speedMul : 1);
-        // Sehr langsames vertikales Atmen der Band-Mitte; die Amplitude ist so
-        // klein, dass es nie als Bewegung, nur als Leben liest.
-        const yCenter =
-          band.yBase + BREATHE_AMP * Math.sin(t * BREATHE_RATE * cfg.SPEED + band.phB);
-
-        for (let s = 0; s <= SAMPLES; s++) {
-          const x = -OVERSCAN + ((1 + 2 * OVERSCAN) * s) / SAMPLES;
-          // Mittellinie: drei Sinus-Oktaven (Amplituden 1 / 0.5 / 0.25,
-          // normiert), Phasen wandern ueber drift.
-          const yC =
-            yCenter +
-            cfg.SWIRL *
-              band.ampMul *
-              (Math.sin((x * kx1 + drift) * 1.0 + band.ph1) * (1 / 1.75) +
-                Math.sin((x * kx2 + drift) * 2.1 + band.ph2) * (0.5 / 1.75) +
-                Math.sin((x * kx3 + drift) * 4.3 + band.ph3) * (0.25 / 1.75));
-          // Dicke schwillt an und ab wie ein Pinselzug.
-          const half =
-            0.5 *
-            cfg.BAND_THICK *
-            band.thkMul *
-            (1 + 0.3 * Math.sin(x * ktx + drift * 0.5 + band.phT));
-          band.yCs[s] = yC * internalW;
-          band.halfs[s] = half * internalW;
-        }
-
-        const fillAlpha = cfg.ALPHA * (band.back ? LAYER_BACK.alphaMul : 1);
-
-        // Pass 1: Aussenband in der Band-Abstufung.
-        ctx.fillStyle = shadeStyles[band.shadeIdx];
-        ctx.globalAlpha = fillAlpha;
-        traceRibbon(band, 1);
-        ctx.fill();
-
-        // Pass 2: Innen-Ribbon in hellerer Stufe -> hellere Bandmitte, liest
-        // sich als malerische Tiefe (siehe INNER_*-Konstanten).
-        ctx.fillStyle = lightStyles[band.shadeIdx];
-        ctx.globalAlpha = fillAlpha * INNER_ALPHA_MUL;
-        traceRibbon(band, INNER_RATIO);
-        ctx.fill();
-
-        // Pass 3: Tuschelinie entlang der Oberkante, eine Stufe dunkler im
-        // Shade-System (bei der dunkelsten Stufe gibt das erhoehte Alpha den
-        // Biss).
-        ctx.strokeStyle = shadeStyles[Math.min(band.shadeIdx + 1, SHADES - 1)];
-        ctx.globalAlpha = Math.min(fillAlpha * EDGE_ALPHA_MUL, EDGE_ALPHA_MAX);
-        ctx.lineWidth = Math.max(0.75, internalW * EDGE_LINE_W);
-        ctx.beginPath();
-        ctx.moveTo(xPx[0], band.yCs[0] - band.halfs[0]);
-        for (let s = 1; s <= SAMPLES; s++) {
-          ctx.lineTo(xPx[s], band.yCs[s] - band.halfs[s]);
-        }
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
+      drawMarbling(ctx, { bands, cfg, internalW, t, xPx, shadeStyles, lightStyles });
     }
 
     // Loop-Disziplin: EIN RAF-Loop, der zwar durchlaeuft, aber nur bei
