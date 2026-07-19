@@ -255,7 +255,13 @@ export const TOPPINGS = [
   },
   {
     id: 'bambussprossen',
-    name: { de: 'Bambussprossen', en: 'Bamboo shoots' },
+    // Im Namen steckt ein weiches Trennzeichen (U+00AD, im Editor unsichtbar):
+    // Es zeigt sich erst, wenn die Zeile umbricht, und trennt dann an der
+    // Wortfuge ("Bambus-sprossen") statt mitten im Wort. Nur die langen
+    // deutschen Komposita brauchen das; die englischen Namen haben ein
+    // Leerzeichen und brechen von allein sauber. Ergaenzt die CSS-Silbentrennung
+    // (hyphens-auto in OptionCard), die ohne Trenn-Woerterbuch nichts tut.
+    name: { de: 'Bambus­sprossen', en: 'Bamboo shoots' },
     sceneColor: '#d9b96a',
     size: 345,
     sceneVariants: [1],
@@ -268,7 +274,7 @@ export const TOPPINGS = [
   },
   {
     id: 'fruehlingszwiebeln',
-    name: { de: 'Frühlingszwiebeln', en: 'Spring onions' },
+    name: { de: 'Frühlings­zwiebeln', en: 'Spring onions' },
     sceneColor: '#6aa84f',
     size: 295,
     sceneVariants: [1],

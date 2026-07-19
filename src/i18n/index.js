@@ -22,6 +22,10 @@ export function getLanguage() {
 export function setLanguage(code) {
   if (!languages[code] || code === currentLanguage) return;
   currentLanguage = code;
+  // lang am <html> mitziehen: die CSS-Silbentrennung (hyphens-auto, z. B. auf
+  // langen Zutaten-Namen) waehlt ihr Trenn-Woerterbuch ueber die Sprache. Ohne
+  // das wuerden englische Namen nach deutschen Regeln getrennt.
+  document.documentElement.lang = code;
   for (const listener of listeners) listener();
 }
 

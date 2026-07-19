@@ -196,7 +196,13 @@ export default function OptionCard({
 
       <div className="flex items-start justify-between gap-2">
         <span className="flex min-w-0 items-center gap-1.5">
-          <span className="min-w-0 break-words font-display text-body text-ink-900">{name}</span>
+          {/* hyphens-auto trennt lange Komposita nach Silben ("Bambus-sprossen"
+              statt harter Bruch mitten im Wort); break-words bleibt als Notnagel
+              fuer Woerter, die selbst getrennt nicht passen. Das Trenn-Woerterbuch
+              zieht sich das lang-Attribut am <html> (siehe i18n/setLanguage). */}
+          <span className="min-w-0 hyphens-auto break-words font-display text-body text-ink-900">
+            {name}
+          </span>
           <DietIcon diet={diet} size={15} />
         </span>
         {desc && (
