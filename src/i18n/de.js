@@ -79,13 +79,13 @@ const de = {
     },
     headlines: {
       aufgenommen: 'Bestellung aufgenommen',
-      in_zubereitung: 'Deine Bestellung wird zubereitet',
+      in_zubereitung: 'Bestellung wird zubereitet',
       fertig: 'Deine Bestellung ist fertig!',
     },
     eta: {
       remaining: 'Fertig in ca. {min} Min',
       soon: 'Gleich fertig',
-      done: 'Frisch fertig, guten Appetit',
+      done: 'Guten Appetit',
     },
     round: 'Runde {n}',
     reorderTitle: 'Noch Hunger? Bestell jederzeit nach',

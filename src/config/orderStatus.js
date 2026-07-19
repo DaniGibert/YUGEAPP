@@ -7,8 +7,11 @@
 
 export const STATUS_FLOW = ['aufgenommen', 'in_zubereitung', 'fertig'];
 
+// Bewusst warme, dunkle Toene statt Gold/Amber: die Status-Farbe traegt auch
+// die grosse Headline, und zwei aehnliche Gelbtoene waren dort kaum lesbar und
+// nicht unterscheidbar. broth und finish sind bestehende Kategorie-Tokens.
 export const STATUS_COLORS = {
-  aufgenommen: 'gold',
-  in_zubereitung: 'warning',
+  aufgenommen: 'broth',
+  in_zubereitung: 'finish',
   fertig: 'success',
 };

@@ -79,13 +79,13 @@ const en = {
     },
     headlines: {
       aufgenommen: 'Order received',
-      in_zubereitung: 'Your order is being prepared',
+      in_zubereitung: 'Order being prepared',
       fertig: 'Your order is ready!',
     },
     eta: {
       remaining: 'Ready in approx. {min} min',
       soon: 'Almost ready',
-      done: 'Freshly made, enjoy',
+      done: 'Enjoy your meal',
     },
     round: 'Round {n}',
     reorderTitle: 'Still hungry? Order more anytime',
