@@ -297,6 +297,18 @@
   .status-hero-scene { --hero-scale: 0.77; }
 }
 
+/* ---- Sichere Bereiche (Notch, Dynamic Island, runde Ecken, Home-Indikator) ----
+   index.html setzt viewport-fit=cover, die App zeichnet also absichtlich bis in
+   die Display-Ecken (kein weisser Balken auf dem Kiosk-Tablet). Dann muss sie
+   die sicheren Bereiche aber selbst freihalten, sonst klebt auf dem iPhone im
+   Querformat alles unter der Dynamic Island. Auf Geraeten ohne Aussparungen
+   sind die env()-Werte 0, dort aendert sich nichts. */
+.app-stage {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 /* Mini-Bowl auf den Empfehlungs-Karten. Die Breite lebt hier statt als
    w-28-Utility, damit die Hoehen-Media-Query unten sie ueberschreiben kann
    (Reihenfolge zaehlt: Grundregel vor der Query). */
@@ -311,7 +323,9 @@
    flache Schirme), faengt der Scroll-Container der Spalte den Rest ab, statt
    Text abzuschneiden. Ab 520px Hoehe (iPad, Tablet, Desktop) unberuehrt. */
 @media (max-height: 519px) {
-  .start-actions { gap: 1rem; padding: 0.75rem 1rem; }
+  /* Vertikal straff (Hoehe ist knapp), seitlich aber grosszuegig: die Spalte
+     soll nicht am Displayrand kleben. Breite ist auf dem Handy quer genug da. */
+  .start-actions { gap: 1rem; padding: 0.5rem 2rem; }
   .start-cta-group { gap: 0.75rem; }
   .rec-thumb { width: 3.5rem; }
 }
