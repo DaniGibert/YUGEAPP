@@ -116,7 +116,14 @@ function StepContent({ step, onLimitBlocked }) {
           accent={step.accent}
         />
       )}
-      <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
+      {/* Bei genau 3 Optionen (Nudeln) auf breiten Containern 3 Spalten: sonst
+          steht eine fast leere zweite Reihe im Raster und der Schritt scrollt
+          auf dem Tablet knapp. 4er-Schritte (Bruehe, Protein) bleiben 2x2. */}
+      <div
+        className={`grid grid-cols-1 gap-4 @md:grid-cols-2 ${
+          step.options.length === 3 ? '@lg:grid-cols-3' : ''
+        }`}
+      >
         {step.options.map((option) => (
           <div key={option.id} data-option-id={option.id} className="flex min-w-0 flex-col">
             <OptionCard
