@@ -16,7 +16,7 @@ export const HERO_LAYOUT = {
   // Breite der Begleiter-Boxen in px (PNGs sind ~1.83:1-Rahmen mit Objekt + Schatten).
   sideW: 200, // Beilagen (Gyoza, Reis, Karaage ...)
   drinkW: 270, // Getränke (Glas, Flasche, Dose)
-  bowlW: 240, // weitere Bowl (Thumbnail)
+  bowlW: 215, // weitere Bowl (Thumbnail)
   // Einzelne Artikel gezielt feinjustieren (überschreibt sideW/drinkW). Keys sind
   // sprachunabhängige IDs: entweder varianten-genau als <menü-id>-<varianten-id>
   // oder für alle Varianten als <menü-id>. Lookup in companionWidth: erst die
@@ -31,7 +31,7 @@ export const HERO_LAYOUT = {
   flankRise: 16, // px, äußere Flanker sitzen höher (wirken weiter hinten)
   flankBottomRem: 3, // rem, Standlinie der Flanker
   // Getränke: hintere Reihe, hoch, nach rechts gruppiert.
-  drinkLiftRem: 3, // rem, Getränk steht höher = weiter hinten
+  drinkLiftRem: 4, // rem, Getränk steht höher = weiter hinten
   drinkX0: 130, // px, ein einzelnes Getränk sitzt rechts hinter der Bowl
   drinkSpread: 70, // px, Abstand nebeneinander stehender Getränke
   drinkShift: 0.35, // wie stark die Getränke-Reihe je Anzahl nach links rückt
