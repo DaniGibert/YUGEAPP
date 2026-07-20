@@ -264,7 +264,7 @@ fertig" kurz vor Schluss, bei `fertig` ein Gruß. Nur eine Schätzung, kein exak
 
 **Auto-Simulation der Küche (Präsentation):** Damit die App ohne Wechsel in die
 Küchen-Ansicht vorführbar ist, wandert jede neue Bestellung nach dem Absenden
-automatisch weiter (`aufgenommen` → `in_zubereitung` nach 5s → `fertig` nach 25s;
+automatisch weiter (`aufgenommen` → `in_zubereitung` nach 2,5s → `fertig` nach 12,5s;
 das Zubereitungs-Fenster gibt der Koch-Choreografie im Status-Hero Zeit, alle
 Zutaten fallen zu lassen).
 Das läuft ausschließlich in `dataService.js` (`simulateKitchen`, Timing in `SIM_STEPS`)

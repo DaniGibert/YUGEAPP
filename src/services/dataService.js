@@ -62,11 +62,14 @@ const STATUS_ORDER = ['aufgenommen', 'in_zubereitung', 'fertig'];
 // exakt gleichen Pfad wie die Küche (Realtime-/Demo-Update beim Kunden). Ein
 // manueller Küchen-Sprung nach vorn wird nie überschrieben: vor jedem Schritt
 // prüfen wir den Ist-Status und setzen nur, wenn er noch dahinter liegt.
-// Das Zubereitungs-Fenster (5s bis 25s) gibt der Koch-Choreografie im
-// Status-Hero Zeit, Brühe und Zutaten nacheinander fallen zu lassen.
+// Das Zubereitungs-Fenster (2,5s bis 12,5s) gibt der Koch-Choreografie im
+// Status-Hero Zeit, Brühe und Zutaten nacheinander fallen zu lassen. Die Werte
+// haengen an COOK_START_S/COOK_STEP_S im StatusScreen: wird hier gedreht, muss
+// die Choreografie im selben Verhaeltnis mitziehen, sonst schneidet "fertig"
+// das Anrichten ab.
 const SIM_STEPS = [
-  { status: 'in_zubereitung', delayMs: 5000 },
-  { status: 'fertig', delayMs: 25000 },
+  { status: 'in_zubereitung', delayMs: 2500 },
+  { status: 'fertig', delayMs: 12500 },
 ];
 
 async function currentStatus(orderId) {

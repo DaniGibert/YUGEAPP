@@ -49,8 +49,8 @@ const PREP_ESTIMATE_MIN = 7;
 // deterministisch, ein Wiederbesuch des Screens zeigt den richtigen
 // Zwischenstand statt von vorn zu kochen. Der Status hat immer Vorrang:
 // "aufgenommen" zeigt nichts bzw. die leere Schüssel, "fertig" alles.
-const COOK_START_S = 5; // ab hier füllt sich die Brühe (Sim schaltet nach 5s um)
-const COOK_STEP_S = 2.5; // Abstand, in dem der nächste Baustein erscheint
+const COOK_START_S = 2.5; // ab hier füllt sich die Brühe (Sim schaltet nach 2,5s um)
+const COOK_STEP_S = 1.25; // Abstand, in dem der nächste Baustein erscheint
 // Platzierung/Größen der Menü-Komposition (Begleiter um die Hero-Bowl) liegen in
 // scene/heroCompanions.js (HERO_LAYOUT) — geteilt mit dem Scene-Lab (?ansicht=lab),
 // wo sie live getunt werden. Werte ändern = dort ändern.
